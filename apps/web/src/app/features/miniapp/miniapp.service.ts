@@ -26,31 +26,24 @@ export class MiniAppService {
     });
 
     const initData = w?.initData?.trim();
-    if (!initData) {
-      // Opened outside Telegram (e.g. a browser tab) — fall back to a normal session.
-      if (this.auth.isAuthenticated()) {
-        this.auth.me().subscribe({
-          next: (u) => { this.user.set(u); this.state.set('ready'); },
-          error: () => this.state.set('login'),
-        });
-      } else {
-        this.state.set('login');
-        this.message.set('Telegram tashqarisida ochildi — login va parol bilan kiring.');
-      }
+    if (initData) {
+      // Telegram Mini App: login + bo'lim har safar ochilganda.
+      this.auth.logout(false);
+      this.user.set(null);
+      this.state.set('login');
+      this.message.set('Bo‘lim, login va parol bilan kiring.');
       return;
     }
 
-    this.api.post<AuthResponse>('/telegram/mini-app/auth', { initData }).subscribe({
-      next: (res) => {
-        this.auth.store(res);
-        this.user.set(res.user);
-        this.state.set('ready');
-      },
-      error: () => {
-        this.state.set('login');
-        this.message.set('');
-      },
-    });
+    if (this.auth.isAuthenticated()) {
+      this.auth.me().subscribe({
+        next: (u) => { this.user.set(u); this.state.set('ready'); },
+        error: () => this.state.set('login'),
+      });
+    } else {
+      this.state.set('login');
+      this.message.set('Telegram tashqarisida ochildi — login va parol bilan kiring.');
+    }
   }
 
   login(login: string, password: string, departmentCode?: string) {

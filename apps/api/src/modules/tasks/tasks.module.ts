@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { Prisma, StageType, TaskStatus } from '@prisma/client';
 import { IsDateString, IsEnum, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
@@ -199,6 +199,18 @@ export class TasksController {
   plan(@Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY', @CurrentUser() actor: JwtUser, @Query('userId') userId?: string) {
     const target = userId && (actor.permissions.includes('*') || actor.permissions.includes('users.read')) ? userId : actor.sub;
     return this.service.plan(target, period.toUpperCase() as any);
+  }
+
+  @Post('plans/:period/my')
+  @ApiOperation({ summary: 'Set own DAILY/WEEKLY/MONTHLY target qty' })
+  setMyPlan(
+    @Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    @Body() body: { targetQty: number },
+    @CurrentUser() actor: JwtUser,
+  ) {
+    const qty = Number(body.targetQty);
+    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Plan miqdori noto‘g‘ri');
+    return this.service.setPlan(actor.sub, period.toUpperCase() as any, qty, actor);
   }
 
   @Post('plans/:period')
