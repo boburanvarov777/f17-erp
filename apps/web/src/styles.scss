@@ -170,8 +170,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn-ghost:hover { background: var(--surface-3); color: var(--text); }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: var(--r-sm); }
 .btn-lg { height: 44px; padding: 0 20px; font-size: 15px; }
-.btn-icon { width: 36px; padding: 0; }
+.btn-icon { width: 36px; padding: 0; color: var(--text-2); }
 .btn-icon.btn-sm { width: 30px; }
+.btn-icon:hover { color: var(--text); }
+.btn-icon ui-icon, .btn-icon svg { pointer-events: none; flex-shrink: 0; }
 .btn-block { width: 100%; }
 
 /* ─────────── tooltips (hover) ─────────── */
@@ -214,13 +216,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
   transform: translateY(-50%);
 }
 table.data [data-tip]::after {
-  bottom: calc(100% + 6px);
+  bottom: auto;
+  top: calc(100% + 6px);
+  z-index: 800;
+}
+table.data td.actions {
+  overflow: visible;
+  white-space: nowrap;
+}
+table.data td.actions .btn-icon {
+  vertical-align: middle;
 }
 .pager [data-tip]::after,
 .toolbar [data-tip]::after {
   bottom: auto;
   top: calc(100% + 6px);
 }
+
+/* ─────────── language chips ─────────── */
+.lang-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 20px; padding: 0 6px;
+  border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  color: #fff; flex-shrink: 0; line-height: 1;
+}
+.lang-uz { background: linear-gradient(135deg, #0099b5, #1faa59); }
+.lang-ru { background: linear-gradient(135deg, #2563eb, #dc2626); }
+.lang-en { background: linear-gradient(135deg, #1e40af, #b91c1c); }
+.lang-trigger { gap: 6px; }
 
 /* ─────────── form ─────────── */
 .field { display: flex; flex-direction: column; gap: 8px; }

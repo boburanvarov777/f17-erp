@@ -7,6 +7,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { InitialsPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
 
 @Component({
@@ -27,7 +28,7 @@ import type { Lang } from '../../core/models';
               <div class="text-3 small">{{ u.position || '—' }} · {{ u.department?.name || '—' }}</div>
               <div class="row gap-2 mt-2">
                 <span class="badge badge-info">{{ u.role?.name }}</span>
-                @if (u.telegramId) { <span class="badge badge-success"><ui-icon name="send" [size]="11" /> Telegram ulangan</span> }
+                @if (u.telegramId) { <span class="badge badge-success"><ui-icon name="send" [size]="11" /> {{ 'telegram_linked' | t }}</span> }
               </div>
             </div>
           </div>
@@ -36,7 +37,7 @@ import type { Lang } from '../../core/models';
             <dt>{{ 'login' | t }}</dt><dd class="mono">{{ u.login }}</dd>
             <dt>{{ 'phone' | t }}</dt><dd class="mono">{{ u.phone }}</dd>
             <dt>{{ 'email' | t }}</dt><dd>{{ u.email || '—' }}</dd>
-            <dt>{{ 'permissions' | t }}</dt><dd>{{ u.permissions.includes('*') ? ('full_access' | t) : u.permissions.length + ' ta huquq' }}</dd>
+            <dt>{{ 'permissions' | t }}</dt><dd>{{ u.permissions.includes('*') ? ('full_access' | t) : i18n.t('permissions_count', { n: u.permissions.length }) }}</dd>
           </dl>
         </div>
 
@@ -44,9 +45,19 @@ import type { Lang } from '../../core/models';
           <h3 class="mb-4">{{ 'settings' | t }}</h3>
           <div class="row-between mb-4">
             <span class="small">{{ 'language' | t }}</span>
-            <select class="select" style="width:auto" [ngModel]="i18n.lang()" (ngModelChange)="setLang($event)">
-              <option value="uz">O‘zbekcha</option><option value="ru">Русский</option><option value="en">English</option>
-            </select>
+            <div class="row gap-1">
+              @for (l of langs; track l.code) {
+                <button
+                  class="btn btn-sm lang-btn"
+                  [class.btn-primary]="i18n.lang() === l.code"
+                  type="button"
+                  (click)="setLang(l.code)"
+                >
+                  <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
+                  <span>{{ ('lang_' + l.code) | t }}</span>
+                </button>
+              }
+            </div>
           </div>
           <div class="row-between">
             <span class="small">{{ 'theme' | t }}</span>
@@ -83,6 +94,7 @@ export class ProfileComponent {
   newPassword = '';
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 
@@ -94,12 +106,12 @@ export class ProfileComponent {
         this.busy.set(false);
         this.currentPassword = '';
         this.newPassword = '';
-        this.toast.success(this.i18n.t('saved'), 'Qaytadan kiring');
+        this.toast.success(this.i18n.t('saved'), this.i18n.t('relogin_hint'));
         setTimeout(() => this.auth.logout(), 1400);
       },
       error: (e) => {
         this.busy.set(false);
-        this.error.set(e?.error?.message || 'Xatolik');
+        this.error.set(e?.error?.message || this.i18n.t('error'));
       },
     });
   }

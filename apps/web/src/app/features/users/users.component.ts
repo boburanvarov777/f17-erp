@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { Department, Paginated, Role, User } from '../../core/models';
+import { deptLabel } from '../../core/dept-label';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -24,7 +25,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       <div class="page-head">
         <div>
           <div class="title">{{ 'users_title' | t }}</div>
-          <div class="sub">{{ data()?.total || 0 }} ta xodim</div>
+          <div class="sub">{{ i18n.t('employees_count', { n: data()?.total || 0 }) }}</div>
         </div>
         @if (auth.can('users.create')) {
           <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_user' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_user' | t }}</button>
@@ -39,7 +40,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           </div>
           <select class="select" style="width:auto;min-width:160px" [(ngModel)]="departmentId" (ngModelChange)="reload()">
             <option value="">{{ 'department' | t }}: {{ 'all' | t }}</option>
-            @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.nameUz }}</option> }
+            @for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }
           </select>
           <select class="select" style="width:auto;min-width:150px" [(ngModel)]="roleId" (ngModelChange)="reload()">
             <option value="">{{ 'role' | t }}: {{ 'all' | t }}</option>
@@ -48,7 +49,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <select class="select" style="width:auto;min-width:140px" [(ngModel)]="status" (ngModelChange)="reload()">
             <option value="">{{ 'status' | t }}: {{ 'all' | t }}</option>
             <option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option>
-            <option value="BLOCKED">Bloklangan</option>
+            <option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option>
           </select>
         </div>
 
@@ -73,12 +74,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       </td>
                       <td class="mono small">{{ u.phone }}</td>
                       <td class="mono small">{{ u.login }}</td>
-                      <td class="small">{{ u.department?.nameUz || '—' }}</td>
+                      <td class="small">{{ u.department ? deptName(u.department) : '—' }}</td>
                       <td class="small">{{ u.position || '—' }}</td>
                       <td><span class="badge badge-neutral">{{ u.role?.name }}</span></td>
-                      <td><ui-status [value]="u.status" /></td>
+                      <td><ui-status [value]="u.status === 'BLOCKED' ? 'BLOCKED_ACCOUNT' : u.status" /></td>
                       <td>
-                        @if (u.telegramId) { <span class="badge badge-info"><ui-icon name="send" [size]="11" /> {{ u.telegramUsername ? '@' + u.telegramUsername : 'ulangan' }}</span> }
+                        @if (u.telegramId) { <span class="badge badge-info"><ui-icon name="send" [size]="11" /> {{ u.telegramUsername ? '@' + u.telegramUsername : ('linked_short' | t) }}</span> }
                         @else { <span class="tiny text-3">{{ 'not_linked' | t }}</span> }
                       </td>
                       <td class="small nowrap">{{ u.lastLoginAt ? (u.lastLoginAt | shortDate: true) : ('never' | t) }}</td>
@@ -122,7 +123,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           </div>
           <div class="field">
             <label class="label">{{ 'department' | t }}</label>
-            <select class="select" [(ngModel)]="form.departmentId"><option value="">—</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ d.nameUz }}</option> }</select>
+            <select class="select" [(ngModel)]="form.departmentId"><option value="">—</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
           </div>
           <div class="field"><label class="label">{{ 'position' | t }}</label><input class="input" [(ngModel)]="form.position" /></div>
           <div class="field">
@@ -131,12 +132,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
-            <select class="select" [(ngModel)]="form.status"><option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option><option value="BLOCKED">Bloklangan</option></select>
+            <select class="select" [(ngModel)]="form.status"><option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option><option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option></select>
           </div>
           <div class="field"><label class="label">{{ 'employee_id' | t }}</label><input class="input" [(ngModel)]="form.employeeId" /></div>
           <div class="field">
             <label class="label">{{ 'language' | t }}</label>
-            <select class="select" [(ngModel)]="form.lang"><option value="UZ">O‘zbekcha</option><option value="RU">Русский</option><option value="EN">English</option></select>
+            <select class="select" [(ngModel)]="form.lang"><option value="UZ">{{ 'lang_uz' | t }}</option><option value="RU">{{ 'lang_ru' | t }}</option><option value="EN">{{ 'lang_en' | t }}</option></select>
           </div>
           <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="form.note" /></div>
         </div>
@@ -158,7 +159,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     @if (passwordFor(); as u) {
       <ui-modal [title]="'reset_password' | t" [subtitle]="u.lastName + ' ' + u.firstName" (closed)="passwordFor.set(null)">
         <div class="field"><label class="label">{{ 'new_password' | t }}</label><input class="input" [(ngModel)]="newPassword" /></div>
-        <div class="small text-3 mt-3">Parol o‘zgargach barcha sessiyalar bekor qilinadi.</div>
+        <div class="small text-3 mt-3">{{ 'password_sessions_note' | t }}</div>
         <div footer>
           <button class="btn" type="button" (click)="passwordFor.set(null)">{{ 'cancel' | t }}</button>
           <button class="btn btn-primary" type="button" (click)="resetPassword(u)" [disabled]="newPassword.length < 6">{{ 'save' | t }}</button>
@@ -167,7 +168,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     @if (archiving(); as u) {
-      <ui-confirm [title]="'archive' | t" [message]="u.lastName + ' ' + u.firstName + ' — arxivlashni tasdiqlaysizmi?'"
+      <ui-confirm [title]="'archive' | t" [message]="i18n.t('user_archive_confirm', { name: u.lastName + ' ' + u.firstName })"
                   [note]="'user_archive_note' | t" [confirmLabel]="'archive' | t"
                   (confirmed)="archive(u)" (cancelled)="archiving.set(null)" />
     }
@@ -176,7 +177,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 export class UsersComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   search = ''; departmentId = ''; roleId = ''; status = ''; newPassword = '';
@@ -202,6 +203,8 @@ export class UsersComponent {
     this.api.get<Role[]>('/roles').subscribe({ next: (r) => this.roles.set(r), error: () => void 0 });
     this.api.get<Department[]>('/departments').subscribe({ next: (d) => this.departments.set(d), error: () => void 0 });
   }
+
+  deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
 
   valid(): boolean {
     return !!(this.form['firstName'] && this.form['lastName'] && this.form['phone'] && this.form['login'] && this.form['roleId'] && (this.editing()?.id || this.form['password']));
@@ -248,7 +251,7 @@ export class UsersComponent {
       error: (e) => {
         this.busy.set(false);
         const m = e?.error?.message;
-        this.error.set(Array.isArray(m) ? m.join(', ') : m || 'Xatolik');
+        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
   }

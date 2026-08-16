@@ -20,7 +20,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
       <div class="page-head">
         <div>
           <div class="title">{{ 'roles_title' | t }}</div>
-          <div class="sub">{{ roles().length }} ta role · huquqlar backendda ham tekshiriladi</div>
+          <div class="sub">{{ i18n.t('roles_count_sub', { n: roles().length }) }}</div>
         </div>
         @if (auth.can('roles.create')) {
           <button class="btn btn-primary btn-sm" type="button" (click)="open({ permissions: [] })" [attr.data-tip]="'new_role' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_role' | t }}</button>
@@ -78,7 +78,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
 
         @if (r.permissions?.includes('*')) {
           <div class="badge badge-danger" style="width:100%;justify-content:flex-start;padding:11px;border-radius:var(--r)">
-            <ui-icon name="shield-check" [size]="15" /> {{ 'full_access' | t }} — bu role barcha modullarga kirish huquqiga ega.
+            <ui-icon name="shield-check" [size]="15" /> {{ 'full_access' | t }} — {{ 'roles_full_access_desc' | t }}
           </div>
         } @else {
           @for (g of permissionGroups(); track g.key) {
@@ -122,7 +122,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
 export class RolesComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   readonly roles = signal<Role[]>([]);

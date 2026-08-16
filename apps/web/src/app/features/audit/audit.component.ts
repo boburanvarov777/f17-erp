@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import type { AuditLog, Paginated } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { InitialsPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
@@ -19,7 +20,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
       <div class="page-head">
         <div>
           <div class="title">{{ 'audit_title' | t }}</div>
-          <div class="sub">{{ data()?.total || 0 }} ta yozuv</div>
+          <div class="sub">{{ i18n.t('audit_count', { n: data()?.total || 0 }) }}</div>
         </div>
       </div>
 
@@ -53,7 +54,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
                             <span class="avatar sm">{{ l.user.firstName | initials: l.user.lastName }}</span>
                             <span class="small">{{ l.user.lastName }} {{ l.user.firstName }}</span>
                           </div>
-                        } @else { <span class="text-3 small">Tizim</span> }
+                        } @else { <span class="text-3 small">{{ 'system' | t }}</span> }
                       </td>
                       <td><span class="badge" [class]="tone(l.action)">{{ l.action }}</span></td>
                       <td class="small">{{ l.entity || '—' }}<span class="tiny text-3 mono"> {{ l.entityId ? l.entityId.slice(-6) : '' }}</span></td>
@@ -100,6 +101,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
 })
 export class AuditComponent {
   private api = inject(ApiService);
+  readonly i18n = inject(I18nService);
   search = ''; action = ''; from = ''; to = '';
   readonly page = signal(1);
   readonly limit = signal(20);

@@ -33,7 +33,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
       <div class="page-head">
         <div>
           <div class="title">{{ 'orders_title' | t }}</div>
-          <div class="sub">{{ data()?.total || 0 }} ta zakaz</div>
+          <div class="sub">{{ i18n.t('orders_count_sub', { n: data()?.total || 0 }) }}</div>
         </div>
         <div class="row gap-2">
           <button class="btn btn-sm" type="button" (click)="exportCsv()" [attr.data-tip]="'export' | t"><ui-icon name="download" [size]="15" /> {{ 'export' | t }}</button>
@@ -128,16 +128,16 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
                       <td><ui-priority [value]="o.priority" /></td>
                       <td class="small">{{ o.responsible ? o.responsible.lastName + ' ' + o.responsible.firstName[0] + '.' : '—' }}</td>
                       <td class="actions" (click)="$event.stopPropagation()">
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" [routerLink]="['/orders', o.id]" [attr.data-tip]="'view' | t">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" [routerLink]="['/orders', o.id]" (click)="$event.stopPropagation()" [attr.data-tip]="'view' | t">
                           <ui-icon name="eye" [size]="15" />
                         </button>
                         @if (auth.can('orders.update')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); editing.set(o)" [attr.data-tip]="'edit' | t">
                             <ui-icon name="pencil" [size]="15" />
                           </button>
                         }
                         @if (auth.can('orders.delete')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(o)" [attr.data-tip]="'archive' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); archiving.set(o)" [attr.data-tip]="'archive' | t">
                             <ui-icon name="archive" [size]="15" />
                           </button>
                         }
@@ -164,7 +164,8 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 
     @if (editing(); as o) {
       <app-order-form [order]="o" [clients]="clients()" [models]="models()"
-                      (saved)="onSaved()" (closed)="editing.set(null)" />
+                       (clientsChange)="clients.set($event)"
+                       (saved)="onSaved()" (closed)="editing.set(null)" />
     }
 
     @if (archiving(); as o) {
@@ -182,7 +183,7 @@ export class OrdersListComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private router = inject(Router);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   readonly statuses = STATUSES;

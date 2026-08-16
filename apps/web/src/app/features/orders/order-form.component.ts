@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { Client, Order, OrderStatus, Priority, ProductModel, User } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
@@ -23,10 +25,17 @@ interface SizeRow { size: string; qty: number; }
 
         <div class="field">
           <label class="label">{{ 'client' | t }}</label>
-          <select class="select" [(ngModel)]="form.clientId">
-            <option value="">—</option>
-            @for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
-          </select>
+          <div class="row gap-2">
+            <select class="select grow" [(ngModel)]="form.clientId">
+              <option value="">—</option>
+              @for (c of clientOptions(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+            </select>
+            @if (canAddClient()) {
+              <button class="btn btn-sm" type="button" (click)="showClientForm.set(true)" [attr.data-tip]="'add_client' | t">
+                <ui-icon name="plus" [size]="14" />
+              </button>
+            }
+          </div>
         </div>
 
         <div class="field full">
@@ -108,7 +117,7 @@ interface SizeRow { size: string; qty: number; }
           <div class="err-text mt-2">{{ 'sizes_mismatch' | t }}</div>
         }
       } @else {
-        <div class="small text-3">Razmerlar kiritilmagan — modeldan avtomatik olish uchun modelni tanlang.</div>
+        <div class="small text-3">{{ 'sizes_empty_hint' | t }}</div>
       }
 
       @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
@@ -120,29 +129,55 @@ interface SizeRow { size: string; qty: number; }
         </button>
       </div>
     </ui-modal>
+
+    @if (showClientForm()) {
+      <ui-modal [title]="'new_client' | t" (closed)="showClientForm.set(false)">
+        <div class="form-grid">
+          <div class="field"><label class="label">{{ 'client_code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="clientForm.code" /></div>
+          <div class="field"><label class="label">{{ 'client' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="clientForm.name" /></div>
+          <div class="field"><label class="label">{{ 'phone' | t }}</label><input class="input mono" [(ngModel)]="clientForm.phone" /></div>
+          <div class="field"><label class="label">{{ 'contact' | t }}</label><input class="input" [(ngModel)]="clientForm.contact" /></div>
+        </div>
+        @if (clientError()) { <div class="err-text mt-3">{{ clientError() }}</div> }
+        <div footer>
+          <button class="btn" type="button" (click)="showClientForm.set(false)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveClient()" [disabled]="clientBusy() || !clientForm.code.trim() || !clientForm.name.trim()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
   `,
   styles: [`
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
     .size-row { display: flex; align-items: center; gap: 6px; }
+    .grow { flex: 1; min-width: 0; }
   `],
 })
 export class OrderFormComponent {
   private api = inject(ApiService);
+  private i18n = inject(I18nService);
+  readonly auth = inject(AuthService);
 
   readonly order = input.required<Partial<Order>>();
   readonly clients = input<Client[]>([]);
   readonly models = input<ProductModel[]>([]);
   readonly saved = output<void>();
   readonly closed = output<void>();
+  readonly clientsChange = output<Client[]>();
 
   readonly statuses: OrderStatus[] = ['NEW', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'LOADING', 'COMPLETED', 'DELAYED', 'CANCELLED'];
   readonly priorities: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 
   readonly users = signal<User[]>([]);
+  readonly extraClients = signal<Client[]>([]);
   readonly sizes = signal<SizeRow[]>([]);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly showClientForm = signal(false);
+  readonly clientBusy = signal(false);
+  readonly clientError = signal('');
   private version = signal(0);
+
+  clientForm = { code: '', name: '', phone: '', contact: '' };
 
   form = {
     number: '', clientId: '', modelId: '', qty: 0,
@@ -152,6 +187,12 @@ export class OrderFormComponent {
   };
 
   readonly isNew = computed(() => !this.order()?.id);
+  readonly clientOptions = computed(() => {
+    const map = new Map<string, Client>();
+    for (const c of [...this.clients(), ...this.extraClients()]) map.set(c.id, c);
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  });
+  readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
   readonly sizeTotal = computed(() => { this.version(); return this.sizes().reduce((a, s) => a + (+s.qty || 0), 0); });
   readonly valid = computed(() => {
     this.version();
@@ -201,6 +242,31 @@ export class OrderFormComponent {
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); this.touch(); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); this.touch(); }
 
+  saveClient(): void {
+    this.clientBusy.set(true);
+    this.clientError.set('');
+    this.api.post<Client>('/clients', {
+      code: this.clientForm.code.trim(),
+      name: this.clientForm.name.trim(),
+      phone: this.clientForm.phone.trim() || undefined,
+      contact: this.clientForm.contact.trim() || undefined,
+    }).subscribe({
+      next: (c) => {
+        this.clientBusy.set(false);
+        this.extraClients.update((list) => [...list, c]);
+        this.form.clientId = c.id;
+        this.clientsChange.emit(this.clientOptions());
+        this.showClientForm.set(false);
+        this.clientForm = { code: '', name: '', phone: '', contact: '' };
+      },
+      error: (e) => {
+        this.clientBusy.set(false);
+        const m = e?.error?.message;
+        this.clientError.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
+    });
+  }
+
   save(): void {
     this.busy.set(true);
     this.error.set('');
@@ -228,7 +294,7 @@ export class OrderFormComponent {
       error: (e) => {
         this.busy.set(false);
         const m = e?.error?.message;
-        this.error.set(Array.isArray(m) ? m.join(', ') : m || 'Xatolik');
+        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
   }

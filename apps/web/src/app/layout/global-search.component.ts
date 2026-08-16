@@ -5,6 +5,7 @@ import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { GlobalSearchResult } from '../core/models';
 import { ApiService } from '../core/services/api.service';
+import { I18nService } from '../core/services/i18n.service';
 import { TPipe } from '../shared/pipes/t.pipe';
 import { IconComponent } from '../shared/ui/icon.component';
 
@@ -23,7 +24,7 @@ interface Hit { icon: string; title: string; sub: string; link: string; group: s
           <input #box class="grow" [(ngModel)]="query" (ngModelChange)="onQuery($event)"
                  [placeholder]="'search_placeholder' | t" autocomplete="off" />
           @if (loading()) { <span class="spinner"></span> }
-          <span class="kbd">ESC</span>
+          <span class="kbd">{{ 'keyboard_esc' | t }}</span>
         </div>
 
         <div class="palette-body">
@@ -42,7 +43,7 @@ interface Hit { icon: string; title: string; sub: string; link: string; group: s
             <div class="empty" style="padding:36px"><span class="small">{{ 'no_data' | t }}</span></div>
           } @else {
             <div class="hint">
-              <div class="small text-3">Zakaz raqami, model kodi, mijoz, material yoki xodim bo‘yicha qidiring.</div>
+              <div class="small text-3">{{ 'search_hint' | t }}</div>
             </div>
           }
         </div>
@@ -66,6 +67,7 @@ interface Hit { icon: string; title: string; sub: string; link: string; group: s
 export class GlobalSearchComponent {
   private api = inject(ApiService);
   private router = inject(Router);
+  private i18n = inject(I18nService);
 
   readonly closed = output<void>();
   @ViewChild('box', { static: true }) box!: ElementRef<HTMLInputElement>;
@@ -79,12 +81,13 @@ export class GlobalSearchComponent {
   readonly hits = computed<Hit[]>(() => {
     const r = this.result();
     if (!r) return [];
+    const t = (k: string) => this.i18n.t(k);
     return [
-      ...r.orders.map((o) => ({ icon: 'clipboard-list', title: o.number, sub: `${o.qty} dona · ${o.model?.code ?? ''}`, link: `/orders/${o.id}`, group: 'Zakaz' })),
-      ...r.models.map((m) => ({ icon: 'shirt', title: `${m.code} — ${m.name}`, sub: m.category ?? '', link: `/models/${m.id}`, group: 'Model' })),
-      ...r.clients.map((c) => ({ icon: 'building', title: c.name, sub: c.code, link: `/orders?clientId=${c.id}`, group: 'Mijoz' })),
-      ...r.materials.map((m) => ({ icon: 'boxes', title: m.name, sub: `${m.code} · ${m.stock} ${m.unit ?? ''}`, link: `/warehouse?search=${m.code}`, group: 'Ombor' })),
-      ...r.users.map((u) => ({ icon: 'user', title: `${u.lastName} ${u.firstName}`, sub: u.position ?? '', link: `/users?search=${u.lastName}`, group: 'Xodim' })),
+      ...r.orders.map((o) => ({ icon: 'clipboard-list', title: o.number, sub: `${o.qty} ${t('pieces_short')} · ${o.model?.code ?? ''}`, link: `/orders/${o.id}`, group: t('grp_order') })),
+      ...r.models.map((m) => ({ icon: 'shirt', title: `${m.code} — ${m.name}`, sub: m.category ?? '', link: `/models/${m.id}`, group: t('grp_model') })),
+      ...r.clients.map((c) => ({ icon: 'building', title: c.name, sub: c.code, link: `/orders?clientId=${c.id}`, group: t('grp_client') })),
+      ...r.materials.map((m) => ({ icon: 'boxes', title: m.name, sub: `${m.code} · ${m.stock} ${m.unit ?? ''}`, link: `/warehouse?search=${m.code}`, group: t('grp_warehouse') })),
+      ...r.users.map((u) => ({ icon: 'user', title: `${u.lastName} ${u.firstName}`, sub: u.position ?? '', link: `/users?search=${u.lastName}`, group: t('grp_employee') })),
     ];
   });
 

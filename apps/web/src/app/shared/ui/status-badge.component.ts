@@ -1,47 +1,85 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TPipe } from '../pipes/t.pipe';
+import { IconComponent } from './icon.component';
 
 type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const TONES: Record<string, Tone> = {
-  // orders
   NEW: 'info', CONFIRMED: 'info', IN_PRODUCTION: 'warning', READY: 'success',
   LOADING: 'info', COMPLETED: 'success', CANCELLED: 'neutral', DELAYED: 'danger',
-  // stages
   NOT_STARTED: 'neutral', WAITING: 'neutral', IN_PROGRESS: 'warning', BLOCKED: 'danger',
-  // users / models
   ACTIVE: 'success', ARCHIVED: 'neutral', DRAFT: 'neutral',
-  // warehouse
   OK: 'success', LOW: 'warning', OUT: 'danger',
-  // shipments
   LOADED: 'info', SHIPPED: 'success',
-  // tasks
   TODO: 'neutral', DONE: 'success',
-  // priority
-  LOW_P: 'neutral', NORMAL: 'neutral', HIGH: 'warning', URGENT: 'danger',
+  PENDING: 'warning', APPROVED: 'success', SENT: 'info', REJECTED: 'danger',
+  BLOCKED_ACCOUNT: 'danger',
+};
+
+const ICONS: Record<string, string> = {
+  NEW: 'circle-dot', CONFIRMED: 'check-circle', IN_PRODUCTION: 'shirt', READY: 'package',
+  LOADING: 'truck', COMPLETED: 'check-circle', CANCELLED: 'ban', DELAYED: 'alert-triangle',
+  NOT_STARTED: 'clock', WAITING: 'clock', IN_PROGRESS: 'trending-up', BLOCKED: 'ban',
+  ACTIVE: 'check-circle', ARCHIVED: 'archive', DRAFT: 'pencil',
+  OK: 'check-circle', LOW: 'alert-triangle', OUT: 'alert-circle',
+  LOADED: 'package', SHIPPED: 'truck',
+  TODO: 'list-checks', DONE: 'check',
+  PENDING: 'clock', APPROVED: 'check-circle', SENT: 'send', REJECTED: 'x',
+  BLOCKED_ACCOUNT: 'ban',
+};
+
+const STAGE_ICONS: Record<string, string> = {
+  CUTTING: 'scissors', SEWING: 'needle', WASHING: 'droplets',
+  LASER: 'zap', PACKING: 'package', LOADING: 'truck',
 };
 
 @Component({
   selector: 'ui-status',
   standalone: true,
-  imports: [TPipe],
+  imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [class]="'badge-' + tone()"><i class="dot"></i>{{ prefix() + value() | t }}</span>`,
+  template: `
+    <span class="badge status-badge" [class]="'badge-' + tone()">
+      <ui-icon [name]="icon()" [size]="11" />
+      <span>{{ prefix() + value() | t }}</span>
+    </span>
+  `,
+  styles: [`
+    .status-badge { gap: 5px; }
+    .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
+  `],
 })
 export class StatusBadgeComponent {
   readonly value = input.required<string>();
   readonly prefix = input('st_');
-  readonly tone = computed<Tone>(() => TONES[this.value()] ?? 'neutral');
+  readonly tone = computed<Tone>(() => {
+    if (this.prefix() === 'stage_') return 'neutral';
+    return TONES[this.value()] ?? 'neutral';
+  });
+  readonly icon = computed(() => {
+    if (this.prefix() === 'stage_') return STAGE_ICONS[this.value()] ?? 'circle-dot';
+    return ICONS[this.value()] ?? 'circle-dot';
+  });
 }
 
 @Component({
   selector: 'ui-priority',
   standalone: true,
-  imports: [TPipe],
+  imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [class]="'badge-' + tone()">{{ 'pr_' + value() | t }}</span>`,
+  template: `
+    <span class="badge status-badge" [class]="'badge-' + tone()">
+      <ui-icon [name]="icon()" [size]="11" />
+      <span>{{ 'pr_' + value() | t }}</span>
+    </span>
+  `,
+  styles: [`
+    .status-badge { gap: 5px; }
+    .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
+  `],
 })
 export class PriorityBadgeComponent {
   readonly value = input.required<string>();
   readonly tone = computed<Tone>(() => ({ LOW: 'neutral', NORMAL: 'info', HIGH: 'warning', URGENT: 'danger' } as const)[this.value()] ?? 'neutral');
+  readonly icon = computed(() => ({ LOW: 'chevron-down', NORMAL: 'minus', HIGH: 'chevron-up', URGENT: 'alert-triangle' } as const)[this.value()] ?? 'minus');
 }

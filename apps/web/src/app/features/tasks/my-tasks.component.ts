@@ -43,6 +43,17 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
                 <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plan(p.key)?.overdue }}</span>
               }
             </div>
+            @if (p.key === 'DAILY' && plan('DAILY')?.byModel?.length) {
+              <div class="breakdown mt-3">
+                <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
+                @for (m of plan('DAILY')!.byModel!; track m.orderId + m.stage) {
+                  <div class="break-row row-between">
+                    <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }} · {{ 'stage_' + m.stage | t }}</span>
+                    <span class="tiny bold">{{ m.qty | num }}</span>
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
       </div>
@@ -114,6 +125,8 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
     .titem.done b { text-decoration: line-through; }
     .tcheck { width: 21px; height: 21px; border-radius: 6px; border: 1.5px solid var(--border-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: #fff; }
     .tcheck.on { background: var(--success); border-color: var(--success); }
+    .breakdown { border-top: 1px solid var(--border); padding-top: 10px; }
+    .break-row { padding: 3px 0; }
   `],
 })
 export class MyTasksComponent {

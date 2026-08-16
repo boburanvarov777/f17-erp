@@ -47,7 +47,7 @@ const STAGE_ICON: Record<string, string> = {
               <span class="title mono">{{ o.number }}</span>
               <ui-status [value]="o.status" />
               <ui-priority [value]="o.priority" />
-              @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> Kechikkan</span> }
+              @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
             </div>
             <div class="sub">
               {{ o.model ? o.model.code + ' — ' + o.model.name : '—' }} · {{ o.client?.name }} · {{ o.qty | num }} {{ 'pieces' | t }}
@@ -88,7 +88,10 @@ const STAGE_ICON: Record<string, string> = {
                       <span class="node-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
                       <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
                       <span class="node-meta">
-                        @if (s.defectQty) { <span class="badge badge-danger">brak {{ s.defectQty }}</span> }
+                        <ui-status [value]="s.status" />
+                        @if (s.defectQty) {
+                          <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="10" /> {{ 'defect_label' | t }} {{ s.defectQty }}</span>
+                        }
                         @if (s.responsible) { <span class="tiny text-3">{{ s.responsible.lastName }}</span> }
                       </span>
                     </span>
@@ -125,13 +128,14 @@ const STAGE_ICON: Record<string, string> = {
                   <div class="divider"></div>
                   <b class="small">{{ 'sample' | t }}</b>
                   <dl class="kv mt-2">
-                    <dt>{{ 'status' | t }}</dt><dd>{{ o.sampleStatus || '—' }}</dd>
+                    <dt>{{ 'status' | t }}</dt>
+                    <dd>@if (o.sampleStatus) { <ui-status [value]="o.sampleStatus" /> } @else { — }</dd>
                     <dt>{{ 'sample_sent' | t }}</dt><dd>{{ o.sampleSentAt | shortDate }}</dd>
                     <dt>{{ 'sample_approved' | t }}</dt><dd>{{ o.sampleApprovedAt | shortDate }}</dd>
                   </dl>
                   @if (sampleWarning()) {
                     <div class="badge badge-warning mt-3" style="width:100%;justify-content:flex-start;padding:9px 11px;border-radius:var(--r)">
-                      <ui-icon name="alert-triangle" [size]="14" /> Kesim boshlangan, lekin namuna hali tasdiqlanmagan.
+                      <ui-icon name="alert-triangle" [size]="14" /> {{ 'sample_warning' | t }}
                     </div>
                   }
                 </div>
@@ -169,14 +173,14 @@ const STAGE_ICON: Record<string, string> = {
                     @for (d of o.defects; track d.id) {
                       <tr>
                         <td class="small nowrap">{{ d.date | shortDate: true }}</td>
-                        <td><span class="badge badge-neutral">{{ 'stage_' + d.stage | t }}</span></td>
+                        <td><ui-status [value]="d.stage" prefix="stage_" /></td>
                         <td>{{ d.type }}</td>
                         <td class="num" style="color:var(--danger);font-weight:600">{{ d.qty }}</td>
                         <td class="small text-2">{{ d.reason || '—' }}</td>
                         <td class="small">{{ d.user ? d.user.lastName + ' ' + d.user.firstName : '—' }}</td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="6"><ui-empty icon="check-circle" title="Brak qayd etilmagan" /></td></tr>
+                      <tr><td colspan="6"><ui-empty icon="check-circle" [title]="'no_defects' | t" /></td></tr>
                     }
                   </tbody>
                 </table>
@@ -220,9 +224,9 @@ const STAGE_ICON: Record<string, string> = {
                     <div class="grow">
                       <div class="row gap-2 wrap">
                         <span class="small">{{ h.text }}</span>
-                        @if (h.source === 'TELEGRAM') { <span class="badge badge-info"><ui-icon name="send" [size]="10" /> Telegram</span> }
+                        @if (h.source === 'TELEGRAM') { <span class="badge badge-info"><ui-icon name="send" [size]="10" /> {{ 'source_telegram' | t }}</span> }
                       </div>
-                      <div class="tiny text-3">{{ h.user || 'Tizim' }} · {{ h.at | shortDate: true }}</div>
+                      <div class="tiny text-3">{{ h.user || ('system' | t) }} · {{ h.at | shortDate: true }}</div>
                     </div>
                   </div>
                 } @empty { <ui-empty icon="history" [title]="'no_data' | t" /> }
@@ -260,7 +264,9 @@ const STAGE_ICON: Record<string, string> = {
     </div>
 
     @if (editing(); as o) {
-      <app-order-form [order]="o" [clients]="clients()" [models]="models()" (saved)="onSaved()" (closed)="editing.set(null)" />
+      <app-order-form [order]="o" [clients]="clients()" [models]="models()"
+                       (clientsChange)="clients.set($event)"
+                       (saved)="onSaved()" (closed)="editing.set(null)" />
     }
   `,
   styles: [`

@@ -6,6 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
 
 @Component({
@@ -20,13 +21,13 @@ import type { Lang } from '../../core/models';
         <div class="panel-inner">
           <div class="mark">F17</div>
           <h1 class="wordmark">F17 JEANS<br /><span>&amp; ZARINA DENIM</span></h1>
-          <p class="tag">Ishlab chiqarish boshqaruv tizimi — zakazdan ortishgacha bitta ekranda.</p>
+          <p class="tag">{{ 'login_tagline' | t }}</p>
 
           <ul class="feats">
-            <li><ui-icon name="clipboard-list" [size]="16" /> Zakazlar va modellar</li>
-            <li><ui-icon name="scissors" [size]="16" /> 6 ta ishlab chiqarish bosqichi</li>
-            <li><ui-icon name="boxes" [size]="16" /> Ombor va materiallar</li>
-            <li><ui-icon name="send" [size]="16" /> Telegram bot &amp; Mini App</li>
+            <li><ui-icon name="clipboard-list" [size]="16" /> {{ 'login_feat_orders' | t }}</li>
+            <li><ui-icon name="scissors" [size]="16" /> {{ 'login_feat_stages' | t }}</li>
+            <li><ui-icon name="boxes" [size]="16" /> {{ 'login_feat_warehouse' | t }}</li>
+            <li><ui-icon name="send" [size]="16" /> {{ 'login_feat_bot' | t }}</li>
           </ul>
         </div>
         <div class="panel-foot">© {{ year }} F17 Jeans · Melon Fashion Group</div>
@@ -35,10 +36,19 @@ import type { Lang } from '../../core/models';
       <!-- form -->
       <div class="form-side">
         <div class="topline">
-          <button class="btn btn-ghost btn-sm" type="button" (click)="cycleLang()">
-            <ui-icon name="globe" [size]="15" />
-            <span style="text-transform:uppercase;font-weight:600">{{ i18n.lang() }}</span>
-          </button>
+          <div class="row gap-1 lang-row">
+            @for (l of langs; track l.code) {
+              <button
+                class="btn btn-sm lang-btn"
+                [class.btn-primary]="i18n.lang() === l.code"
+                type="button"
+                (click)="setLang(l.code)"
+                [attr.data-tip]="('lang_' + l.code) | t"
+              >
+                <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
+              </button>
+            }
+          </div>
           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
             <ui-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="15" />
           </button>
@@ -78,7 +88,7 @@ import type { Lang } from '../../core/models';
 
           <div class="hint">
             <ui-icon name="info" [size]="14" />
-            <span>Login va parolni administrator beradi. Telegram orqali mustaqil ro‘yxatdan o‘tish mumkin emas.</span>
+            <span>{{ 'login_admin_hint' | t }}</span>
           </div>
         </form>
       </div>
@@ -144,11 +154,9 @@ export class LoginComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly year = new Date().getFullYear();
+  readonly langs = LANG_OPTIONS;
 
-  cycleLang(): void {
-    const order: Lang[] = ['uz', 'ru', 'en'];
-    this.i18n.set(order[(order.indexOf(this.i18n.lang()) + 1) % order.length]);
-  }
+  setLang(l: Lang): void { this.i18n.set(l); }
 
   submit(): void {
     if (!this.login || !this.password || this.busy()) return;
@@ -167,14 +175,13 @@ export class LoginComponent {
         // stopped API looks exactly like a typo.
         if (e?.status === 0) {
           const host = typeof window !== 'undefined' ? window.location.hostname : '';
-          const hint = host === 'localhost' || host === '127.0.0.1'
-            ? 'Lokal ishga tushirish: `npm run dev` (API + web birga). Yoki production: https://f17-erp-production.up.railway.app/login'
-            : 'Server bilan aloqa yo‘q — biroz kutib qayta urinib ko‘ring yoki administratorga murojaat qiling.';
-          this.error.set(hint);
+          this.error.set(host === 'localhost' || host === '127.0.0.1'
+            ? this.i18n.t('login_error_network_local')
+            : this.i18n.t('login_error_network_prod'));
           return;
         }
         if (e?.status === 404) {
-          this.error.set('API topilmadi. Angular proxy yoki APP URL noto‘g‘ri sozlangan.');
+          this.error.set(this.i18n.t('login_error_api_not_found'));
           return;
         }
         const msg = e?.error?.message;

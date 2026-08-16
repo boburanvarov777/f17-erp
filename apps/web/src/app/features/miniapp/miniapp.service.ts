@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import type { AuthResponse, CurrentUser, Department } from '../../core/models';
 import { seesFullManage, seesManageTab } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { AuthService } from '../../core/services/auth.service';
 import { tg } from './telegram';
 
@@ -9,6 +10,7 @@ import { tg } from './telegram';
 export class MiniAppService {
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private i18n = inject(I18nService);
 
   readonly user = signal<CurrentUser | null>(null);
   readonly state = signal<'loading' | 'ready' | 'login' | 'error'>('loading');
@@ -49,7 +51,7 @@ export class MiniAppService {
       this.auth.logout(false);
       this.user.set(null);
       this.state.set('login');
-      this.message.set('Bo‘lim, login va parol bilan kiring.');
+      this.message.set(this.i18n.t('ma_login_prompt'));
       return;
     }
 
@@ -60,7 +62,7 @@ export class MiniAppService {
       });
     } else {
       this.state.set('login');
-      this.message.set('Telegram tashqarisida ochildi — login va parol bilan kiring.');
+      this.message.set(this.i18n.t('ma_outside_telegram'));
     }
   }
 

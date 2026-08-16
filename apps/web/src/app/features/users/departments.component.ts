@@ -22,7 +22,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
       <div class="page-head">
         <div>
           <div class="title">{{ 'departments_title' | t }}</div>
-          <div class="sub">{{ items().length }} ta bo‘lim · Telegram bot xodimning bosqichini shu yerdan aniqlaydi</div>
+          <div class="sub">{{ i18n.t('departments_count_sub', { n: items().length }) }}</div>
         </div>
         @if (auth.can('departments.create')) {
           <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_department' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_department' | t }}</button>
@@ -81,7 +81,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
 export class DepartmentsComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   readonly stages = STAGES;

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { DashboardData } from '../../core/models';
+import type { DashboardData, Department } from '../../core/models';
+import { deptLabel } from '../../core/dept-label';
 import { userDepartmentId, userStage } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -17,7 +18,7 @@ import { haptic } from './telegram';
 
 interface Row {
   id: string; firstName: string; lastName: string; position?: string;
-  department?: { nameUz: string; code: string } | null;
+  department?: { nameUz: string; nameRu?: string; nameEn?: string; code: string } | null;
   dailyPlan: { targetQty: number; doneQty: number };
 }
 
@@ -87,7 +88,7 @@ interface Row {
                 <span class="avatar sm">{{ r.firstName | initials: r.lastName }}</span>
                 <div class="grow">
                   <div class="small bold">{{ r.lastName }} {{ r.firstName }}</div>
-                  <div class="tiny text-3">{{ r.department?.nameUz || '—' }}</div>
+                  <div class="tiny text-3">{{ r.department ? deptName(r.department) : '—' }}</div>
                 </div>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="openPlan(r)" [disabled]="!ma.can('plans.update')">
                   <ui-icon name="pencil" [size]="14" />
@@ -162,6 +163,10 @@ export class MaManageComponent {
     if (this.ma.seesFullManage() && this.ma.can('plans.update', 'users.read')) {
       this.loadRows();
     }
+  }
+
+  deptName(d: Pick<Department, 'nameUz'> & Partial<Pick<Department, 'nameRu' | 'nameEn'>>): string {
+    return deptLabel(d, this.i18n.lang());
   }
 
   loadDash(): void {

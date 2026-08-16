@@ -33,7 +33,7 @@ import { haptic } from './telegram';
           </div>
         }
       </div>
-    } @else { <ui-empty icon="list-checks" title="Vazifa yo‘q" /> }
+    } @else { <ui-empty icon="list-checks" [title]="'ma_no_tasks' | t" /> }
   `,
   styles: [`
     .titem { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }

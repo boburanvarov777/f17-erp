@@ -120,10 +120,16 @@ export interface Task {
   order?: { id: string; number: string } | null;
 }
 
+export interface PlanModelBreakdown {
+  orderId: string; orderNumber: string; modelCode: string; modelName?: string | null;
+  stage: StageType; qty: number; defectQty: number;
+}
+
 export interface PlanView {
   period: 'DAILY' | 'WEEKLY' | 'MONTHLY'; dateFrom: string; dateTo: string;
   tasks: Task[]; total: number; done: number; overdue: number; progress: number;
   targetQty: number; producedQty: number; entries: StageEntry[];
+  byModel?: PlanModelBreakdown[];
 }
 
 export interface NotificationItem {

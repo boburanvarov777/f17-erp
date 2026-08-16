@@ -83,7 +83,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
               <div class="card-head"><h3>{{ 'accessories' | t }}</h3></div>
               <div class="table-wrap">
                 <table class="data">
-                  <thead><tr><th>{{ 'material' | t }}</th><th>{{ 'color' | t }}</th><th>Razmer</th><th>{{ 'code' | t }}</th><th class="num">{{ 'quantity' | t }}</th></tr></thead>
+                  <thead><tr><th>{{ 'material' | t }}</th><th>{{ 'color' | t }}</th><th>{{ 'size_label' | t }}</th><th>{{ 'code' | t }}</th><th class="num">{{ 'quantity' | t }}</th></tr></thead>
                   <tbody>
                     @for (a of m.accessories; track a.name + (a.code || '')) {
                       <tr>

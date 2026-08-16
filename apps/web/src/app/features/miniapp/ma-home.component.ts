@@ -66,6 +66,17 @@ import { haptic } from './telegram';
                   <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plans()[p.key]?.overdue }}</span>
                 }
               </div>
+              @if (p.key === 'DAILY' && plans()['DAILY']?.byModel?.length) {
+                <div class="model-breakdown mt-3">
+                  <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
+                  @for (m of plans()['DAILY']!.byModel!; track m.orderId + m.stage) {
+                    <div class="model-row row-between">
+                      <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }}</span>
+                      <span class="tiny bold">{{ m.qty | num }}</span>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           }
         </div>
@@ -113,6 +124,8 @@ import { haptic } from './telegram';
     .clickable:active { box-shadow: var(--sh-2); }
     .edit-hint { display: inline-flex; align-items: center; gap: 4px; color: var(--primary-500); }
     .tiny-badge { font-size: 10px; padding: 2px 7px; }
+    .model-breakdown { border-top: 1px solid var(--border); padding-top: 10px; }
+    .model-row { padding: 4px 0; }
   `],
 })
 export class MaHomeComponent {
@@ -192,7 +205,9 @@ export class MaHomeComponent {
 
   greeting(): string {
     const h = new Date().getHours();
-    return h < 12 ? 'Xayrli tong' : h < 18 ? 'Xayrli kun' : 'Xayrli kech';
+    if (h < 12) return this.i18n.t('greeting_morning');
+    if (h < 18) return this.i18n.t('greeting_afternoon');
+    return this.i18n.t('greeting_evening');
   }
 
   stageIcon(): string {

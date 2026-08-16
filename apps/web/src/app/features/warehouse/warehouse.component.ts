@@ -25,7 +25,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
       <div class="page-head">
         <div>
           <div class="title">{{ 'warehouse_title' | t }}</div>
-          <div class="sub">{{ data()?.total || 0 }} ta pozitsiya</div>
+          <div class="sub">{{ i18n.t('warehouse_positions_count', { n: data()?.total || 0 }) }}</div>
         </div>
         <div class="row gap-2">
           <button class="btn btn-sm" type="button" (click)="tab.set(tab() === 'stock' ? 'tx' : 'stock')" [attr.data-tip]="tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t)">
@@ -108,7 +108,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           <div class="card-head"><h3>{{ 'transactions' | t }}</h3></div>
           <div class="table-wrap">
             <table class="data">
-              <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'material' | t }}</th><th>Operatsiya</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'balance' | t }}</th><th>{{ 'order' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'note' | t }}</th></tr></thead>
+              <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'operation_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'balance' | t }}</th><th>{{ 'order' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'note' | t }}</th></tr></thead>
               <tbody>
                 @for (t of transactions(); track t.id) {
                   <tr>
@@ -165,7 +165,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           <div class="field"><label class="label">{{ 'price' | t }}</label><input class="input" type="number" [(ngModel)]="form.price" /></div>
           <div class="field full"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>
           @if (!m.id) {
-            <div class="field full"><label class="label">Boshlang‘ich qoldiq</label><input class="input" type="number" [(ngModel)]="form.quantity" /></div>
+            <div class="field full"><label class="label">{{ 'initial_stock' | t }}</label><input class="input" type="number" [(ngModel)]="form.quantity" /></div>
           }
         </div>
         <div footer>
@@ -184,7 +184,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
 export class WarehouseComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   readonly ops = OPS;

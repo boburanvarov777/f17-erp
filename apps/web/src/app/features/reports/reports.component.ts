@@ -96,11 +96,11 @@ interface ProductionReport {
             <div class="card">
               <div class="table-wrap">
                 <table class="data">
-                  <thead><tr><th>{{ 'stage' | t }}</th><th>{{ 'defect_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">Yozuvlar</th></tr></thead>
+                  <thead><tr><th>{{ 'stage' | t }}</th><th>{{ 'defect_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'report_records' | t }}</th></tr></thead>
                   <tbody>
                     @for (r of defects(); track r.stage + r.type) {
                       <tr><td>{{ 'stage_' + r.stage | t }}</td><td>{{ r.type }}</td><td class="num bold" style="color:var(--danger)">{{ r.qty | num }}</td><td class="num text-3">{{ r.count }}</td></tr>
-                    } @empty { <tr><td colspan="4"><ui-empty icon="check-circle" title="Brak yo‘q" /></td></tr> }
+                    } @empty { <tr><td colspan="4"><ui-empty icon="check-circle" [title]="'no_defects_short' | t" /></td></tr> }
                   </tbody>
                 </table>
               </div>
@@ -110,7 +110,7 @@ interface ProductionReport {
             <div class="card">
               <div class="table-wrap">
                 <table class="data">
-                  <thead><tr><th>{{ 'code' | t }}</th><th>{{ 'material' | t }}</th><th class="num">{{ 'current_stock' | t }}</th><th class="num">{{ 'reserved' | t }}</th><th class="num">{{ 'available' | t }}</th><th class="num">Qiymat</th><th>{{ 'status' | t }}</th></tr></thead>
+                  <thead><tr><th>{{ 'code' | t }}</th><th>{{ 'material' | t }}</th><th class="num">{{ 'current_stock' | t }}</th><th class="num">{{ 'reserved' | t }}</th><th class="num">{{ 'available' | t }}</th><th class="num">{{ 'report_value' | t }}</th><th>{{ 'status' | t }}</th></tr></thead>
                   <tbody>
                     @for (r of warehouse(); track r.code) {
                       <tr>

@@ -47,7 +47,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             <span class="head-ic"><ui-icon [name]="icon()" [size]="19" /></span>
             <span class="title">{{ 'stage_' + stageType() | t }}</span>
           </div>
-          <div class="sub">{{ data()?.total || 0 }} ta zakaz shu bosqichda</div>
+          <div class="sub">{{ i18n.t('prod_stage_orders_count', { n: data()?.total || 0 }) }}</div>
         </div>
         <div class="row gap-3">
           @if (canWrite()) {
@@ -83,7 +83,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
           </select>
           <div class="grow"></div>
-          @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>LIVE</span> }
+          @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
         </div>
 
         @if (loading()) {
@@ -124,16 +124,16 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                       <td class="small">{{ s.responsible ? s.responsible.lastName : '—' }}</td>
                       <td class="small nowrap">{{ s.order?.deadline | shortDate }}</td>
                       <td class="actions">
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDetail(s)" [attr.data-tip]="'view' | t">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openDetail(s)" [attr.data-tip]="'view' | t">
                           <ui-icon name="eye" [size]="15" />
                         </button>
                         @if (canWrite() && s.status !== 'COMPLETED') {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openEntry(s)" [attr.data-tip]="'add_operation' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'add_operation' | t">
                             <ui-icon name="plus" [size]="15" />
                           </button>
                         }
                         @if (canWrite()) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDefect(s)" [attr.data-tip]="'add_defect' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openDefect(s)" [attr.data-tip]="'add_defect' | t">
                             <ui-icon name="alert-triangle" [size]="15" />
                           </button>
                         }
@@ -146,7 +146,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
                            (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
           } @else {
-            <ui-empty [icon]="icon()" [title]="'no_data' | t" message="Bu bosqichda hozircha zakaz yo‘q" />
+            <ui-empty [icon]="icon()" [title]="'no_data' | t" [message]="'prod_no_orders' | t" />
           }
         }
       </div>
@@ -221,19 +221,19 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             @case ('LASER') {
               <div class="field"><label class="label">{{ 'machine' | t }}</label><input class="input" [(ngModel)]="entry.meta['machine']" /></div>
               <div class="field"><label class="label">{{ 'operator' | t }}</label><input class="input" [(ngModel)]="entry.meta['operator']" /></div>
-              <div class="field"><label class="label">Dizayn kodi</label><input class="input" [(ngModel)]="entry.meta['design']" /></div>
+              <div class="field"><label class="label">{{ 'design_code' | t }}</label><input class="input" [(ngModel)]="entry.meta['design']" /></div>
             }
             @case ('PACKING') {
               <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="entry.meta['boxCount']" /></div>
               <div class="field">
-                <label class="label">Sub-bosqich</label>
+                <label class="label">{{ 'sub_stage' | t }}</label>
                 <select class="select" [(ngModel)]="entry.meta['subStage']">
                   <option value="">—</option>
-                  <option value="CLEANING">Chistka</option>
-                  <option value="IRONING">Dazmol</option>
-                  <option value="ACCESSORIES">Aksesuar</option>
-                  <option value="SCANNING">Markirovka skanerlash</option>
-                  <option value="BOXING">Karobkaga solish</option>
+                  <option value="CLEANING">{{ 'pack_sub_CLEANING' | t }}</option>
+                  <option value="IRONING">{{ 'pack_sub_IRONING' | t }}</option>
+                  <option value="ACCESSORIES">{{ 'pack_sub_ACCESSORIES' | t }}</option>
+                  <option value="SCANNING">{{ 'pack_sub_SCANNING' | t }}</option>
+                  <option value="BOXING">{{ 'pack_sub_BOXING' | t }}</option>
                 </select>
               </div>
             }
@@ -278,8 +278,9 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
     <!-- ─── stage detail ─── -->
     @if (detail(); as s) {
-      <ui-modal size="lg" [title]="s.order?.number || ''" [subtitle]="('stage_' + stageType() | t)" (closed)="detail.set(null)">
+      <ui-modal size="lg" [title]="s.order?.number || ''" [subtitle]="detailSubtitle(s)" (closed)="detail.set(null)">
         <div class="stats mb-4">
+          <div class="stat"><div class="k">{{ 'model' | t }}</div><div class="v small">{{ s.order?.model?.code || '—' }}</div></div>
           <div class="stat"><div class="k">{{ 'plan_label' | t }}</div><div class="v" style="font-size:21px">{{ s.planQty | num }}</div></div>
           <div class="stat"><div class="k">{{ 'actual_label' | t }}</div><div class="v" style="font-size:21px;color:var(--success)">{{ s.doneQty | num }}</div></div>
           <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" style="font-size:21px;color:var(--danger)">{{ s.defectQty | num }}</div></div>
@@ -298,7 +299,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'who' | t }}</th><th>Manba</th><th class="actions"></th></tr></thead>
+            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
@@ -376,7 +377,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 export class ProductionComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
   readonly rt = inject(RealtimeService);
 
@@ -495,7 +496,7 @@ export class ProductionComponent {
         error: (e) => {
           this.busy.set(false);
           const m = e?.error?.message;
-          this.entryError.set(Array.isArray(m) ? m.join(', ') : m || 'Xatolik');
+          this.entryError.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
         },
       });
   }
@@ -529,10 +530,17 @@ export class ProductionComponent {
 
   openDetail(s: OrderStage): void {
     this.assignId = s.responsible?.id ?? '';
-    this.api.get<OrderStage>(`/production/${this.stage().toLowerCase()}/${s.order?.id ?? s.orderId}`).subscribe({
+    this.detail.set({ ...s, entries: s.entries ?? [] });
+    this.api.get<OrderStage & { entries?: StageEntry[] }>(`/production/${this.stage().toLowerCase()}/${s.order?.id ?? s.orderId}`).subscribe({
       next: (d) => this.detail.set(d),
-      error: () => this.detail.set(s),
+      error: () => this.toast.error(this.i18n.t('error')),
     });
+  }
+
+  detailSubtitle(s: OrderStage): string {
+    const stage = this.i18n.t('stage_' + this.stageType());
+    const model = s.order?.model?.code;
+    return model ? `${stage} · ${model}` : stage;
   }
 
   assign(s: OrderStage): void {

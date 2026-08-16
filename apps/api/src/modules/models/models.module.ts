@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { ModelStatus, Prisma } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -53,6 +54,13 @@ export class QueryModelsDto extends PaginationDto {
 }
 
 const SORTABLE = ['code', 'name', 'category', 'season', 'status', 'createdAt'];
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+function toPhotoDataUrl(file: { mimetype: string; size: number; buffer: Buffer }): string {
+  if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Faqat rasm fayli yuklash mumkin (JPG, PNG, WebP)');
+  if (file.size > MAX_PHOTO_BYTES) throw new BadRequestException('Rasm hajmi 2 MB dan oshmasin');
+  return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+}
 
 @Injectable()
 export class ModelsService {
@@ -177,6 +185,15 @@ export class ModelsController {
 
   @Get() @RequirePermissions('models.read')
   findAll(@Query() dto: QueryModelsDto) { return this.service.findAll(dto); }
+
+  @Post('upload-photo')
+  @RequirePermissions('models.create', 'models.update')
+  @ApiOperation({ summary: 'Upload model photo — stored as base64 data URL in DB' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
+  uploadPhoto(@UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
+    if (!file) throw new BadRequestException('Rasm tanlanmadi');
+    return { photo: toPhotoDataUrl(file) };
+  }
 
   @Get(':id') @RequirePermissions('models.read')
   findOne(@Param('id') id: string) { return this.service.findOne(id); }

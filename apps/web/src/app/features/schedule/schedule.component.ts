@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { ScheduleRow, StageType } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
@@ -24,7 +25,7 @@ interface Tick { label: string; left: number; major: boolean; }
       <div class="page-head">
         <div>
           <div class="title">{{ 'schedule_title' | t }}</div>
-          <div class="sub">{{ rows().length }} ta zakaz · {{ from }} — {{ to }}</div>
+          <div class="sub">{{ i18n.t('schedule_count_sub', { n: rows().length, from, to }) }}</div>
         </div>
         <div class="row gap-2">
           <div class="seg">
@@ -116,6 +117,7 @@ interface Tick { label: string; left: number; major: boolean; }
 })
 export class ScheduleComponent {
   private api = inject(ApiService);
+  readonly i18n = inject(I18nService);
 
   readonly stages: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
   readonly views = [

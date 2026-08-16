@@ -24,7 +24,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       <div class="page-head">
         <div>
           <div class="title">{{ 'models_title' | t }}</div>
-          <div class="sub">{{ data()?.total || 0 }} ta model</div>
+          <div class="sub">{{ i18n.t('models_count', { n: data()?.total || 0 }) }}</div>
         </div>
         <div class="row gap-2">
           <div class="seg">
@@ -131,7 +131,34 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <div class="field full"><label class="label">{{ 'fabric' | t }}</label><input class="input" [(ngModel)]="form.fabric" /></div>
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>
           <div class="field"><label class="label">{{ 'cost' | t }}</label><input class="input" type="number" [(ngModel)]="form.cost" /></div>
-          <div class="field full"><label class="label">{{ 'photo' | t }} (URL)</label><input class="input" [(ngModel)]="form.photo" /></div>
+          <div class="field full">
+            <label class="label">{{ 'photo' | t }}</label>
+            <div class="photo-upload">
+              <div class="photo-preview">
+                @if (photoPreview()) {
+                  <img [src]="photoPreview()!" [alt]="form.name || 'model'" />
+                } @else {
+                  <ui-icon name="image" [size]="34" [stroke]="1.2" />
+                }
+              </div>
+              <div class="photo-actions col gap-2">
+                <input #photoInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden (change)="onPhotoSelected($event)" />
+                <button class="btn btn-sm" type="button" (click)="photoInput.click()" [disabled]="photoUploading()" [attr.data-tip]="'upload_photo' | t">
+                  @if (photoUploading()) {
+                    <span class="spinner"></span> {{ 'photo_uploading' | t }}
+                  } @else {
+                    <ui-icon name="image" [size]="15" /> {{ 'upload_photo' | t }}
+                  }
+                </button>
+                @if (photoPreview()) {
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="clearPhoto()" [attr.data-tip]="'photo_remove' | t">
+                    <ui-icon name="trash" [size]="14" /> {{ 'photo_remove' | t }}
+                  </button>
+                }
+                <div class="tiny text-3">{{ 'photo_hint' | t }}</div>
+              </div>
+            </div>
+          </div>
           <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
         </div>
 
@@ -158,7 +185,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     @if (archiving(); as m) {
-      <ui-confirm [title]="'archive' | t" [message]="'«' + m.code + '» modelini arxivlaysizmi?'"
+      <ui-confirm [title]="'archive' | t" [message]="i18n.t('model_archive_confirm', { name: m.code })"
                   [note]="'model_archive_note' | t" [confirmLabel]="'archive' | t"
                   (confirmed)="archive(m)" (cancelled)="archiving.set(null)" />
     }
@@ -174,12 +201,19 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     .mphoto img { width: 100%; height: 100%; object-fit: cover; }
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .photo-upload { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .photo-preview {
+      width: 132px; height: 132px; border-radius: var(--r-lg); border: 1px dashed var(--border-strong);
+      background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); overflow: hidden; flex-shrink: 0;
+    }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-actions { flex: 1; min-width: 200px; }
   `],
 })
 export class ModelsListComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   search = ''; clientId = ''; status = '';
@@ -193,6 +227,8 @@ export class ModelsListComponent {
   readonly editing = signal<Partial<ProductModel> | null>(null);
   readonly archiving = signal<ProductModel | null>(null);
   readonly sizes = signal<ModelSize[]>([]);
+  readonly photoPreview = signal<string | null>(null);
+  readonly photoUploading = signal(false);
 
   form: Record<string, any> = {};
   private timer?: ReturnType<typeof setTimeout>;
@@ -222,8 +258,43 @@ export class ModelsListComponent {
       color: m.color ?? '', clientId: m.client?.id ?? '', fabric: m.fabric ?? '', lining: m.lining ?? '',
       cost: m.cost ? +m.cost : null, photo: m.photo ?? '', description: m.description ?? '',
     };
+    this.photoPreview.set(m.photo ?? null);
+    this.photoUploading.set(false);
     this.sizes.set((m.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
     this.editing.set(m);
+  }
+
+  onPhotoSelected(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      this.toast.error(this.i18n.t('photo_hint'));
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.toast.error(this.i18n.t('photo_hint'));
+      return;
+    }
+    this.photoUploading.set(true);
+    this.api.upload<{ photo: string }>('/models/upload-photo', file).subscribe({
+      next: (r) => {
+        this.form['photo'] = r.photo;
+        this.photoPreview.set(r.photo);
+        this.photoUploading.set(false);
+      },
+      error: (err) => {
+        this.photoUploading.set(false);
+        const m = err?.error?.message;
+        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
+    });
+  }
+
+  clearPhoto(): void {
+    this.form['photo'] = '';
+    this.photoPreview.set(null);
   }
 
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); }
@@ -234,6 +305,7 @@ export class ModelsListComponent {
     const body: Record<string, unknown> = { ...this.form };
     if (!body['clientId']) delete body['clientId'];
     if (body['cost'] == null) delete body['cost'];
+    if (!body['photo']) delete body['photo'];
     const sizes = this.sizes().filter((s) => s.size);
     if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +s.qty || 0 }));
 

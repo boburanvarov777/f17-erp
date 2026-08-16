@@ -3,6 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { deptLabel } from '../../core/dept-label';
+import type { Department } from '../../core/models';
+import { I18nService } from '../../core/services/i18n.service';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -33,7 +36,7 @@ import { haptic } from './telegram';
                 <label class="label">{{ 'department' | t }}</label>
                 <select class="select" [(ngModel)]="departmentCode">
                   <option value="">{{ 'select_department' | t }}</option>
-                  @for (d of ma.departments(); track d.id) { <option [value]="d.code">{{ d.nameUz }}</option> }
+                  @for (d of ma.departments(); track d.id) { <option [value]="d.code">{{ deptName(d) }}</option> }
                 </select>
               </div>
               <div class="field">
@@ -98,6 +101,7 @@ import { haptic } from './telegram';
 })
 export class MiniAppShellComponent {
   readonly ma = inject(MiniAppService);
+  private i18n = inject(I18nService);
 
   login = '';
   password = '';
@@ -123,6 +127,8 @@ export class MiniAppShellComponent {
 
   constructor() { this.ma.init(); }
 
+  deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
+
   tap(): void { haptic('success'); }
 
   submit(): void {
@@ -134,7 +140,7 @@ export class MiniAppShellComponent {
         this.busy.set(false);
         haptic('error');
         const m = e?.error?.message;
-        this.error.set(Array.isArray(m) ? m.join(', ') : m || 'Xatolik');
+        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
   }

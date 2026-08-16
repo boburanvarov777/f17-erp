@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { filterNavGroupsForUser } from '../core/nav-filter';
+import { LANG_OPTIONS, langOption } from '../core/lang-options';
 import { AuthService } from '../core/services/auth.service';
 import { I18nService } from '../core/services/i18n.service';
 import { NotificationService } from '../core/services/notification.service';
@@ -54,7 +55,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
         <div class="nav-foot">
           <button class="nav-item as-btn" type="button" (click)="collapsed.set(!collapsed())" [attr.data-tip]="collapsed() ? ('nav_expand' | t) : ('nav_collapse' | t)">
             <ui-icon name="panel-left" [size]="17.5" />
-            @if (!collapsed()) { <span>Yig‘ish</span> }
+            @if (!collapsed()) { <span>{{ 'collapse_nav' | t }}</span> }
           </button>
         </div>
       </aside>
@@ -69,7 +70,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
           <button class="search-trigger" type="button" (click)="searchOpen.set(true)" [attr.data-tip]="'search' | t">
             <ui-icon name="search" [size]="16" />
             <span class="grow">{{ 'search_placeholder' | t }}</span>
-            <span class="kbd">Ctrl K</span>
+            <span class="kbd">{{ 'keyboard_ctrl_k' | t }}</span>
           </button>
 
           <div class="grow"></div>
@@ -81,14 +82,15 @@ interface NavGroup { label?: string; items: NavItem[]; }
 
             <!-- language -->
             <div class="dropdown">
-              <button class="btn btn-ghost btn-sm" type="button" (click)="toggle('lang')" [attr.data-tip]="'language' | t">
+              <button class="btn btn-ghost btn-sm lang-trigger" type="button" (click)="toggle('lang')" [attr.data-tip]="'language' | t">
                 <ui-icon name="globe" [size]="16" />
-                <span class="uppercase">{{ i18n.lang() }}</span>
+                <span class="lang-chip" [class]="langOption(i18n.lang()).flagClass">{{ langOption(i18n.lang()).short }}</span>
               </button>
               @if (open() === 'lang') {
-                <div class="menu" style="min-width:150px">
+                <div class="menu" style="min-width:190px">
                   @for (l of langs; track l.code) {
                     <button class="menu-item" type="button" (click)="setLang(l.code)">
+                      <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
                       <span>{{ l.label }}</span>
                       @if (i18n.lang() === l.code) { <ui-icon name="check" [size]="15" /> }
                     </button>
@@ -298,11 +300,8 @@ export class ShellComponent {
   readonly open = signal<string | null>(null);
   readonly user = this.auth.user;
 
-  readonly langs: { code: Lang; label: string }[] = [
-    { code: 'uz', label: 'O‘zbekcha' },
-    { code: 'ru', label: 'Русский' },
-    { code: 'en', label: 'English' },
-  ];
+  readonly langs = LANG_OPTIONS;
+  readonly langOption = langOption;
 
   /** Sidebar shrinks to what the signed-in role is actually allowed to open. */
   readonly groups = computed<NavGroup[]>(() =>

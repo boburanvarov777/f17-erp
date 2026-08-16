@@ -5,6 +5,7 @@ import { seesFullManage, userStage } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { AgoPipe, NumPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
@@ -55,13 +56,13 @@ const STAGE_ICON: Record<StageType, string> = {
           <div class="stat">
             <div class="k">{{ 'kpi_late' | t }}</div>
             <div class="v" [style.color]="d.kpis.lateOrders ? 'var(--danger)' : ''">{{ d.kpis.lateOrders | num }}</div>
-            <div class="m">deadline o‘tgan</div>
+            <div class="m">{{ 'kpi_deadline_passed' | t }}</div>
             <span class="ic"><ui-icon name="alert-triangle" [size]="30" /></span>
           </div>
           <div class="stat">
             <div class="k">{{ 'kpi_ready' | t }}</div>
             <div class="v" [style.color]="d.kpis.readyToLoad ? 'var(--success)' : ''">{{ d.kpis.readyToLoad | num }}</div>
-            <div class="m">zakaz</div>
+            <div class="m">{{ 'kpi_orders_unit' | t }}</div>
             <span class="ic"><ui-icon name="truck" [size]="30" /></span>
           </div>
           <div class="stat">
@@ -165,7 +166,7 @@ const STAGE_ICON: Record<StageType, string> = {
           <div class="card">
             <div class="card-head">
               <h3>{{ 'dash_recent' | t }}</h3>
-              @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>LIVE</span> }
+              @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
             </div>
             <div class="feed">
               @for (r of d.recent; track r.id) {
@@ -178,7 +179,7 @@ const STAGE_ICON: Record<StageType, string> = {
                       <b class="mono small">{{ r.order.number }}</b>
                       <span class="small text-2">{{ 'stage_' + r.stage | t }}</span>
                       <span class="badge badge-info">+{{ r.qty }}</span>
-                      @if (r.defectQty) { <span class="badge badge-danger">brak {{ r.defectQty }}</span> }
+                      @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty }}</span> }
                     </span>
                     <span class="tiny text-3">{{ r.user }} · {{ r.progress }}%</span>
                   </span>
@@ -200,14 +201,14 @@ const STAGE_ICON: Record<StageType, string> = {
                     <div>
                       <div class="row-between small mb-2">
                         <span>{{ 'stage_' + x.stage | t }}</span>
-                        <span class="text-3">{{ x.qty | num }} {{ 'pieces' | t }} · {{ x.count }} ta yozuv</span>
+                        <span class="text-3">{{ x.qty | num }} {{ 'pieces' | t }} · {{ i18n.t('audit_count', { n: x.count }) }}</span>
                       </div>
                       <div class="progress late"><i [style.width.%]="(x.qty / maxDefect()) * 100"></i></div>
                     </div>
                   }
                 </div>
               } @else {
-                <ui-empty icon="check-circle" title="Brak qayd etilmagan" />
+                <ui-empty icon="check-circle" [title]="'no_defects' | t" />
               }
             </div>
           </div>
@@ -243,6 +244,7 @@ export class DashboardComponent {
   private api = inject(ApiService);
   readonly auth = inject(AuthService);
   readonly rt = inject(RealtimeService);
+  readonly i18n = inject(I18nService);
 
   readonly data = signal<DashboardData | null>(null);
   readonly loading = signal(false);

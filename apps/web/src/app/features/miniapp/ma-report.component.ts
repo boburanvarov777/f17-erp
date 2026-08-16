@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import type { OrderStage, Paginated } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
@@ -20,8 +21,7 @@ import { haptic } from './telegram';
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_report' | t }}</h2>
 
     @if (!stageSlug()) {
-      <ui-empty icon="alert-circle" title="Bo‘lim biriktirilmagan"
-                message="Sizning bo‘limingizga ishlab chiqarish bosqichi biriktirilmagan. Administrator bilan bog‘laning." />
+      <ui-empty icon="alert-circle" [title]="'ma_no_dept' | t" [message]="'ma_no_dept_msg' | t" />
     } @else if (loading()) {
       <ui-loading [count]="4" [height]="76" />
     } @else if (!selected()) {
@@ -36,7 +36,7 @@ import { haptic } from './telegram';
             <ui-progress [value]="s.doneQty" [max]="s.planQty" />
           </button>
         } @empty {
-          <ui-empty icon="clipboard-list" title="Faol zakaz yo‘q" message="Sizning bosqichingizda hozircha ish yo‘q." />
+          <ui-empty icon="clipboard-list" [title]="'ma_no_active_orders' | t" [message]="'ma_no_active_orders_msg' | t" />
         }
       </div>
     } @else {
@@ -89,6 +89,7 @@ import { haptic } from './telegram';
 })
 export class MaReportComponent {
   private api = inject(ApiService);
+  private i18n = inject(I18nService);
   readonly ma = inject(MiniAppService);
 
   readonly quick = [10, 25, 50, 100, 250];
@@ -138,7 +139,7 @@ export class MaReportComponent {
         orderId: s.order?.id ?? s.orderId,
         qty: +this.qty,
         defectQty: +this.defectQty || 0,
-        note: this.note || 'Mini App',
+        note: this.note || this.i18n.t('ma_source_miniapp'),
       })
       .subscribe({
         next: () => {
@@ -151,7 +152,7 @@ export class MaReportComponent {
           this.busy.set(false);
           haptic('error');
           const m = e?.error?.message;
-          this.error.set(Array.isArray(m) ? m.join(', ') : m || 'Xatolik');
+          this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
         },
       });
   }

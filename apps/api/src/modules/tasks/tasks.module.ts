@@ -127,7 +127,19 @@ export class TasksService {
       this.prisma.plan.findFirst({ where: { userId, period, dateFrom: start } }),
       this.prisma.stageEntry.findMany({
         where: { userId, date: { gte: start, lt: end }, cancelled: false },
-        include: { orderStage: { select: { stage: true, order: { select: { number: true } } } } },
+        include: {
+          orderStage: {
+            select: {
+              stage: true,
+              order: {
+                select: {
+                  id: true, number: true,
+                  model: { select: { id: true, code: true, name: true } },
+                },
+              },
+            },
+          },
+        },
         orderBy: { date: 'desc' }, take: 100,
       }),
     ]);
@@ -135,6 +147,31 @@ export class TasksService {
     const done = tasks.filter((t) => t.status === 'DONE').length;
     const entriesQty = entries.reduce((a, e) => a + e.qty, 0);
     const reportedQty = stored?.doneQty ?? 0;
+
+    const byModelMap = new Map<string, {
+      orderId: string; orderNumber: string; modelCode: string; modelName?: string | null;
+      stage: string; qty: number; defectQty: number;
+    }>();
+    for (const e of entries) {
+      const order = e.orderStage?.order;
+      if (!order) continue;
+      const stage = e.orderStage!.stage;
+      const key = `${order.id}:${stage}`;
+      const row = byModelMap.get(key) ?? {
+        orderId: order.id,
+        orderNumber: order.number,
+        modelCode: order.model?.code ?? '—',
+        modelName: order.model?.name ?? null,
+        stage,
+        qty: 0,
+        defectQty: 0,
+      };
+      row.qty += e.qty;
+      row.defectQty += e.defectQty ?? 0;
+      byModelMap.set(key, row);
+    }
+    const byModel = [...byModelMap.values()].sort((a, b) => b.qty - a.qty);
+
     return {
       period, dateFrom: start, dateTo: end,
       tasks, total: tasks.length, done, overdue: tasks.filter((t) => t.status !== 'DONE' && t.date < now).length,
@@ -142,6 +179,7 @@ export class TasksService {
       targetQty: stored?.targetQty ?? 0,
       producedQty: reportedQty > 0 ? reportedQty : entriesQty,
       entries,
+      byModel,
     };
   }
 

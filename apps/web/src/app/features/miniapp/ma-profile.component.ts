@@ -1,4 +1,3 @@
-import { UpperCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -6,12 +5,13 @@ import { InitialsPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { MiniAppService } from './miniapp.service';
+import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
 
 @Component({
   selector: 'app-ma-profile',
   standalone: true,
-  imports: [IconComponent, TPipe, InitialsPipe, UpperCasePipe],
+  imports: [IconComponent, TPipe, InitialsPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (ma.user(); as u) {
@@ -40,8 +40,15 @@ import type { Lang } from '../../core/models';
         <div class="row-between">
           <span class="small">{{ 'language' | t }}</span>
           <div class="row gap-1">
-            @for (l of langs; track l) {
-              <button class="btn btn-sm" [class.btn-primary]="i18n.lang() === l" type="button" (click)="setLang(l)">{{ l | uppercase }}</button>
+            @for (l of langs; track l.code) {
+              <button
+                class="btn btn-sm lang-btn"
+                [class.btn-primary]="i18n.lang() === l.code"
+                type="button"
+                (click)="setLang(l.code)"
+              >
+                <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
+              </button>
             }
           </div>
         </div>
@@ -58,7 +65,7 @@ export class MaProfileComponent {
   readonly ma = inject(MiniAppService);
   readonly auth = inject(AuthService);
   readonly i18n = inject(I18nService);
-  readonly langs: Lang[] = ['uz', 'ru', 'en'];
+  readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 }

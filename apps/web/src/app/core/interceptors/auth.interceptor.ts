@@ -1,6 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { I18nService } from '../services/i18n.service';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
 
@@ -11,6 +12,7 @@ const refreshed$ = new BehaviorSubject<string | null>(null);
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const toast = inject(ToastService);
+  const i18n = inject(I18nService);
 
   const attach = (token: string | null) =>
     token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
@@ -20,7 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(attach(auth.accessToken)).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status !== 401 || isAuthCall || !auth.refreshToken) {
-        if (err.status === 403) toast.error(err.error?.message || 'Ruxsat yo‘q');
+        if (err.status === 403) toast.error(err.error?.message || i18n.t('access_denied'));
         return throwError(() => err);
       }
 
