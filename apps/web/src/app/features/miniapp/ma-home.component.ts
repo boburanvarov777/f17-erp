@@ -11,6 +11,7 @@ import { LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { planQtySuggestions } from '../../shared/utils/plan-suggestions';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -72,9 +73,28 @@ import { haptic } from './telegram';
       <ui-modal [title]="'update_daily_progress' | t" (closed)="planModal.set(false)">
         <div class="field">
           <label class="label">{{ 'plan_done_qty' | t }}</label>
-          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="planDone" />
+          <input
+            class="input"
+            type="tel"
+            inputmode="numeric"
+            digitsOnly
+            [(ngModel)]="planDone"
+            [placeholder]="'plan_done_placeholder' | t"
+          />
           <div class="tiny text-3 mt-2">{{ 'plan_done_hint' | t }}</div>
           <div class="tiny text-3 mt-1">{{ 'plan_assigned' | t }}: <b>{{ plans()['DAILY']?.targetQty || 0 | num }}</b> {{ 'pieces' | t }}</div>
+          @if (dailySuggestions().length) {
+            <div class="qty-badges">
+              @for (n of dailySuggestions(); track n) {
+                <button
+                  type="button"
+                  class="badge badge-neutral badge-pick"
+                  [class.active]="+planDone === n"
+                  (click)="pickQty(n)"
+                >{{ n | num }}</button>
+              }
+            </div>
+          }
         </div>
         <div footer class="ma-modal-foot">
           <button class="btn" type="button" (click)="planModal.set(false)">{{ 'cancel' | t }}</button>
@@ -106,7 +126,7 @@ export class MaHomeComponent {
   readonly loading = signal(true);
   readonly planModal = signal(false);
   readonly planBusy = signal(false);
-  planDone = 0;
+  planDone = '';
 
   constructor() {
     this.reloadPlans();
@@ -126,15 +146,30 @@ export class MaHomeComponent {
     }
   }
 
+  dailySuggestions(): number[] {
+    return planQtySuggestions(this.plans()['DAILY']?.targetQty ?? 0);
+  }
+
   openDailyProgress(): void {
-    this.planDone = this.plans()['DAILY']?.producedQty ?? 0;
+    this.planDone = '';
     this.planModal.set(true);
     haptic('success');
   }
 
+  pickQty(n: number): void {
+    this.planDone = String(n);
+    haptic('success');
+  }
+
   saveDailyProgress(): void {
+    const qty = +this.planDone;
+    if (!this.planDone.trim() || !Number.isFinite(qty) || qty < 0) {
+      this.toast.error(this.i18n.t('ma_enter_qty'));
+      haptic('error');
+      return;
+    }
     this.planBusy.set(true);
-    this.api.post('/plans/DAILY/my', { doneQty: +this.planDone }).subscribe({
+    this.api.post('/plans/DAILY/my', { doneQty: qty }).subscribe({
       next: () => {
         this.planBusy.set(false);
         this.planModal.set(false);

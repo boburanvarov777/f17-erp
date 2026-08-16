@@ -351,8 +351,19 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .modal-head h2 { font-size: 16px; }
 .modal-body { padding: 24px 26px; overflow-y: auto; flex: 1; }
 .modal-foot { padding: 16px 26px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; background: var(--surface-2); border-radius: 0 0 var(--r-xl) var(--r-xl); }
-.ma-modal-foot { flex-wrap: wrap; justify-content: stretch; gap: 10px; }
+.ma-modal-foot {
+  display: flex; flex-wrap: wrap; justify-content: stretch; gap: 10px; width: 100%;
+}
 .ma-modal-foot .btn { flex: 1 1 calc(50% - 5px); min-width: 0; justify-content: center; }
+.qty-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.badge-pick {
+  appearance: none; font: inherit;
+  cursor: pointer; user-select: none;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.badge-pick:hover { background: var(--primary-100); color: var(--primary); border-color: var(--primary-200); }
+.badge-pick:active { transform: scale(.97); }
+.badge-pick.active { background: var(--primary-100); color: var(--primary); border-color: var(--primary); }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.985); } }
 
