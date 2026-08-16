@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { DashboardData } from '../../core/models';
+import { userDepartmentId, userStage } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -31,7 +32,7 @@ interface Row {
   template: `
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_manage' | t }}</h2>
 
-    @if (ma.can('dashboard.read')) {
+    @if (ma.seesFullManage() && ma.can('dashboard.read')) {
       @if (dashLoading()) { <ui-loading [count]="2" [height]="64" /> }
       @else if (dash(); as d) {
         <div class="kpi-grid mb-4">
@@ -52,9 +53,26 @@ interface Row {
           }
         </div>
       }
+    } @else if (ownStage(); as st) {
+      @if (dashLoading()) { <ui-loading [count]="1" [height]="64" /> }
+      @else if (ownStageStats(); as s) {
+        <div class="dept-card mb-4">
+          <div class="row-between mb-2">
+            <span class="small bold">{{ 'stage_' + s.stage | t }}</span>
+            <span class="mono tiny">{{ s.progress }}%</span>
+          </div>
+          <ui-progress [value]="s.done" [max]="s.plan || 1" />
+          <dl class="stats-kv mt-3">
+            <dt>{{ 'plan_label' | t }}</dt><dd>{{ s.plan | num }}</dd>
+            <dt>{{ 'actual_label' | t }}</dt><dd>{{ s.done | num }}</dd>
+            <dt>{{ 'remaining_label' | t }}</dt><dd>{{ s.remaining | num }}</dd>
+            <dt>{{ 'defect_label' | t }}</dt><dd [style.color]="s.defect ? 'var(--danger)' : ''">{{ s.defect | num }}</dd>
+          </dl>
+        </div>
+      }
     }
 
-    @if (ma.can('plans.update', 'users.read')) {
+    @if (ma.seesFullManage() && ma.can('plans.update', 'users.read')) {
       <div class="row-between mb-2">
         <div class="small bold">{{ 'ma_team_plans' | t }}</div>
         <span class="tiny text-3">{{ rows().length }} {{ 'employees' | t }}</span>
@@ -107,6 +125,10 @@ interface Row {
     .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px; }
     .kpi .k { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
     .kpi .v { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .dept-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px; }
+    .stats-kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+    .stats-kv dt { color: var(--text-3); }
+    .stats-kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
     .stage-row { display: grid; grid-template-columns: 88px 1fr 42px; gap: 8px; align-items: center; }
     .erow { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px; }
     .grow { flex: 1; min-width: 0; }
@@ -126,9 +148,20 @@ export class MaManageComponent {
   readonly planBusy = signal(false);
   planTarget = 0;
 
+  readonly ownStage = computed(() => userStage(this.ma.user()));
+  readonly ownStageStats = computed(() => {
+    const stage = this.ownStage();
+    if (!stage) return null;
+    return this.dash()?.stages.find((s) => s.stage === stage) ?? null;
+  });
+
   constructor() {
-    if (this.ma.can('dashboard.read')) this.loadDash();
-    if (this.ma.can('plans.update', 'users.read')) this.loadRows();
+    if (this.ma.can('dashboard.read') && (this.ma.seesFullManage() || this.ownStage())) {
+      this.loadDash();
+    }
+    if (this.ma.seesFullManage() && this.ma.can('plans.update', 'users.read')) {
+      this.loadRows();
+    }
   }
 
   loadDash(): void {
@@ -141,7 +174,8 @@ export class MaManageComponent {
 
   loadRows(): void {
     this.loading.set(true);
-    this.api.get<Row[]>('/users/monitoring').subscribe({
+    const deptId = userDepartmentId(this.ma.user());
+    this.api.get<Row[]>('/users/monitoring', deptId ? { departmentId: deptId } : {}).subscribe({
       next: (r) => { this.rows.set(r); this.loading.set(false); },
       error: () => this.loading.set(false),
     });

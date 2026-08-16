@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inj
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { filterNavGroupsForUser } from '../core/nav-filter';
 import { AuthService } from '../core/services/auth.service';
 import { I18nService } from '../core/services/i18n.service';
 import { NotificationService } from '../core/services/notification.service';
@@ -304,50 +305,12 @@ export class ShellComponent {
   ];
 
   /** Sidebar shrinks to what the signed-in role is actually allowed to open. */
-  readonly groups = computed<NavGroup[]>(() => {
-    const can = (...p: string[]) => this.auth.can(...p);
-    const pick = (items: NavItem[]) => items.filter((i) => !i.perms || can(...i.perms));
-
-    return [
-      {
-        items: pick([
-          { label: 'nav_dashboard', icon: 'layout-dashboard', link: '/dashboard', perms: ['dashboard.read'] },
-          { label: 'nav_orders', icon: 'clipboard-list', link: '/orders', perms: ['orders.read'] },
-          { label: 'nav_schedule', icon: 'calendar-range', link: '/schedule', perms: ['schedule.read', 'orders.read'] },
-          { label: 'nav_models', icon: 'shirt', link: '/models', perms: ['models.read'] },
-          { label: 'nav_warehouse', icon: 'boxes', link: '/warehouse', perms: ['warehouse.read'] },
-        ]),
-      },
-      {
-        label: 'nav_production',
-        items: pick([
-          { label: 'nav_cutting', icon: 'scissors', link: '/production/cutting', perms: ['cutting.read'] },
-          { label: 'nav_sewing', icon: 'needle', link: '/production/sewing', perms: ['sewing.read'] },
-          { label: 'nav_washing', icon: 'droplets', link: '/production/washing', perms: ['washing.read'] },
-          { label: 'nav_laser', icon: 'zap', link: '/production/laser', perms: ['laser.read'] },
-          { label: 'nav_packing', icon: 'package', link: '/production/packing', perms: ['packing.read'] },
-          { label: 'nav_loading', icon: 'truck', link: '/production/loading', perms: ['loading.read'] },
-        ]),
-      },
-      {
-        label: 'nav_my_tasks',
-        items: pick([
-          { label: 'nav_my_tasks', icon: 'list-checks', link: '/my-tasks' },
-          { label: 'nav_monitoring', icon: 'chart-column', link: '/monitoring', perms: ['users.read'] },
-          { label: 'nav_reports', icon: 'trending-up', link: '/reports', perms: ['reports.read'] },
-        ]),
-      },
-      {
-        label: 'nav_management',
-        items: pick([
-          { label: 'nav_users', icon: 'users', link: '/users', perms: ['users.read'] },
-          { label: 'nav_roles', icon: 'shield-check', link: '/roles', perms: ['roles.read'] },
-          { label: 'nav_departments', icon: 'building', link: '/departments', perms: ['departments.read'] },
-          { label: 'nav_audit', icon: 'scroll-text', link: '/audit', perms: ['audit.read'] },
-        ]),
-      },
-    ];
-  });
+  readonly groups = computed<NavGroup[]>(() =>
+    filterNavGroupsForUser((...p) => this.auth.can(...p), this.auth.user()).map((g) => ({
+      ...g,
+      items: g.items.map((i) => ({ ...i, link: `/${i.path}` })),
+    })),
+  );
 
   private notifTimer?: ReturnType<typeof setTimeout>;
 

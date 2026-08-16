@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { DashboardData, StageType } from '../../core/models';
+import { seesFullManage, userStage } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
@@ -35,7 +36,8 @@ const STAGE_ICON: Record<StageType, string> = {
 
       @if (loading() && !data()) {
         <ui-loading [count]="4" [height]="86" />
-      } @else if (data(); as d) {
+      } @else if (view(); as d) {
+        @if (fullManage()) {
         <!-- KPI -->
         <div class="stats mb-6">
           <div class="stat">
@@ -69,11 +71,12 @@ const STAGE_ICON: Record<StageType, string> = {
             <span class="ic"><ui-icon name="alert-circle" [size]="30" /></span>
           </div>
         </div>
+        }
 
         <!-- stages -->
-        <h2 class="mb-3" style="font-size:15px">{{ 'dash_stages' | t }}</h2>
+        <h2 class="mb-3" style="font-size:15px">{{ fullManage() ? ('dash_stages' | t) : (deptTitle() | t) }}</h2>
         <div class="stage-grid mb-6">
-          @for (s of d.stages; track s.stage) {
+          @for (s of visibleStages(); track s.stage) {
             <a class="stage-card" [routerLink]="['/production', slug(s.stage)]">
               <div class="row-between">
                 <div class="name">
@@ -93,6 +96,7 @@ const STAGE_ICON: Record<StageType, string> = {
           }
         </div>
 
+        @if (fullManage()) {
         <div class="grid two mb-6">
           <!-- trend -->
           <div class="card">
@@ -208,6 +212,7 @@ const STAGE_ICON: Record<StageType, string> = {
             </div>
           </div>
         </div>
+        }
       }
     </div>
   `,
@@ -243,6 +248,20 @@ export class DashboardComponent {
   readonly loading = signal(false);
   readonly now = new Date();
   private rtTimer?: ReturnType<typeof setTimeout>;
+
+  readonly view = computed(() => this.data());
+  readonly fullManage = computed(() => seesFullManage(this.auth.user()));
+  readonly visibleStages = computed(() => {
+    const d = this.data();
+    if (!d) return [];
+    const stage = userStage(this.auth.user());
+    if (this.fullManage() || !stage) return d.stages;
+    return d.stages.filter((s) => s.stage === stage);
+  });
+  readonly deptTitle = computed(() => {
+    const stage = userStage(this.auth.user());
+    return stage ? `stage_${stage}` : 'dash_stages';
+  });
 
   readonly maxTrend = computed(() => Math.max(1, ...(this.data()?.trend ?? []).map((p) => p.qty)));
   readonly maxDefect = computed(() => Math.max(1, ...(this.data()?.defects ?? []).map((d) => d.qty)));

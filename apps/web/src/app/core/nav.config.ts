@@ -10,7 +10,7 @@ export interface NavGroupDef {
   items: NavItemDef[];
 }
 
-/** Shared sidebar / miniapp menu — filtered by permissions at runtime. */
+/** Shared sidebar — filtered by permissions at runtime. */
 export const NAV_GROUPS: NavGroupDef[] = [
   {
     items: [
@@ -50,18 +50,3 @@ export const NAV_GROUPS: NavGroupDef[] = [
     ],
   },
 ];
-
-export function filterNavGroups(can: (...perms: string[]) => boolean): NavGroupDef[] {
-  const pick = (items: NavItemDef[]) => items.filter((i) => !i.perms?.length || can(...i.perms));
-  return NAV_GROUPS.map((g) => ({ ...g, items: pick(g.items) })).filter((g) => g.items.length > 0);
-}
-
-export function flattenNavItems(groups: NavGroupDef[], linkPrefix: string): { link: string; icon: string; label: string }[] {
-  return groups.flatMap((g) =>
-    g.items.map((i) => ({
-      link: `${linkPrefix}/${i.path}`,
-      icon: i.icon,
-      label: i.label,
-    })),
-  );
-}

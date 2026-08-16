@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { AuthResponse, CurrentUser, Department } from '../../core/models';
-import { filterNavGroups } from '../../core/nav.config';
+import { seesFullManage, seesManageTab } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { tg } from './telegram';
@@ -25,16 +25,12 @@ export class MiniAppService {
     return !!this.user()?.department?.stage;
   }
 
-  /** Admin panel (dashboard + team plans) — same tier as web management views. */
-  isAdminPanel(): boolean {
-    return this.can('dashboard.read') && this.can(
-      'users.read', 'plans.update', 'orders.read', 'reports.read',
-      'roles.read', 'departments.read', 'audit.read',
-    );
+  seesFullManage(): boolean {
+    return seesFullManage(this.user());
   }
 
-  hasMenuNav(): boolean {
-    return filterNavGroups((...p) => this.can(...p)).some((g) => g.items.length > 0);
+  seesManageTab(): boolean {
+    return seesManageTab(this.user());
   }
 
   init(): void {
@@ -50,7 +46,6 @@ export class MiniAppService {
 
     const initData = w?.initData?.trim();
     if (initData) {
-      // Telegram Mini App: login + bo'lim har safar ochilganda.
       this.auth.logout(false);
       this.user.set(null);
       this.state.set('login');

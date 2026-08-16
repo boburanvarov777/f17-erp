@@ -110,16 +110,13 @@ export class MiniAppShellComponent {
     const tabs: { link: string; icon: string; label: string }[] = [
       { link: '/miniapp/home', icon: 'layout-dashboard', label: 'nav_dashboard' },
     ];
-    if (this.ma.isAdminPanel()) {
+    if (this.ma.seesManageTab()) {
       tabs.push({ link: '/miniapp/manage', icon: 'settings', label: 'ma_manage' });
     }
     if (this.ma.hasStage()) {
       tabs.push({ link: '/miniapp/report', icon: 'plus', label: 'ma_report' });
     }
     tabs.push({ link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_my_work' });
-    if (this.ma.hasMenuNav()) {
-      tabs.push({ link: '/miniapp/menu', icon: 'menu', label: 'ma_menu' });
-    }
     tabs.push({ link: '/miniapp/profile', icon: 'user', label: 'ma_profile' });
     return tabs;
   });
