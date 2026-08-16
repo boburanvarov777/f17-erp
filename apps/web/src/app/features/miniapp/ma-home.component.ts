@@ -27,6 +27,9 @@ import { haptic } from './telegram';
           <div>
             <div class="tiny" style="opacity:.75">{{ greeting() }}</div>
             <div style="font-size:17px;font-weight:600">{{ u.fullName }}</div>
+            <div class="row gap-2 mt-1">
+              <span class="badge badge-info tiny-badge">{{ u.role?.name }}</span>
+            </div>
             <div class="tiny" style="opacity:.75">{{ u.department?.name || u.position }}</div>
           </div>
           <div class="hero-ic"><ui-icon [name]="stageIcon()" [size]="22" /></div>
@@ -109,6 +112,7 @@ import { haptic } from './telegram';
     .clickable { cursor: pointer; transition: box-shadow .15s; }
     .clickable:active { box-shadow: var(--sh-2); }
     .edit-hint { display: inline-flex; align-items: center; gap: 4px; color: var(--primary-500); }
+    .tiny-badge { font-size: 10px; padding: 2px 7px; }
   `],
 })
 export class MaHomeComponent {

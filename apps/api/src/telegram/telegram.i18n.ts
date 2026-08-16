@@ -23,6 +23,8 @@ export const TG: Record<Lang, Dict> = {
       'Sizning telefon raqamingiz tizimdan topilmadi.\n\nIltimos, administratoringiz bilan bog‘laning.',
     err_blocked: 'Sizning hisobingiz bloklangan. Administrator bilan bog‘laning.',
     err_taken: 'Bu telefon raqami boshqa Telegram akkauntga biriktirilgan. Administrator bilan bog‘laning.',
+    err_multi_phone:
+      'Bu raqam bir nechta hisobga biriktirilgan (test rejimi).\n\nMini App‘ni oching va *login + parol* bilan kiring.',
     welcome: '✅ Xush kelibsiz, *{name}*!\n\nBo‘lim: {dept}\nLavozim: {position}',
     open_miniapp: '🚀 Mini App‘ni ochish',
     use_miniapp: 'Barcha funksiyalar Mini App ichida. Quyidagi tugmani bosing — ochilganda bo‘lim, login va parol so‘raladi.',
@@ -60,6 +62,8 @@ export const TG: Record<Lang, Dict> = {
     err_not_found: 'Ваш номер телефона не найден в системе.\n\nОбратитесь к вашему администратору.',
     err_blocked: 'Ваша учётная запись заблокирована. Обратитесь к администратору.',
     err_taken: 'Этот номер уже привязан к другому Telegram-аккаунту. Обратитесь к администратору.',
+    err_multi_phone:
+      'Этот номер привязан к нескольким учётным записям (тестовый режим).\n\nОткройте Mini App и войдите по *логину и паролю*.',
     welcome: '✅ Добро пожаловать, *{name}*!\n\nОтдел: {dept}\nДолжность: {position}',
     open_miniapp: '🚀 Открыть Mini App',
     use_miniapp: 'Все функции в Mini App. Нажмите кнопку ниже — при открытии потребуются отдел, логин и пароль.',
@@ -97,6 +101,8 @@ export const TG: Record<Lang, Dict> = {
     err_not_found: 'Your phone number was not found in the system.\n\nPlease contact your administrator.',
     err_blocked: 'Your account is blocked. Please contact your administrator.',
     err_taken: 'This phone number is already linked to another Telegram account. Contact your administrator.',
+    err_multi_phone:
+      'This number is linked to multiple accounts (test mode).\n\nOpen the Mini App and sign in with *login + password*.',
     welcome: '✅ Welcome, *{name}*!\n\nDepartment: {dept}\nPosition: {position}',
     open_miniapp: '🚀 Open Mini App',
     use_miniapp: 'All features are inside the Mini App. Tap the button below — department, login and password are required each time.',

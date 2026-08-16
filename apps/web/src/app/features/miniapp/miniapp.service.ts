@@ -24,8 +24,16 @@ export class MiniAppService {
     return !!this.user()?.department?.stage;
   }
 
-  isManager(): boolean {
-    return this.can('dashboard.read', 'users.read', 'plans.update', 'orders.read');
+  /** Admin panel (dashboard + team plans) — same tier as web management views. */
+  isAdminPanel(): boolean {
+    return this.can('dashboard.read') && this.can(
+      'users.read', 'plans.update', 'orders.read', 'reports.read',
+      'roles.read', 'departments.read', 'audit.read',
+    );
+  }
+
+  hasMenuNav(): boolean {
+    return filterNavGroups((...p) => this.can(...p)).some((g) => g.items.length > 0);
   }
 
   init(): void {

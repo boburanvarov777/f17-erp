@@ -66,16 +66,29 @@ export class MiniAppService {
   ) {
     const tgUser = this.verifyInitData(initData);
     const result = await this.auth.login({ login, password, departmentCode }, ctx);
+    const tgId = BigInt(tgUser.id);
     const linked = await this.prisma.user.findUnique({ where: { id: result.user.id } });
-    if (linked?.telegramId && String(linked.telegramId) !== String(tgUser.id)) {
+
+    if (linked?.telegramId && linked.telegramId !== tgId) {
       throw new UnauthorizedException('Bu hisob boshqa Telegram akkauntga biriktirilgan');
     }
-    if (!linked?.telegramId) {
-      await this.prisma.user.update({
+
+    // Same Telegram device may switch test accounts (login + password each time).
+    await this.prisma.$transaction([
+      this.prisma.user.updateMany({
+        where: { telegramId: tgId, NOT: { id: result.user.id } },
+        data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null },
+      }),
+      this.prisma.user.update({
         where: { id: result.user.id },
-        data: { telegramId: BigInt(tgUser.id), telegramUsername: tgUser.username, telegramLinkedAt: new Date() },
-      });
-    }
+        data: {
+          telegramId: tgId,
+          telegramUsername: tgUser.username ?? null,
+          telegramLinkedAt: new Date(),
+        },
+      }),
+    ]);
+
     return result;
   }
 }

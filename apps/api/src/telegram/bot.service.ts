@@ -161,12 +161,23 @@ export class BotService implements OnModuleInit {
     const telegramId = BigInt(ctx.from!.id);
     const phone = '+' + rawPhone.replace(/\D/g, '');
 
-    const user = await this.prisma.user.findUnique({ where: { phone }, include: { role: true, department: true } });
-    if (!user) {
+    const matches = await this.prisma.user.findMany({
+      where: { phone, status: 'ACTIVE' },
+      include: { role: true, department: true },
+    });
+    if (!matches.length) {
       await this.prisma.telegramSession.update({ where: { telegramId }, data: { phone, attempts: { increment: 1 } } });
       return ctx.reply(t(lang, 'err_not_found'), { reply_markup: { remove_keyboard: true } });
     }
-    if (user.status !== 'ACTIVE') return ctx.reply(t(lang, 'err_blocked'), { reply_markup: { remove_keyboard: true } });
+    if (matches.length > 1) {
+      const kb = this.miniAppKeyboard(lang);
+      return ctx.reply(t(lang, 'err_multi_phone'), {
+        parse_mode: 'Markdown',
+        reply_markup: kb ?? { remove_keyboard: true },
+      });
+    }
+
+    const user = matches[0];
     if (user.telegramId && user.telegramId !== telegramId) {
       return ctx.reply(t(lang, 'err_taken'), { reply_markup: { remove_keyboard: true } });
     }

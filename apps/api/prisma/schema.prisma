@@ -138,7 +138,7 @@ model User {
   id           String     @id @default(cuid())
   firstName    String
   lastName     String
-  phone        String     @unique
+  phone        String
   login        String     @unique
   passwordHash String
   email        String?
