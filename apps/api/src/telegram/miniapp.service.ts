@@ -74,20 +74,20 @@ export class MiniAppService {
     }
 
     // Same Telegram device may switch test accounts (login + password each time).
-    await this.prisma.$transaction([
-      this.prisma.user.updateMany({
-        where: { telegramId: tgId, NOT: { id: result.user.id } },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { telegramId: tgId, id: { not: result.user.id } },
         data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null },
-      }),
-      this.prisma.user.update({
+      });
+      await tx.user.update({
         where: { id: result.user.id },
         data: {
           telegramId: tgId,
           telegramUsername: tgUser.username ?? null,
           telegramLinkedAt: new Date(),
         },
-      }),
-    ]);
+      });
+    });
 
     return result;
   }

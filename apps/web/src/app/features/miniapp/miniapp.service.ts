@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { AuthResponse, CurrentUser, Department } from '../../core/models';
+import { filterNavGroups } from '../../core/nav.config';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { tg } from './telegram';
