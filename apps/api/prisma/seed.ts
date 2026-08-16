@@ -99,7 +99,8 @@ async function main() {
   const defaultPassword = 'F17erp!2026';
 
   const users = [
-    { login: process.env.SEED_SUPERADMIN_LOGIN || 'admin', password: superPassword, firstName: 'Komiljon', lastName: 'Toxirov', phone: '+998901110001', role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
+    { login: process.env.SEED_SUPERADMIN_LOGIN || 'bobur', password: superPassword, firstName: 'Bobur', lastName: 'Anvarov', phone: '+998997162616', role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
+    { login: 'admin', password: superPassword, firstName: 'Komiljon', lastName: 'Toxirov', phone: '+998901110001', role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
     { login: 'planning', password: defaultPassword, firstName: 'Susana', lastName: 'Ishikova', phone: '+998901110002', role: 'PLANNING', dept: 'PLANNING', position: 'Planlashtirish menejeri', lang: 'RU' },
     { login: 'director', password: defaultPassword, firstName: 'Ali', lastName: 'Yildirim', phone: '+998901110003', role: 'PRODUCTION_MANAGER', dept: 'PRODUCTION', position: 'Ishlab chiqarish mudiri', lang: 'RU' },
     { login: 'kesim', password: defaultPassword, firstName: 'Abduhamid', lastName: 'Mamatov', phone: '+998901110004', role: 'CUTTING_MASTER', dept: 'CUTTING', position: 'Kesim mas’uli', lang: 'UZ' },
@@ -121,7 +122,15 @@ async function main() {
     await prisma.user.upsert({
       where: { login: u.login },
       create: data,
-      update: { firstName: data.firstName, lastName: data.lastName, position: data.position, roleId: data.roleId, departmentId: data.departmentId },
+      update: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        passwordHash: data.passwordHash,
+        position: data.position,
+        roleId: data.roleId,
+        departmentId: data.departmentId,
+      },
     });
   }
   const userByLogin = Object.fromEntries((await prisma.user.findMany()).map((u) => [u.login, u]));

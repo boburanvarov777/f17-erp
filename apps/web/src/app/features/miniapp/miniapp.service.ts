@@ -25,7 +25,7 @@ export class MiniAppService {
       error: () => void 0,
     });
 
-    const initData = w?.initData;
+    const initData = w?.initData?.trim();
     if (!initData) {
       // Opened outside Telegram (e.g. a browser tab) — fall back to a normal session.
       if (this.auth.isAuthenticated()) {
@@ -54,10 +54,11 @@ export class MiniAppService {
   }
 
   login(login: string, password: string, departmentCode?: string) {
-    const initData = tg()?.initData;
-    const body = { initData, login, password, departmentCode };
-    const path = initData ? '/telegram/mini-app/login' : '/auth/login';
-    return this.api.post<AuthResponse>(path, initData ? body : { login, password, departmentCode });
+    const initData = tg()?.initData?.trim();
+    if (initData) {
+      return this.api.post<AuthResponse>('/telegram/mini-app/login', { initData, login, password, departmentCode });
+    }
+    return this.api.post<AuthResponse>('/auth/login', { login, password, departmentCode });
   }
 
   apply(res: AuthResponse): void {
