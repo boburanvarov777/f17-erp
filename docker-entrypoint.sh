@@ -16,7 +16,7 @@ p.role.count()
 
 if [ "$NEED_SEED" = "yes" ]; then
   echo "▸ Seeding initial data…"
-  npx --workspace apps/api ts-node --transpile-only prisma/seed.ts || echo "⚠ seed skipped"
+  (cd apps/api && npx prisma db seed) || echo "⚠ seed skipped"
 else
   echo "▸ Database already seeded."
 fi
