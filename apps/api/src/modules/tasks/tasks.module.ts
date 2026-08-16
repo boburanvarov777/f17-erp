@@ -133,17 +133,19 @@ export class TasksService {
     ]);
 
     const done = tasks.filter((t) => t.status === 'DONE').length;
-    const producedQty = entries.reduce((a, e) => a + e.qty, 0);
+    const entriesQty = entries.reduce((a, e) => a + e.qty, 0);
+    const reportedQty = stored?.doneQty ?? 0;
     return {
       period, dateFrom: start, dateTo: end,
       tasks, total: tasks.length, done, overdue: tasks.filter((t) => t.status !== 'DONE' && t.date < now).length,
       progress: tasks.length ? Math.round((done / tasks.length) * 100) : 0,
       targetQty: stored?.targetQty ?? 0,
-      producedQty,
+      producedQty: reportedQty > 0 ? reportedQty : entriesQty,
       entries,
     };
   }
 
+  /** Manager sets the daily norm on web. */
   async setPlan(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY', targetQty: number, actor: JwtUser) {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -160,6 +162,27 @@ export class TasksService {
       update: { targetQty, dateTo: end },
     });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PLAN_UPDATED, entity: 'Plan', entityId: plan.id, newValue: { userId, period, targetQty } });
+    return plan;
+  }
+
+  /** Employee reports how much of the assigned plan they completed today. */
+  async setMyProgress(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY', doneQty: number, actor: JwtUser) {
+    if (userId !== actor.sub) throw new BadRequestException('Faqat o‘z planingizni yangilashingiz mumkin');
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (period === 'WEEKLY') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    if (period === 'MONTHLY') start.setDate(1);
+    const end = new Date(start);
+    if (period === 'DAILY') end.setDate(start.getDate() + 1);
+    if (period === 'WEEKLY') end.setDate(start.getDate() + 7);
+    if (period === 'MONTHLY') end.setMonth(start.getMonth() + 1);
+
+    const plan = await this.prisma.plan.upsert({
+      where: { userId_period_dateFrom: { userId, period, dateFrom: start } },
+      create: { userId, period, dateFrom: start, dateTo: end, targetQty: 0, doneQty },
+      update: { doneQty, dateTo: end },
+    });
+    this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PLAN_UPDATED, entity: 'Plan', entityId: plan.id, newValue: { userId, period, doneQty } });
     return plan;
   }
 }
@@ -202,15 +225,16 @@ export class TasksController {
   }
 
   @Post('plans/:period/my')
-  @ApiOperation({ summary: 'Set own DAILY/WEEKLY/MONTHLY target qty' })
+  @ApiOperation({ summary: 'Report own daily plan progress (done qty)' })
   setMyPlan(
     @Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
-    @Body() body: { targetQty: number },
+    @Body() body: { doneQty: number },
     @CurrentUser() actor: JwtUser,
   ) {
-    const qty = Number(body.targetQty);
-    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Plan miqdori noto‘g‘ri');
-    return this.service.setPlan(actor.sub, period.toUpperCase() as any, qty, actor);
+    const qty = Number(body.doneQty);
+    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Bajarilgan miqdor noto‘g‘ri');
+    if (period.toUpperCase() !== 'DAILY') throw new BadRequestException('Faqat kunlik progress yangilanadi');
+    return this.service.setMyProgress(actor.sub, period.toUpperCase() as any, qty, actor);
   }
 
   @Post('plans/:period')
@@ -220,7 +244,9 @@ export class TasksController {
     @Body() body: { userId: string; targetQty: number },
     @CurrentUser() actor: JwtUser,
   ) {
-    return this.service.setPlan(body.userId, period.toUpperCase() as any, body.targetQty, actor);
+    const qty = Number(body.targetQty);
+    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Plan miqdori noto‘g‘ri');
+    return this.service.setPlan(body.userId, period.toUpperCase() as any, qty, actor);
   }
 }
 

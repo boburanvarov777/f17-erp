@@ -4,6 +4,7 @@ import type { PlanView } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
+import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
 import { NumPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { LoadingComponent } from '../../shared/ui/empty.component';
@@ -16,7 +17,7 @@ import { haptic } from './telegram';
 @Component({
   selector: 'app-ma-home',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, LoadingComponent, ModalComponent, TPipe, NumPipe],
+  imports: [FormsModule, IconComponent, ProgressComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, DigitsOnlyDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (ma.user(); as u) {
@@ -38,7 +39,7 @@ import { haptic } from './telegram';
             <div
               class="card card-pad"
               [class.clickable]="p.key === 'DAILY'"
-              (click)="p.key === 'DAILY' && openDailyPlan()"
+              (click)="p.key === 'DAILY' && openDailyProgress()"
             >
               <div class="row-between mb-3">
                 <b class="small">{{ p.label | t }}</b>
@@ -56,7 +57,7 @@ import { haptic } from './telegram';
               <div class="row-between mt-3 tiny text-3">
                 <span>{{ 'produced' | t }}: <b class="text-2">{{ plans()[p.key]?.producedQty || 0 | num }}</b> {{ 'pieces' | t }}</span>
                 @if (p.key === 'DAILY') {
-                  <span class="edit-hint"><ui-icon name="pencil" [size]="12" /> {{ 'tap_to_edit_plan' | t }}</span>
+                  <span class="edit-hint"><ui-icon name="pencil" [size]="12" /> {{ 'tap_to_update_progress' | t }}</span>
                 } @else if ((plans()[p.key]?.overdue || 0) > 0) {
                   <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plans()[p.key]?.overdue }}</span>
                 }
@@ -68,15 +69,16 @@ import { haptic } from './telegram';
     }
 
     @if (planModal()) {
-      <ui-modal [title]="'edit_daily_plan' | t" (closed)="planModal.set(false)">
+      <ui-modal [title]="'update_daily_progress' | t" (closed)="planModal.set(false)">
         <div class="field">
-          <label class="label">{{ 'plan_target_qty' | t }}</label>
-          <input class="input" type="number" min="0" [(ngModel)]="planTarget" />
-          <div class="tiny text-3 mt-2">{{ 'plan_target_hint' | t }}</div>
+          <label class="label">{{ 'plan_done_qty' | t }}</label>
+          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="planDone" />
+          <div class="tiny text-3 mt-2">{{ 'plan_done_hint' | t }}</div>
+          <div class="tiny text-3 mt-1">{{ 'plan_assigned' | t }}: <b>{{ plans()['DAILY']?.targetQty || 0 | num }}</b> {{ 'pieces' | t }}</div>
         </div>
-        <div footer>
+        <div footer class="ma-modal-foot">
           <button class="btn" type="button" (click)="planModal.set(false)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveDailyPlan()" [disabled]="planBusy()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveDailyProgress()" [disabled]="planBusy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -104,7 +106,7 @@ export class MaHomeComponent {
   readonly loading = signal(true);
   readonly planModal = signal(false);
   readonly planBusy = signal(false);
-  planTarget = 0;
+  planDone = 0;
 
   constructor() {
     this.reloadPlans();
@@ -124,15 +126,15 @@ export class MaHomeComponent {
     }
   }
 
-  openDailyPlan(): void {
-    this.planTarget = this.plans()['DAILY']?.targetQty ?? 0;
+  openDailyProgress(): void {
+    this.planDone = this.plans()['DAILY']?.producedQty ?? 0;
     this.planModal.set(true);
     haptic('success');
   }
 
-  saveDailyPlan(): void {
+  saveDailyProgress(): void {
     this.planBusy.set(true);
-    this.api.post('/plans/DAILY/my', { targetQty: this.planTarget }).subscribe({
+    this.api.post('/plans/DAILY/my', { doneQty: +this.planDone }).subscribe({
       next: () => {
         this.planBusy.set(false);
         this.planModal.set(false);

@@ -26,8 +26,8 @@ import { ModalComponent } from './modal.component';
         </div>
       </div>
       <div footer>
-        <button class="btn" type="button" (click)="cancelled.emit()">{{ 'cancel' | t }}</button>
-        <button class="btn" [class.btn-danger]="danger()" [class.btn-primary]="!danger()" type="button" (click)="confirmed.emit()">
+        <button class="btn" type="button" (click)="cancelled.emit()" [attr.data-tip]="'cancel' | t">{{ 'cancel' | t }}</button>
+        <button class="btn" [class.btn-danger]="danger()" [class.btn-primary]="!danger()" type="button" (click)="confirmed.emit()" [attr.data-tip]="confirmLabel()">
           {{ confirmLabel() }}
         </button>
       </div>

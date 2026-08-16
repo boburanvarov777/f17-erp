@@ -60,7 +60,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
                       <td class="mono tiny text-3">{{ l.ip || '—' }}</td>
                       <td class="actions">
                         @if (l.oldValue || l.newValue) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="detail.set(l)"><ui-icon name="eye" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="detail.set(l)" [attr.data-tip]="'view' | t"><ui-icon name="eye" [size]="15" /></button>
                         }
                       </td>
                     </tr>

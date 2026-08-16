@@ -98,7 +98,7 @@ interface SizeRow { size: string; qty: number; }
             <div class="size-row">
               <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" placeholder="30" />
               <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch()" />
-              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)">
+              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
                 <ui-icon name="x" [size]="14" />
               </button>
             </div>

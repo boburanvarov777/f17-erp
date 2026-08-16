@@ -88,7 +88,7 @@ export class RolesController {
 
   private assertPermissions(perms: string[], actor: JwtUser) {
     if (perms.includes('*') && !actor.permissions.includes('*')) {
-      throw new BadRequestException('To‘liq huquqni faqat Super Admin bera oladi');
+      throw new BadRequestException('To‘liq huquqni faqat Super Pro Admin bera oladi');
     }
     const invalid = perms.filter((p) => p !== '*' && !(PERMISSIONS as readonly string[]).includes(p));
     if (invalid.length) throw new BadRequestException(`Noma'lum permission: ${invalid.join(', ')}`);

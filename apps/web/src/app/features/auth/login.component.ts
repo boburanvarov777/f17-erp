@@ -39,7 +39,7 @@ import type { Lang } from '../../core/models';
             <ui-icon name="globe" [size]="15" />
             <span style="text-transform:uppercase;font-weight:600">{{ i18n.lang() }}</span>
           </button>
-          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()">
+          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
             <ui-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="15" />
           </button>
         </div>

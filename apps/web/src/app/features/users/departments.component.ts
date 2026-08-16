@@ -25,7 +25,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
           <div class="sub">{{ items().length }} ta bo‘lim · Telegram bot xodimning bosqichini shu yerdan aniqlaydi</div>
         </div>
         @if (auth.can('departments.create')) {
-          <button class="btn btn-primary btn-sm" type="button" (click)="open({})"><ui-icon name="plus" [size]="15" /> {{ 'new_department' | t }}</button>
+          <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_department' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_department' | t }}</button>
         }
       </div>
 
@@ -46,7 +46,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
                     <td class="num">{{ d._count?.users || 0 }}</td>
                     <td class="actions">
                       @if (auth.can('departments.update')) {
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(d)"><ui-icon name="pencil" [size]="15" /></button>
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(d)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                       }
                     </td>
                   </tr>

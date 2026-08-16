@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { TPipe } from '../pipes/t.pipe';
 import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'ui-modal',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="modal-backdrop" (click)="onBackdrop($event)">
@@ -14,7 +15,7 @@ import { IconComponent } from './icon.component';
             <h2>{{ title() }}</h2>
             @if (subtitle()) { <div class="small text-3 mt-2">{{ subtitle() }}</div> }
           </div>
-          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="closed.emit()" aria-label="close">
+          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="closed.emit()" [attr.data-tip]="'close' | t">
             <ui-icon name="x" [size]="17" />
           </button>
         </div>

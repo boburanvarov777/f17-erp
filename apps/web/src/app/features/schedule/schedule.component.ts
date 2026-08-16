@@ -74,7 +74,7 @@ interface Tick { label: string; left: number; major: boolean; }
                          [style.width.%]="width(b.start, b.end)"
                          [style.background]="color(b.stage)"
                          [style.opacity]="b.status === 'NOT_STARTED' ? .35 : 1"
-                         [title]="('stage_' + b.stage | t) + ' — ' + b.doneQty + '/' + b.planQty + ' (' + b.progress + '%)'">
+                         [attr.data-tip]="('stage_' + b.stage | t) + ' — ' + b.doneQty + '/' + b.planQty + ' (' + b.progress + '%)'">
                       <span class="bar-fill" [style.width.%]="b.progress"></span>
                       <span class="bar-label">{{ 'stage_' + b.stage | t }}</span>
                     </div>

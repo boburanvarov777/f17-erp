@@ -6,6 +6,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -13,7 +14,7 @@ import { haptic } from './telegram';
 @Component({
   selector: 'app-ma-report',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, TPipe],
+  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, TPipe, DigitsOnlyDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_report' | t }}</h2>
@@ -45,14 +46,14 @@ import { haptic } from './telegram';
             <b class="mono">{{ selected()!.order?.number }}</b>
             <div class="tiny text-3">{{ 'stage_' + stageType() | t }} · {{ selected()!.order?.model?.code }}</div>
           </div>
-          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="selected.set(null)"><ui-icon name="x" [size]="16" /></button>
+          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="selected.set(null)" [attr.data-tip]="'back' | t"><ui-icon name="x" [size]="16" /></button>
         </div>
 
         <ui-progress [value]="selected()!.doneQty" [max]="selected()!.planQty" />
 
         <div class="field mt-4">
           <label class="label">{{ 'ma_enter_qty' | t }}</label>
-          <input class="input" style="height:46px;font-size:18px;text-align:center" type="number" inputmode="numeric" min="1" [(ngModel)]="qty" />
+          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" />
         </div>
 
         <div class="quick mt-2">
@@ -61,7 +62,7 @@ import { haptic } from './telegram';
 
         <div class="field mt-4">
           <label class="label">{{ 'defect_qty' | t }}</label>
-          <input class="input" type="number" inputmode="numeric" min="0" [(ngModel)]="defectQty" />
+          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="defectQty" />
         </div>
 
         <div class="field mt-3">

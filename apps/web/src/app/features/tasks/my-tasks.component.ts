@@ -26,7 +26,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
           <div class="title">{{ 'tasks_title' | t }}</div>
           <div class="sub">{{ auth.user()?.fullName }} · {{ auth.user()?.department?.name || auth.user()?.position }}</div>
         </div>
-        <button class="btn btn-primary btn-sm" type="button" (click)="open({})"><ui-icon name="plus" [size]="15" /> {{ 'new_task' | t }}</button>
+        <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_task' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_task' | t }}</button>
       </div>
 
       <div class="grid three mb-6">
@@ -76,7 +76,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
                 <select class="select btn-sm" style="width:auto;height:30px" [ngModel]="t.status" (ngModelChange)="setStatus(t, $event)">
                   @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
                 </select>
-                <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(t)"><ui-icon name="pencil" [size]="14" /></button>
+                <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(t)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="14" /></button>
               </div>
             }
           </div>

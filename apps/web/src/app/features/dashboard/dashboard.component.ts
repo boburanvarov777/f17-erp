@@ -28,7 +28,7 @@ const STAGE_ICON: Record<StageType, string> = {
           <div class="title">{{ 'dash_title' | t }}</div>
           <div class="sub">{{ 'dash_subtitle' | t }} · {{ now | shortDate: true }}</div>
         </div>
-        <button class="btn btn-sm" type="button" (click)="load()" [disabled]="loading()">
+        <button class="btn btn-sm" type="button" (click)="load()" [disabled]="loading()" [attr.data-tip]="'refresh' | t">
           <ui-icon name="refresh-cw" [size]="15" /> {{ 'refresh' | t }}
         </button>
       </div>
@@ -101,7 +101,7 @@ const STAGE_ICON: Record<StageType, string> = {
               @if (maxTrend() > 0) {
                 <div class="chart">
                   @for (p of d.trend; track p.date) {
-                    <div class="bar-col" [title]="p.date + ' — ' + p.qty + ' dona'">
+                    <div class="bar-col" [attr.data-tip]="p.date + ' — ' + p.qty + ' dona'">
                       <div class="bar-stack">
                         @if (p.defect > 0) {
                           <div class="bar defect" [style.height.%]="(p.defect / maxTrend()) * 100"></div>
@@ -242,6 +242,7 @@ export class DashboardComponent {
   readonly data = signal<DashboardData | null>(null);
   readonly loading = signal(false);
   readonly now = new Date();
+  private rtTimer?: ReturnType<typeof setTimeout>;
 
   readonly maxTrend = computed(() => Math.max(1, ...(this.data()?.trend ?? []).map((p) => p.qty)));
   readonly maxDefect = computed(() => Math.max(1, ...(this.data()?.defects ?? []).map((d) => d.qty)));
@@ -249,15 +250,16 @@ export class DashboardComponent {
 
   constructor() {
     this.load();
-    // Live: any production event refreshes the board without a manual reload.
     effect(() => {
       this.rt.tick();
-      if (this.data()) this.load();
+      if (!this.data()) return;
+      clearTimeout(this.rtTimer);
+      this.rtTimer = setTimeout(() => this.load(true), 500);
     });
   }
 
-  load(): void {
-    this.loading.set(true);
+  load(silent = false): void {
+    if (!silent) this.loading.set(true);
     this.api.get<DashboardData>('/dashboard').subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => this.loading.set(false),

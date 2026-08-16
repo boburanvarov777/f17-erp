@@ -41,7 +41,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
               @if (g.label && !collapsed()) { <div class="nav-label">{{ g.label | t }}</div> }
               @if (g.label && collapsed()) { <div class="nav-sep"></div> }
               @for (it of g.items; track it.link) {
-                <a class="nav-item" [routerLink]="it.link" routerLinkActive="active" [title]="it.label | t">
+                <a class="nav-item" [routerLink]="it.link" routerLinkActive="active" [attr.data-tip]="collapsed() ? (it.label | t) : null">
                   <ui-icon [name]="it.icon" [size]="17.5" />
                   @if (!collapsed()) { <span>{{ it.label | t }}</span> }
                 </a>
@@ -51,7 +51,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
         </nav>
 
         <div class="nav-foot">
-          <button class="nav-item as-btn" type="button" (click)="collapsed.set(!collapsed())">
+          <button class="nav-item as-btn" type="button" (click)="collapsed.set(!collapsed())" [attr.data-tip]="collapsed() ? ('nav_expand' | t) : ('nav_collapse' | t)">
             <ui-icon name="panel-left" [size]="17.5" />
             @if (!collapsed()) { <span>Yig‘ish</span> }
           </button>
@@ -61,11 +61,11 @@ interface NavGroup { label?: string; items: NavItem[]; }
       <!-- ───────── main ───────── -->
       <div class="main">
         <header class="topbar no-print">
-          <button class="btn btn-ghost btn-icon burger" type="button" (click)="mobileOpen.set(!mobileOpen())">
+          <button class="btn btn-ghost btn-icon burger" type="button" (click)="mobileOpen.set(!mobileOpen())" [attr.data-tip]="'menu' | t">
             <ui-icon name="menu" [size]="19" />
           </button>
 
-          <button class="search-trigger" type="button" (click)="searchOpen.set(true)">
+          <button class="search-trigger" type="button" (click)="searchOpen.set(true)" [attr.data-tip]="'search' | t">
             <ui-icon name="search" [size]="16" />
             <span class="grow">{{ 'search_placeholder' | t }}</span>
             <span class="kbd">Ctrl K</span>
@@ -74,13 +74,13 @@ interface NavGroup { label?: string; items: NavItem[]; }
           <div class="grow"></div>
 
           <div class="row gap-1">
-            <span class="conn" [class.on]="rt.connected()" [title]="rt.connected() ? 'Real-time ulangan' : 'Ulanmagan'">
+            <span class="conn" [class.on]="rt.connected()" [attr.data-tip]="rt.connected() ? ('connected' | t) : ('disconnected' | t)">
               <ui-icon [name]="rt.connected() ? 'wifi' : 'wifi-off'" [size]="15" />
             </span>
 
             <!-- language -->
             <div class="dropdown">
-              <button class="btn btn-ghost btn-sm" type="button" (click)="toggle('lang')">
+              <button class="btn btn-ghost btn-sm" type="button" (click)="toggle('lang')" [attr.data-tip]="'language' | t">
                 <ui-icon name="globe" [size]="16" />
                 <span class="uppercase">{{ i18n.lang() }}</span>
               </button>
@@ -97,13 +97,13 @@ interface NavGroup { label?: string; items: NavItem[]; }
             </div>
 
             <!-- theme -->
-            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [title]="'theme' | t">
+            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
               <ui-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="16" />
             </button>
 
             <!-- notifications -->
             <div class="dropdown">
-              <button class="btn btn-ghost btn-icon btn-sm bell" type="button" (click)="toggle('bell')">
+              <button class="btn btn-ghost btn-icon btn-sm bell" type="button" (click)="toggle('bell')" [attr.data-tip]="'notifications' | t">
                 <ui-icon name="bell" [size]="17" />
                 @if (notif.unread() > 0) { <i class="dot-badge">{{ notif.unread() > 9 ? '9+' : notif.unread() }}</i> }
               </button>
@@ -111,7 +111,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
                 <div class="menu notif-menu">
                   <div class="row-between" style="padding:10px 12px;border-bottom:1px solid var(--border)">
                     <b class="small">{{ 'notifications' | t }}</b>
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="notif.markAllRead()">{{ 'mark_all_read' | t }}</button>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="notif.markAllRead()" [attr.data-tip]="'mark_all_read' | t">{{ 'mark_all_read' | t }}</button>
                   </div>
                   <div class="notif-list">
                     @for (n of notif.items(); track n.id) {
@@ -132,7 +132,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
 
             <!-- profile -->
             <div class="dropdown">
-              <button class="profile-btn" type="button" (click)="toggle('user')">
+              <button class="profile-btn" type="button" (click)="toggle('user')" [attr.data-tip]="'profile' | t">
                 <span class="avatar sm">{{ (user()?.firstName | initials: user()?.lastName) }}</span>
                 <span class="who">
                   <span class="n">{{ user()?.fullName }}</span>
@@ -153,7 +153,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
                     <ui-icon name="key-round" [size]="15" /><span>{{ 'change_password' | t }}</span>
                   </a>
                   <div class="divider" style="margin:4px 0"></div>
-                  <button class="menu-item danger" type="button" (click)="auth.logout()">
+                  <button class="menu-item danger" type="button" (click)="auth.logout()" [attr.data-tip]="'logout' | t">
                     <ui-icon name="log-out" [size]="15" /><span>{{ 'logout' | t }}</span>
                   </button>
                 </div>
@@ -349,6 +349,8 @@ export class ShellComponent {
     ];
   });
 
+  private notifTimer?: ReturnType<typeof setTimeout>;
+
   constructor() {
     this.notif.load();
     this.rt.connect();
@@ -356,7 +358,8 @@ export class ShellComponent {
     effect(() => localStorage.setItem('f17_nav_collapsed', this.collapsed() ? '1' : '0'));
     effect(() => {
       this.rt.tick();
-      this.notif.load();
+      clearTimeout(this.notifTimer);
+      this.notifTimer = setTimeout(() => this.notif.load(), 800);
     });
 
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe(() => {

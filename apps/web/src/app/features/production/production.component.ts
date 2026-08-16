@@ -49,14 +49,14 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="sub">{{ data()?.total || 0 }} ta zakaz shu bosqichda</div>
         </div>
-        <div class="row gap-2">
+        <div class="row gap-3">
           @if (canWrite()) {
-            <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()">
+            <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()" [attr.data-tip]="'add_operation' | t">
               <ui-icon name="plus" [size]="15" /> {{ 'add_operation' | t }}
             </button>
           }
           @if (isLoading()) {
-            <button class="btn btn-sm" type="button" (click)="shipmentModal.set({})">
+            <button class="btn btn-sm" type="button" (click)="shipmentModal.set({})" [attr.data-tip]="'new_shipment' | t">
               <ui-icon name="truck" [size]="15" /> {{ 'new_shipment' | t }}
             </button>
           }
@@ -124,16 +124,16 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                       <td class="small">{{ s.responsible ? s.responsible.lastName : '—' }}</td>
                       <td class="small nowrap">{{ s.order?.deadline | shortDate }}</td>
                       <td class="actions">
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDetail(s)" [title]="'view' | t">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDetail(s)" [attr.data-tip]="'view' | t">
                           <ui-icon name="eye" [size]="15" />
                         </button>
                         @if (canWrite() && s.status !== 'COMPLETED') {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openEntry(s)" [title]="'add_operation' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openEntry(s)" [attr.data-tip]="'add_operation' | t">
                             <ui-icon name="plus" [size]="15" />
                           </button>
                         }
                         @if (canWrite()) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDefect(s)" [title]="'add_defect' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openDefect(s)" [attr.data-tip]="'add_defect' | t">
                             <ui-icon name="alert-triangle" [size]="15" />
                           </button>
                         }
@@ -171,7 +171,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                     <td><ui-status [value]="s.status" /></td>
                     <td class="actions">
                       @if (canWrite()) {
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="shipmentModal.set(s)">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="shipmentModal.set(s)" [attr.data-tip]="'edit' | t">
                           <ui-icon name="pencil" [size]="15" />
                         </button>
                       }
@@ -313,7 +313,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                   </td>
                   <td class="actions">
                     @if (canWrite() && !e.cancelled && e.qty > 0) {
-                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="cancelling.set(e)" [title]="'cancel_entry' | t">
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="cancelling.set(e)" [attr.data-tip]="'cancel_entry' | t">
                         <ui-icon name="rotate-ccw" [size]="14" />
                       </button>
                     }
@@ -423,10 +423,16 @@ export class ProductionComponent {
   });
 
   private searchTimer?: ReturnType<typeof setTimeout>;
+  private rtTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
     effect(() => { this.stage(); this.reload(); });
-    effect(() => { this.rt.tick(); if (this.data()) this.reload(false); });
+    effect(() => {
+      this.rt.tick();
+      if (!this.data()) return;
+      clearTimeout(this.rtTimer);
+      this.rtTimer = setTimeout(() => this.reload(false, true), 500);
+    });
 
     this.api.get<{ items: User[] }>('/users', { limit: 100 }).subscribe({
       next: (r) => this.users.set(r.items), error: () => void 0,
@@ -438,9 +444,9 @@ export class ProductionComponent {
     this.searchTimer = setTimeout(() => this.reload(), 320);
   }
 
-  reload(resetPage = true): void {
+  reload(resetPage = true, silent = false): void {
     if (resetPage) this.page.set(1);
-    this.loading.set(true);
+    if (!silent) this.loading.set(true);
     this.api
       .get<Paginated<OrderStage>>(`/production/${this.stage().toLowerCase()}`, {
         page: this.page(), limit: this.limit(), search: this.search, status: this.status,

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TPipe } from '../../shared/pipes/t.pipe';
@@ -59,8 +59,8 @@ import { haptic } from './telegram';
 
         @case ('ready') {
           <main class="ma-body"><router-outlet /></main>
-          <nav class="ma-nav">
-            @for (t of tabs; track t.link) {
+          <nav class="ma-nav" [style.gridTemplateColumns]="'repeat(' + tabs().length + ', 1fr)'">
+            @for (t of tabs(); track t.link) {
               <a [routerLink]="t.link" routerLinkActive="on" (click)="tap()">
                 <ui-icon [name]="t.icon" [size]="20" />
                 <span>{{ t.label | t }}</span>
@@ -85,11 +85,11 @@ import { haptic } from './telegram';
     .ma-body { flex: 1; padding: 14px 14px 82px; overflow-y: auto; }
     .ma-nav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-      display: grid; grid-template-columns: repeat(4, 1fr);
+      display: grid;
       background: var(--surface); border-top: 1px solid var(--border);
       padding: 7px 0 max(7px, env(safe-area-inset-bottom));
     }
-    .ma-nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; color: var(--text-3); text-decoration: none; font-size: 10.5px; font-weight: 500; }
+    .ma-nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 2px; color: var(--text-3); text-decoration: none; font-size: 10px; font-weight: 500; text-align: center; line-height: 1.15; }
     .ma-nav a.on { color: var(--primary-500); }
     .ma-nav a:hover { text-decoration: none; }
     .pass-wrap { position: relative; }
@@ -106,12 +106,22 @@ export class MiniAppShellComponent {
   readonly busy = signal(false);
   readonly error = signal('');
 
-  readonly tabs = [
-    { link: '/miniapp/home', icon: 'layout-dashboard', label: 'nav_dashboard' },
-    { link: '/miniapp/report', icon: 'plus', label: 'ma_report' },
-    { link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_my_work' },
-    { link: '/miniapp/profile', icon: 'user', label: 'ma_profile' },
-  ];
+  readonly tabs = computed(() => {
+    const tabs: { link: string; icon: string; label: string }[] = [
+      { link: '/miniapp/home', icon: 'layout-dashboard', label: 'nav_dashboard' },
+    ];
+    if (this.ma.isManager()) {
+      tabs.push({ link: '/miniapp/manage', icon: 'settings', label: 'ma_manage' });
+    }
+    if (this.ma.hasStage()) {
+      tabs.push({ link: '/miniapp/report', icon: 'plus', label: 'ma_report' });
+    }
+    tabs.push(
+      { link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_my_work' },
+      { link: '/miniapp/profile', icon: 'user', label: 'ma_profile' },
+    );
+    return tabs;
+  });
 
   constructor() { this.ma.init(); }
 

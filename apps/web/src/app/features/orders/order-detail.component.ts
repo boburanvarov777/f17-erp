@@ -54,9 +54,9 @@ const STAGE_ICON: Record<string, string> = {
             </div>
           </div>
           <div class="row gap-2 no-print">
-            <button class="btn btn-sm" type="button" (click)="print()"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
+            <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
             @if (auth.can('orders.update')) {
-              <button class="btn btn-sm" type="button" (click)="editing.set(o)"><ui-icon name="pencil" [size]="15" /> {{ 'edit' | t }}</button>
+              <button class="btn btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /> {{ 'edit' | t }}</button>
             }
           </div>
         </div>
@@ -236,7 +236,7 @@ const STAGE_ICON: Record<string, string> = {
               <div class="card-body">
                 <div class="row gap-2 mb-4">
                   <input class="input" [(ngModel)]="commentText" [placeholder]="'add_comment' | t" (keyup.enter)="addComment()" />
-                  <button class="btn btn-primary" type="button" (click)="addComment()" [disabled]="!commentText.trim()">
+                  <button class="btn btn-primary" type="button" (click)="addComment()" [disabled]="!commentText.trim()" [attr.data-tip]="'add_comment' | t">
                     <ui-icon name="send" [size]="15" />
                   </button>
                 </div>

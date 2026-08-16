@@ -27,7 +27,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <div class="sub">{{ data()?.total || 0 }} ta xodim</div>
         </div>
         @if (auth.can('users.create')) {
-          <button class="btn btn-primary btn-sm" type="button" (click)="open({})"><ui-icon name="plus" [size]="15" /> {{ 'new_user' | t }}</button>
+          <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_user' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_user' | t }}</button>
         }
       </div>
 
@@ -84,16 +84,16 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       <td class="small nowrap">{{ u.lastLoginAt ? (u.lastLoginAt | shortDate: true) : ('never' | t) }}</td>
                       <td class="actions">
                         @if (auth.can('users.update')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [title]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openPassword(u)" [title]="'reset_password' | t"><ui-icon name="key-round" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openPassword(u)" [attr.data-tip]="'reset_password' | t"><ui-icon name="key-round" [size]="15" /></button>
                           @if (u.status === 'ACTIVE') {
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'block')" [title]="'block' | t"><ui-icon name="ban" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'block')" [attr.data-tip]="'block' | t"><ui-icon name="ban" [size]="15" /></button>
                           } @else {
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'activate')" [title]="'activate' | t"><ui-icon name="check-circle" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'activate')" [attr.data-tip]="'activate' | t"><ui-icon name="check-circle" [size]="15" /></button>
                           }
                         }
                         @if (auth.can('users.delete')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(u)" [title]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(u)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
                         }
                       </td>
                     </tr>

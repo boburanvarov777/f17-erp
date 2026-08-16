@@ -23,7 +23,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
           <div class="sub">{{ roles().length }} ta role · huquqlar backendda ham tekshiriladi</div>
         </div>
         @if (auth.can('roles.create')) {
-          <button class="btn btn-primary btn-sm" type="button" (click)="open({ permissions: [] })"><ui-icon name="plus" [size]="15" /> {{ 'new_role' | t }}</button>
+          <button class="btn btn-primary btn-sm" type="button" (click)="open({ permissions: [] })" [attr.data-tip]="'new_role' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_role' | t }}</button>
         }
       </div>
 
@@ -55,11 +55,11 @@ import { ModalComponent } from '../../shared/ui/modal.component';
               }
 
               <div class="row gap-2 mt-4">
-                <button class="btn btn-sm" type="button" (click)="open(r)">
+                <button class="btn btn-sm" type="button" (click)="open(r)" [attr.data-tip]="r.isSystem ? ('view' | t) : ('edit' | t)">
                   <ui-icon name="eye" [size]="14" /> {{ r.isSystem ? ('view' | t) : ('edit' | t) }}
                 </button>
                 @if (!r.isSystem && auth.can('roles.delete')) {
-                  <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="remove(r)"><ui-icon name="trash" [size]="14" /></button>
+                  <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="remove(r)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="14" /></button>
                 }
               </div>
             </div>

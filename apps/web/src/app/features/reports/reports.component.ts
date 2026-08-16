@@ -28,7 +28,7 @@ interface ProductionReport {
         <div class="row gap-2">
           <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="from" (ngModelChange)="load()" />
           <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="to" (ngModelChange)="load()" />
-          <button class="btn btn-sm" type="button" (click)="print()"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
+          <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
         </div>
       </div>
 

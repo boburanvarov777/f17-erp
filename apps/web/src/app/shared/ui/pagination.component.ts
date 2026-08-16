@@ -16,12 +16,12 @@ import { TPipe } from '../pipes/t.pipe';
           @for (n of [10, 20, 50, 100]; track n) { <option [value]="n">{{ n }}</option> }
         </select>
         <div class="pager">
-          <button type="button" [disabled]="page() <= 1" (click)="pageChange.emit(page() - 1)">‹</button>
+          <button type="button" [disabled]="page() <= 1" (click)="pageChange.emit(page() - 1)" [attr.data-tip]="'prev_page' | t">‹</button>
           @for (p of pages(); track p) {
             @if (p === -1) { <button type="button" disabled>…</button> }
-            @else { <button type="button" [class.active]="p === page()" (click)="pageChange.emit(p)">{{ p }}</button> }
+            @else { <button type="button" [class.active]="p === page()" (click)="pageChange.emit(p)" [attr.data-tip]="('page' | t) + ' ' + p">{{ p }}</button> }
           }
-          <button type="button" [disabled]="page() >= totalPages()" (click)="pageChange.emit(page() + 1)">›</button>
+          <button type="button" [disabled]="page() >= totalPages()" (click)="pageChange.emit(page() + 1)" [attr.data-tip]="'next_page' | t">›</button>
         </div>
       </div>
     </div>

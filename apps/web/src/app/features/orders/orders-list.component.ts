@@ -36,9 +36,9 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
           <div class="sub">{{ data()?.total || 0 }} ta zakaz</div>
         </div>
         <div class="row gap-2">
-          <button class="btn btn-sm" type="button" (click)="exportCsv()"><ui-icon name="download" [size]="15" /> {{ 'export' | t }}</button>
+          <button class="btn btn-sm" type="button" (click)="exportCsv()" [attr.data-tip]="'export' | t"><ui-icon name="download" [size]="15" /> {{ 'export' | t }}</button>
           @if (auth.can('orders.create')) {
-            <button class="btn btn-primary btn-sm" type="button" (click)="editing.set({})">
+            <button class="btn btn-primary btn-sm" type="button" (click)="editing.set({})" [attr.data-tip]="'new_order' | t">
               <ui-icon name="plus" [size]="15" /> {{ 'new_order' | t }}
             </button>
           }
@@ -74,7 +74,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
           </div>
 
           @if (hasFilters()) {
-            <button class="btn btn-ghost btn-sm" type="button" (click)="clearFilters()">
+            <button class="btn btn-ghost btn-sm" type="button" (click)="clearFilters()" [attr.data-tip]="'reset' | t">
               <ui-icon name="x" [size]="14" /> {{ 'reset' | t }}
             </button>
           }
@@ -128,16 +128,16 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
                       <td><ui-priority [value]="o.priority" /></td>
                       <td class="small">{{ o.responsible ? o.responsible.lastName + ' ' + o.responsible.firstName[0] + '.' : '—' }}</td>
                       <td class="actions" (click)="$event.stopPropagation()">
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" [routerLink]="['/orders', o.id]" [title]="'view' | t">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" [routerLink]="['/orders', o.id]" [attr.data-tip]="'view' | t">
                           <ui-icon name="eye" [size]="15" />
                         </button>
                         @if (auth.can('orders.update')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="editing.set(o)" [title]="'edit' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t">
                             <ui-icon name="pencil" [size]="15" />
                           </button>
                         }
                         @if (auth.can('orders.delete')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(o)" [title]="'archive' | t">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(o)" [attr.data-tip]="'archive' | t">
                             <ui-icon name="archive" [size]="15" />
                           </button>
                         }
@@ -152,7 +152,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
           } @else {
             <ui-empty icon="clipboard-list" [title]="'no_orders' | t" [message]="'Yangi zakaz qo‘shing yoki filtrlarni tozalang'">
               @if (auth.can('orders.create')) {
-                <button class="btn btn-primary btn-sm mt-2" type="button" (click)="editing.set({})">
+                <button class="btn btn-primary btn-sm mt-2" type="button" (click)="editing.set({})" [attr.data-tip]="'new_order' | t">
                   <ui-icon name="plus" [size]="15" /> {{ 'new_order' | t }}
                 </button>
               }

@@ -32,5 +32,10 @@ export const STAGE_PERMISSION_PREFIX: Record<string, string> = {
   LOADING: 'loading',
 };
 
-/** Full access marker — Super Admin bypasses granular checks. */
+/** Full access marker — Super Pro Admin bypasses granular checks. */
 export const ALL_PERMISSIONS = '*';
+
+/** Super Admin: everything except role management and audit logs. */
+export const SUPER_ADMIN_PERMISSIONS = PERMISSIONS.filter(
+  (p) => !p.startsWith('roles.') && p !== 'audit.read',
+);

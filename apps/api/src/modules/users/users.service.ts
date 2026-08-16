@@ -69,7 +69,7 @@ export class UsersService {
     const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
     if (!role) throw new BadRequestException('Role topilmadi');
     if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
-      throw new ForbiddenException('Super Admin roli faqat Super Admin tomonidan beriladi');
+      throw new ForbiddenException('Super Pro Admin roli faqat Super Pro Admin tomonidan beriladi');
     }
 
     const user = await this.prisma.user.create({
@@ -103,7 +103,7 @@ export class UsersService {
       const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
       if (!role) throw new BadRequestException('Role topilmadi');
       if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
-        throw new ForbiddenException('Super Admin roli faqat Super Admin tomonidan beriladi');
+        throw new ForbiddenException('Super Pro Admin roli faqat Super Pro Admin tomonidan beriladi');
       }
       this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.ROLE_CHANGED, entity: 'User', entityId: id, oldValue: { roleId: existing.roleId }, newValue: { roleId: dto.roleId } });
     }
@@ -179,6 +179,11 @@ export class UsersService {
       where: { userId: { in: users.map((u) => u.id) }, date: { gte: startOfMonth } },
       _count: { _all: true },
     });
+    const dailyPlans = await this.prisma.plan.findMany({
+      where: { userId: { in: users.map((u) => u.id) }, period: 'DAILY', dateFrom: startOfDay },
+      select: { userId: true, targetQty: true, doneQty: true },
+    });
+    const planByUser = Object.fromEntries(dailyPlans.map((p) => [p.userId, p]));
     const tasks = await this.prisma.task.findMany({
       where: { userId: { in: users.map((u) => u.id) }, date: { gte: startOfMonth } },
       select: { userId: true, status: true, date: true },
@@ -194,10 +199,12 @@ export class UsersService {
       const week = calc(u.id, startOfWeek);
       const month = calc(u.id, startOfMonth);
       const overdue = tasks.filter((x) => x.userId === u.id && x.status !== 'DONE' && x.date < startOfDay).length;
+      const daily = planByUser[u.id];
       return {
         ...u,
         today, week, month, overdue,
         progress: month.total ? Math.round((month.done / month.total) * 100) : 0,
+        dailyPlan: { targetQty: daily?.targetQty ?? 0, doneQty: daily?.doneQty ?? 0 },
         _grouped: grouped.filter((g) => g.userId === u.id).length,
       };
     });

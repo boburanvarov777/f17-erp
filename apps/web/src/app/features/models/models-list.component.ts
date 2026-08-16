@@ -28,11 +28,11 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         </div>
         <div class="row gap-2">
           <div class="seg">
-            <button type="button" [class.on]="view() === 'grid'" (click)="view.set('grid')"><ui-icon name="layout-dashboard" [size]="15" /></button>
-            <button type="button" [class.on]="view() === 'table'" (click)="view.set('table')"><ui-icon name="list-checks" [size]="15" /></button>
+            <button type="button" [class.on]="view() === 'grid'" (click)="view.set('grid')" [attr.data-tip]="'view_grid' | t"><ui-icon name="layout-dashboard" [size]="15" /></button>
+            <button type="button" [class.on]="view() === 'table'" (click)="view.set('table')" [attr.data-tip]="'view_table' | t"><ui-icon name="list-checks" [size]="15" /></button>
           </div>
           @if (auth.can('models.create')) {
-            <button class="btn btn-primary btn-sm" type="button" (click)="open({})"><ui-icon name="plus" [size]="15" /> {{ 'new_model' | t }}</button>
+            <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_model' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_model' | t }}</button>
           }
         </div>
       </div>
@@ -98,10 +98,10 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       <td class="num">{{ m._count?.orders || 0 }}</td>
                       <td class="actions" (click)="$event.stopPropagation()">
                         @if (auth.can('models.update')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(m)"><ui-icon name="pencil" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                         }
                         @if (auth.can('models.delete')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)"><ui-icon name="archive" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
                         }
                       </td>
                     </tr>
@@ -145,7 +145,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
             <div class="row gap-2">
               <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" />
               <input class="input btn-sm" style="height:32px" type="number" [(ngModel)]="s.qty" />
-              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)"><ui-icon name="x" [size]="14" /></button>
+              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
             </div>
           }
         </div>

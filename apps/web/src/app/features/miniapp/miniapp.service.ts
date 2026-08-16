@@ -14,6 +14,20 @@ export class MiniAppService {
   readonly message = signal('');
   readonly departments = signal<Department[]>([]);
 
+  can(...perms: string[]): boolean {
+    const mine = this.user()?.permissions ?? [];
+    if (mine.includes('*')) return true;
+    return perms.some((p) => mine.includes(p));
+  }
+
+  hasStage(): boolean {
+    return !!this.user()?.department?.stage;
+  }
+
+  isManager(): boolean {
+    return this.can('dashboard.read', 'users.read', 'plans.update', 'orders.read');
+  }
+
   init(): void {
     const w = tg();
     w?.ready();

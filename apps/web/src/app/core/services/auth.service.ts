@@ -17,6 +17,7 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.user() && !!this.accessToken);
   readonly permissions = computed(() => this.user()?.permissions ?? []);
   readonly isSuperAdmin = computed(() => this.permissions().includes('*'));
+  readonly isSuperProAdmin = computed(() => this.permissions().includes('*'));
 
   get accessToken(): string | null { return localStorage.getItem(ACCESS); }
   get refreshToken(): string | null { return localStorage.getItem(REFRESH); }

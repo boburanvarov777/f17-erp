@@ -28,11 +28,11 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           <div class="sub">{{ data()?.total || 0 }} ta pozitsiya</div>
         </div>
         <div class="row gap-2">
-          <button class="btn btn-sm" type="button" (click)="tab.set(tab() === 'stock' ? 'tx' : 'stock')">
+          <button class="btn btn-sm" type="button" (click)="tab.set(tab() === 'stock' ? 'tx' : 'stock')" [attr.data-tip]="tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t)">
             <ui-icon name="history" [size]="15" /> {{ tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t) }}
           </button>
           @if (auth.can('warehouse.create')) {
-            <button class="btn btn-primary btn-sm" type="button" (click)="openMaterial({})"><ui-icon name="plus" [size]="15" /> {{ 'new_material' | t }}</button>
+            <button class="btn btn-primary btn-sm" type="button" (click)="openMaterial({})" [attr.data-tip]="'new_material' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_material' | t }}</button>
           }
         </div>
       </div>
@@ -90,10 +90,10 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
                         <td><ui-status [value]="m.status" /></td>
                         <td class="actions">
                           @if (auth.can('warehouse.update')) {
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [title]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)"><ui-icon name="pencil" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                           }
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [title]="'history' | t"><ui-icon name="history" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
                         </td>
                       </tr>
                     }
