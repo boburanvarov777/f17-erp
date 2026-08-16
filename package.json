@@ -1,0 +1,24 @@
+{
+  "name": "f17-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "F17 JEANS & ZARINA DENIM — production-grade ERP (Angular 21 + NestJS + PostgreSQL + Telegram)",
+  "workspaces": ["apps/api", "apps/web"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm --workspace apps/api run start:dev",
+    "dev:web": "npm --workspace apps/web run start",
+    "build": "npm run build:web && npm run build:api",
+    "build:api": "npm --workspace apps/api run build",
+    "build:web": "npm --workspace apps/web run build",
+    "start": "npm --workspace apps/api run start:prod",
+    "prisma:generate": "npm --workspace apps/api run prisma:generate",
+    "prisma:migrate": "npm --workspace apps/api run prisma:migrate",
+    "prisma:deploy": "npm --workspace apps/api run prisma:deploy",
+    "seed": "npm --workspace apps/api run seed",
+    "lint": "npm --workspace apps/api run lint",
+    "test": "npm --workspace apps/api run test"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}

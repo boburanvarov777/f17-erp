@@ -1,0 +1,609 @@
+// F17 JEANS & ZARINA DENIM — ERP database schema
+// PostgreSQL (Primary) + Streaming replication to Standby + WAL/PITR handled at DB layer.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── ENUMS ───────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  ARCHIVED
+}
+
+enum Lang {
+  UZ
+  RU
+  EN
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  IN_PRODUCTION
+  READY
+  LOADING
+  COMPLETED
+  CANCELLED
+  DELAYED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum StageType {
+  CUTTING
+  SEWING
+  WASHING
+  LASER
+  PACKING
+  LOADING
+}
+
+enum StageStatus {
+  NOT_STARTED
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  BLOCKED
+}
+
+enum ModelStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum StockOp {
+  IN
+  OUT
+  RESERVE
+  RETURN
+  INVENTORY
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum PlanPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ShipmentStatus {
+  READY
+  LOADING
+  LOADED
+  SHIPPED
+  COMPLETED
+}
+
+enum MaterialStatus {
+  OK
+  LOW
+  OUT
+}
+
+// ─────────────────────── ORG / IDENTITY ──────────────────────
+
+model Department {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  nameUz    String
+  nameRu    String
+  nameEn    String
+  stage     StageType?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("departments")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  permissions String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  firstName    String
+  lastName     String
+  phone        String     @unique
+  login        String     @unique
+  passwordHash String
+  email        String?
+  avatar       String?
+  note         String?
+  employeeId   String?    @unique
+  position     String?
+  status       UserStatus @default(ACTIVE)
+  lang         Lang       @default(UZ)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  roleId       String
+  role         Role        @relation(fields: [roleId], references: [id])
+
+  telegramId       BigInt? @unique
+  telegramUsername String?
+  telegramLinkedAt DateTime?
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+
+  refreshTokens     RefreshToken[]
+  ordersResponsible Order[]        @relation("OrderResponsible")
+  ordersCreated     Order[]        @relation("OrderCreatedBy")
+  stagesResponsible OrderStage[]   @relation("StageResponsible")
+  stageEntries      StageEntry[]
+  defects           Defect[]
+  stockTx           StockTransaction[]
+  tasks             Task[]         @relation("TaskAssignee")
+  tasksCreated      Task[]         @relation("TaskCreatedBy")
+  plans             Plan[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  comments          OrderComment[]
+
+  @@index([departmentId])
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────── CATALOG ──────────────────────
+
+model Client {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  contact   String?
+  phone     String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+  models ProductModel[]
+
+  @@map("clients")
+}
+
+model ProductModel {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  name        String
+  category    String?
+  season      String?
+  color       String?
+  fabric      String?
+  lining      String?
+  cost        Decimal?    @db.Decimal(12, 2)
+  description String?
+  photo       String?
+  status      ModelStatus @default(ACTIVE)
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  sizes       ModelSize[]
+  colors      ModelColor[]
+  accessories Accessory[]
+  files       ModelFile[]
+  orders      Order[]
+
+  @@index([clientId])
+  @@index([status])
+  @@map("product_models")
+}
+
+model ModelSize {
+  id      String       @id @default(cuid())
+  modelId String
+  model   ProductModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  size    String
+  qty     Int          @default(0)
+
+  @@unique([modelId, size])
+  @@map("model_sizes")
+}
+
+model ModelColor {
+  id      String       @id @default(cuid())
+  modelId String
+  model   ProductModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  name    String
+  hex     String?
+  photo   String?
+
+  @@map("model_colors")
+}
+
+model Accessory {
+  id      String       @id @default(cuid())
+  modelId String
+  model   ProductModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  name    String
+  color   String?
+  size    String?
+  code    String?
+  qty     Int?
+  photo   String?
+
+  @@map("accessories")
+}
+
+model ModelFile {
+  id      String       @id @default(cuid())
+  modelId String
+  model   ProductModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  name    String
+  url     String
+  mime    String?
+  size    Int?
+  createdAt DateTime   @default(now())
+
+  @@map("model_files")
+}
+
+// ─────────────────────── ORDERS ──────────────────────
+
+model Order {
+  id        String      @id @default(cuid())
+  number    String      @unique
+  clientId  String?
+  client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  modelId   String?
+  model     ProductModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  qty       Int
+  orderDate DateTime
+  deadline  DateTime
+  priority  Priority    @default(NORMAL)
+  status    OrderStatus @default(NEW)
+  note      String?
+
+  responsibleId String?
+  responsible   User?   @relation("OrderResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?   @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  sampleStatus   String?
+  sampleSentAt   DateTime?
+  sampleApprovedAt DateTime?
+  sampleNote     String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  sizes     OrderSize[]
+  stages    OrderStage[]
+  defects   Defect[]
+  shipments Shipment[]
+  comments  OrderComment[]
+  tasks     Task[]
+  stockTx   StockTransaction[]
+
+  @@index([status])
+  @@index([deadline])
+  @@index([clientId])
+  @@index([modelId])
+  @@map("orders")
+}
+
+model OrderSize {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  size    String
+  color   String?
+  qty     Int    @default(0)
+
+  @@map("order_sizes")
+}
+
+model OrderComment {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@map("order_comments")
+}
+
+// ───────────────── PRODUCTION STAGES ─────────────────
+
+model OrderStage {
+  id      String    @id @default(cuid())
+  orderId String
+  order   Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage   StageType
+
+  planQty   Int         @default(0)
+  doneQty   Int         @default(0)
+  defectQty Int         @default(0)
+  status    StageStatus @default(NOT_STARTED)
+
+  responsibleId String?
+  responsible   User?   @relation("StageResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+
+  startDate DateTime?
+  endDate   DateTime?
+  deadline  DateTime?
+  meta      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries StageEntry[]
+
+  @@unique([orderId, stage])
+  @@index([stage])
+  @@index([status])
+  @@map("order_stages")
+}
+
+model StageEntry {
+  id           String     @id @default(cuid())
+  orderStageId String
+  orderStage   OrderStage @relation(fields: [orderStageId], references: [id], onDelete: Cascade)
+  qty          Int        @default(0)
+  defectQty    Int        @default(0)
+  date         DateTime   @default(now())
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  note         String?
+  source       String     @default("WEB") // WEB | TELEGRAM | MINIAPP
+  cancelled    Boolean    @default(false)
+  meta         Json?
+  createdAt    DateTime   @default(now())
+
+  @@index([orderStageId])
+  @@index([date])
+  @@map("stage_entries")
+}
+
+model Defect {
+  id      String    @id @default(cuid())
+  orderId String
+  order   Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage   StageType
+  type    String
+  qty     Int
+  reason  String?
+  comment String?
+  userId  String?
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  date    DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([stage])
+  @@map("defects")
+}
+
+model Shipment {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vehicle     String?
+  driver      String?
+  driverPhone String?
+  qty         Int            @default(0)
+  boxCount    Int            @default(0)
+  loadingDate DateTime?
+  status      ShipmentStatus @default(READY)
+  document    String?
+  trackNo     String?
+  note        String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+// ─────────────────────── WAREHOUSE ──────────────────────
+
+model Material {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  name      String
+  category  String?
+  unit      String         @default("m")
+  stock     Decimal        @default(0) @db.Decimal(14, 3)
+  reserved  Decimal        @default(0) @db.Decimal(14, 3)
+  minStock  Decimal        @default(0) @db.Decimal(14, 3)
+  supplier  String?
+  price     Decimal?       @db.Decimal(12, 2)
+  status    MaterialStatus @default(OK)
+  archivedAt DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  transactions StockTransaction[]
+
+  @@index([category])
+  @@map("materials")
+}
+
+model StockTransaction {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  op         StockOp
+  qty        Decimal  @db.Decimal(14, 3)
+  balance    Decimal  @db.Decimal(14, 3)
+  orderId    String?
+  order      Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([materialId])
+  @@index([createdAt])
+  @@map("stock_transactions")
+}
+
+// ─────────────────── TASKS / PLANS ───────────────────
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  status      TaskStatus @default(TODO)
+  note        String?
+  qty         Int?
+
+  userId String
+  user   User   @relation("TaskAssignee", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  stage   StageType?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Plan {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period    PlanPeriod
+  dateFrom  DateTime
+  dateTo    DateTime
+  targetQty Int        @default(0)
+  doneQty   Int        @default(0)
+  note      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, period, dateFrom])
+  @@map("plans")
+}
+
+// ─────────────── SYSTEM / OBSERVABILITY ───────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  payload   Json?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String?
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  device    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model TelegramSession {
+  id         String   @id @default(cuid())
+  telegramId BigInt   @unique
+  username   String?
+  lang       Lang     @default(UZ)
+  step       String   @default("START")
+  phone      String?
+  userId     String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("telegram_sessions")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

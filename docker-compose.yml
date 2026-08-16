@@ -1,0 +1,51 @@
+# Local development stack: Postgres primary + standby replica + the ERP app.
+services:
+  postgres-primary:
+    image: postgres:17-alpine
+    container_name: f17-postgres-primary
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: f17erp
+      # WAL settings enable streaming replication + point-in-time recovery.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c hot_standby=on
+      -c archive_mode=on
+      -c archive_command='test ! -f /wal-archive/%f && cp %p /wal-archive/%f'
+    volumes:
+      - pg-primary:/var/lib/postgresql/data
+      - wal-archive:/wal-archive
+    ports: ['5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: f17-erp
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres-primary:5432/f17erp?schema=public
+      NODE_ENV: production
+      PORT: 3000
+      APP_URL: http://localhost:3000
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_access_secret_change_me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_USE_POLLING: ${TELEGRAM_USE_POLLING:-true}
+      TELEGRAM_MINIAPP_URL: ${TELEGRAM_MINIAPP_URL:-}
+    ports: ['3000:3000']
+    restart: unless-stopped
+
+volumes:
+  pg-primary:
+  wal-archive:

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.angular
+.git
+.github
+*.log
+.env
+.env.*
+!.env.example
+_to_delete
+.idea
+.vscode

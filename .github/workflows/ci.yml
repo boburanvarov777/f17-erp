@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Type-check & build API
+        run: npm run build:api
+
+      - name: Build web (production)
+        run: npm run build:web
+
+      - name: Unit tests
+        run: npm test --if-present
+
+  # Railway watches the main branch and redeploys on every push,
+  # so a green build here is the gate before the new version goes live.
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - run: echo "✅ Build passed — Railway will deploy this commit."

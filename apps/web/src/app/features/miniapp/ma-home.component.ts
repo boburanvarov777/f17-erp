@@ -1,0 +1,88 @@
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import type { PlanView } from '../../core/models';
+import { ApiService } from '../../core/services/api.service';
+import { NumPipe } from '../../shared/pipes/format.pipe';
+import { TPipe } from '../../shared/pipes/t.pipe';
+import { LoadingComponent } from '../../shared/ui/empty.component';
+import { IconComponent } from '../../shared/ui/icon.component';
+import { ProgressComponent } from '../../shared/ui/progress.component';
+import { MiniAppService } from './miniapp.service';
+
+@Component({
+  selector: 'app-ma-home',
+  standalone: true,
+  imports: [IconComponent, ProgressComponent, LoadingComponent, TPipe, NumPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (ma.user(); as u) {
+      <div class="hero">
+        <div class="row-between">
+          <div>
+            <div class="tiny" style="opacity:.75">{{ greeting() }}</div>
+            <div style="font-size:17px;font-weight:600">{{ u.fullName }}</div>
+            <div class="tiny" style="opacity:.75">{{ u.department?.name || u.position }}</div>
+          </div>
+          <div class="hero-ic"><ui-icon [name]="stageIcon()" [size]="22" /></div>
+        </div>
+      </div>
+
+      @if (loading()) { <ui-loading [count]="3" [height]="70" /> }
+      @else {
+        <div class="col gap-3 mt-4">
+          @for (p of periods; track p.key) {
+            <div class="card card-pad">
+              <div class="row-between mb-3">
+                <b class="small">{{ p.label | t }}</b>
+                <span class="badge badge-neutral">{{ plans()[p.key]?.done || 0 }} / {{ plans()[p.key]?.total || 0 }}</span>
+              </div>
+              <ui-progress [value]="plans()[p.key]?.done || 0" [max]="plans()[p.key]?.total || 1" [showLabel]="false" />
+              <div class="row-between mt-3 tiny text-3">
+                <span>{{ 'produced' | t }}: <b class="text-2">{{ plans()[p.key]?.producedQty || 0 | num }}</b> {{ 'pieces' | t }}</span>
+                @if ((plans()[p.key]?.overdue || 0) > 0) { <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plans()[p.key]?.overdue }}</span> }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+  `,
+  styles: [`
+    .hero { background: linear-gradient(135deg, #1b3a6b, #101828); color: #fff; border-radius: var(--r-xl); padding: 18px; }
+    .hero-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.13); display: flex; align-items: center; justify-content: center; }
+  `],
+})
+export class MaHomeComponent {
+  private api = inject(ApiService);
+  readonly ma = inject(MiniAppService);
+
+  readonly periods = [
+    { key: 'DAILY', label: 'daily_plan' },
+    { key: 'WEEKLY', label: 'weekly_plan' },
+    { key: 'MONTHLY', label: 'monthly_plan' },
+  ];
+  readonly plans = signal<Record<string, PlanView>>({});
+  readonly loading = signal(true);
+
+  constructor() {
+    let pending = this.periods.length;
+    for (const p of this.periods) {
+      this.api.get<PlanView>(`/plans/${p.key}`).subscribe({
+        next: (v) => {
+          this.plans.update((m) => ({ ...m, [p.key]: v }));
+          if (--pending === 0) this.loading.set(false);
+        },
+        error: () => { if (--pending === 0) this.loading.set(false); },
+      });
+    }
+  }
+
+  greeting(): string {
+    const h = new Date().getHours();
+    return h < 12 ? 'Xayrli tong' : h < 18 ? 'Xayrli kun' : 'Xayrli kech';
+  }
+
+  stageIcon(): string {
+    const s = this.ma.user()?.department?.stage;
+    return ({ CUTTING: 'scissors', SEWING: 'needle', WASHING: 'droplets', LASER: 'zap', PACKING: 'package', LOADING: 'truck' } as Record<string, string>)[s ?? ''] ?? 'user';
+  }
+}

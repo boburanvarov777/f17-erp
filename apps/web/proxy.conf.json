@@ -1,0 +1,6 @@
+{
+  "/api": { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/realtime": { "target": "http://localhost:3000", "secure": false, "ws": true },
+  "/socket.io": { "target": "http://localhost:3000", "secure": false, "ws": true },
+  "/docs": { "target": "http://localhost:3000", "secure": false }
+}
