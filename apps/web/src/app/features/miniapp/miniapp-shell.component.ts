@@ -42,7 +42,12 @@ import { haptic } from './telegram';
               </div>
               <div class="field">
                 <label class="label">{{ 'password' | t }}</label>
-                <input class="input" type="password" [(ngModel)]="password" autocomplete="current-password" />
+                <div class="pass-wrap">
+                  <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" />
+                  <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1">
+                    <ui-icon [name]="show() ? 'ban' : 'eye'" [size]="15" />
+                  </button>
+                </div>
               </div>
               @if (error()) { <div class="err-text">{{ error() }}</div> }
               <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy() || !login || !password">
@@ -87,6 +92,8 @@ import { haptic } from './telegram';
     .ma-nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; color: var(--text-3); text-decoration: none; font-size: 10.5px; font-weight: 500; }
     .ma-nav a.on { color: var(--primary-500); }
     .ma-nav a:hover { text-decoration: none; }
+    .pass-wrap { position: relative; }
+    .peek { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; color: var(--text-3); cursor: pointer; padding: 7px; }
   `],
 })
 export class MiniAppShellComponent {
@@ -95,6 +102,7 @@ export class MiniAppShellComponent {
   login = '';
   password = '';
   departmentCode = '';
+  readonly show = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
 

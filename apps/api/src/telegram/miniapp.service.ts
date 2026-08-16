@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { createHmac } from 'crypto';
+import { parse, validate, SignatureInvalidError, ExpiredError } from '@telegram-apps/init-data-node';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from '../modules/auth/auth.service';
 
@@ -15,40 +15,30 @@ export interface TelegramInitUser {
 export class MiniAppService {
   constructor(private prisma: PrismaService, private auth: AuthService) {}
 
-  /**
-   * Verifies Telegram WebApp initData exactly as documented:
-   *   secret = HMAC_SHA256(bot_token, "WebAppData")
-   *   hash   = HMAC_SHA256(data_check_string, secret)
-   * A forged Telegram user cannot pass this check.
-   */
+  /** Verifies Telegram WebApp initData (hash + auth_date). */
   verifyInitData(initData: string, maxAgeSeconds = 86400): TelegramInitUser {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
     if (!token) throw new UnauthorizedException('Bot sozlanmagan');
-    if (!initData) throw new UnauthorizedException('initData yo‘q');
+    if (!initData?.trim()) throw new UnauthorizedException('initData yo‘q');
 
-    const params = new URLSearchParams(initData);
-    const hash = params.get('hash');
-    if (!hash) throw new UnauthorizedException('initData hash yo‘q');
-    params.delete('hash');
-    params.delete('signature');
-
-    const dataCheckString = [...params.entries()]
-      .map(([k, v]) => `${k}=${v}`)
-      .sort()
-      .join('\n');
-
-    const secret = createHmac('sha256', 'WebAppData').update(token).digest();
-    const computed = createHmac('sha256', secret).update(dataCheckString).digest('hex');
-    if (computed !== hash) throw new UnauthorizedException('initData imzosi noto‘g‘ri');
-
-    const authDate = Number(params.get('auth_date') ?? 0);
-    if (!authDate || Date.now() / 1000 - authDate > maxAgeSeconds) {
-      throw new UnauthorizedException('initData muddati tugagan');
+    try {
+      validate(initData, token, { expiresIn: maxAgeSeconds });
+    } catch (e) {
+      if (e instanceof ExpiredError) throw new UnauthorizedException('initData muddati tugagan');
+      if (e instanceof SignatureInvalidError) throw new UnauthorizedException('initData imzosi noto‘g‘ri');
+      throw new UnauthorizedException('initData noto‘g‘ri');
     }
 
-    const raw = params.get('user');
-    if (!raw) throw new UnauthorizedException('initData user yo‘q');
-    return JSON.parse(raw) as TelegramInitUser;
+    const parsed = parse(initData);
+    const user = parsed.user;
+    if (!user?.id) throw new UnauthorizedException('initData user yo‘q');
+    return {
+      id: user.id,
+      first_name: user.firstName as string | undefined,
+      last_name: user.lastName as string | undefined,
+      username: user.username as string | undefined,
+      language_code: user.languageCode as string | undefined,
+    };
   }
 
   /** Exchanges a verified Telegram identity for ERP tokens. */
