@@ -166,7 +166,11 @@ export class LoginComponent {
         // Distinguish "backend is down" from "wrong credentials" — otherwise a
         // stopped API looks exactly like a typo.
         if (e?.status === 0) {
-          this.error.set('Server bilan aloqa yo‘q — API ishga tushganini tekshiring (http://localhost:3000/docs)');
+          const host = typeof window !== 'undefined' ? window.location.hostname : '';
+          const hint = host === 'localhost' || host === '127.0.0.1'
+            ? 'Lokal ishga tushirish: `npm run dev` (API + web birga). Yoki production: https://f17-erp-production.up.railway.app/login'
+            : 'Server bilan aloqa yo‘q — biroz kutib qayta urinib ko‘ring yoki administratorga murojaat qiling.';
+          this.error.set(hint);
           return;
         }
         if (e?.status === 404) {
