@@ -49,16 +49,6 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
               }
             </div>
 
-            @if (m.color?.trim()) {
-              <div class="main-color">
-                <div class="main-color-label">{{ 'color' | t }}</div>
-                <div class="color-pill">
-                  <i class="swatch lg" [style.background]="mainColorHex()"></i>
-                  <span>{{ m.color }}</span>
-                </div>
-              </div>
-            }
-
             <div class="card-body">
               <dl class="kv">
                 <dt>{{ 'category' | t }}</dt><dd>{{ m.category || '—' }}</dd>
@@ -81,7 +71,10 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       <div class="chip"><span class="chip-k">{{ s.size }}</span><span class="chip-v">{{ s.qty | num }}</span></div>
                     }
                   </div>
-                } @else { <ui-empty icon="info" [title]="'no_data' | t" /> }
+                } @else {
+                  <ui-empty icon="info" [title]="'no_data' | t" />
+                  <p class="empty-hint">{{ 'model_sizes_hint' | t }}</p>
+                }
               </div>
             </div>
 
@@ -97,7 +90,10 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       </div>
                     }
                   </div>
-                } @else { <span class="small text-3">—</span> }
+                } @else {
+                  <ui-empty icon="palette" [title]="'no_data' | t" />
+                  <p class="empty-hint">{{ 'model_colors_hint' | t }}</p>
+                }
               </div>
             </div>
 
@@ -113,7 +109,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                         <td class="small">{{ a.size || '—' }}</td><td class="mono small">{{ a.code || '—' }}</td>
                         <td class="num">{{ a.qty || '—' }}</td>
                       </tr>
-                    } @empty { <tr><td colspan="5"><ui-empty icon="package" [title]="'no_data' | t" /></td></tr> }
+                    } @empty {
+                      <tr><td colspan="5">
+                        <ui-empty icon="package" [title]="'no_data' | t" />
+                        <p class="empty-hint">{{ 'model_accessories_hint' | t }}</p>
+                      </td></tr>
+                    }
                   </tbody>
                 </table>
               </div>
@@ -133,7 +134,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                         <td class="small">{{ o.deadline | shortDate }}</td>
                         <td><ui-status [value]="o.status" /></td>
                       </tr>
-                    } @empty { <tr><td colspan="5"><ui-empty icon="clipboard-list" [title]="'no_orders' | t" /></td></tr> }
+                    } @empty {
+                      <tr><td colspan="5">
+                        <ui-empty icon="clipboard-list" [title]="'no_orders' | t" />
+                        <p class="empty-hint">{{ 'model_orders_hint' | t }}</p>
+                      </td></tr>
+                    }
                   </tbody>
                 </table>
               </div>
@@ -171,15 +177,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       height: 220px; display: flex; align-items: center; justify-content: center;
       color: var(--text-3); background: var(--surface-3); border-radius: var(--r); margin-bottom: 12px;
     }
-    .main-color {
-      padding: 12px 14px; border-bottom: 1px solid var(--border);
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .main-color-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
-    .color-pill {
-      display: inline-flex; align-items: center; gap: 10px; padding: 8px 12px;
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); width: fit-content;
-    }
+    .empty-hint { margin: 8px 0 0; text-align: center; font-size: 12px; color: var(--text-3); line-height: 1.45; }
     .lightbox-img { display: block; width: 100%; max-height: min(78vh, 900px); object-fit: contain; margin: 0 auto; border-radius: var(--r); }
     dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
     dl.kv dt { color: var(--text-3); } dl.kv dd { margin: 0; }
@@ -188,7 +186,6 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     .chip-k { display: block; font-size: 11px; color: var(--text-3); text-transform: uppercase; }
     .chip-v { display: block; font-size: 16px; font-weight: 600; }
     .swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); display: inline-block; flex-shrink: 0; }
-    .swatch.lg { width: 28px; height: 28px; border-radius: 50%; }
   `],
 })
 export class ModelDetailComponent {
@@ -208,13 +205,20 @@ export class ModelDetailComponent {
   readonly displayColors = computed((): ModelColor[] => {
     const m = this.model();
     if (!m) return [];
-    return m.colors ?? [];
-  });
-  readonly mainColorHex = computed(() => {
-    const m = this.model();
-    if (!m?.color?.trim()) return '#ccc';
-    const match = m.colors?.find((c) => c.name.toLowerCase() === m.color!.trim().toLowerCase());
-    return match?.hex || '#ccc';
+    const out: ModelColor[] = [];
+    const seen = new Set<string>();
+    const add = (c: ModelColor) => {
+      const key = c.name.trim().toLowerCase();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push({ name: c.name.trim(), hex: c.hex });
+    };
+    if (m.color?.trim()) {
+      const match = m.colors?.find((c) => c.name.trim().toLowerCase() === m.color!.trim().toLowerCase());
+      add({ name: m.color.trim(), hex: match?.hex });
+    }
+    for (const c of m.colors ?? []) add(c);
+    return out;
   });
 
   openPhoto(url: string): void { this.lightboxUrl.set(url); }
