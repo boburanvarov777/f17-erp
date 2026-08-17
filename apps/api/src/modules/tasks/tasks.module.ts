@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Module, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { Prisma, StageType, TaskStatus } from '@prisma/client';
 import { IsDateString, IsEnum, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
@@ -79,7 +79,7 @@ export class TasksService {
   async update(id: string, dto: UpdateTaskDto, actor: JwtUser) {
     const existing = await this.prisma.task.findUniqueOrThrow({ where: { id } });
     if (existing.userId !== actor.sub && !this.canSeeAll(actor)) {
-      throw new Error('Bu vazifani o‘zgartirish huquqingiz yo‘q');
+      throw new ForbiddenException('Bu vazifani o‘zgartirish huquqingiz yo‘q');
     }
     const task = await this.prisma.task.update({
       where: { id },

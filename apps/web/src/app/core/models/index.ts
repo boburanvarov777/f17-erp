@@ -45,13 +45,14 @@ export interface ModelSize { id?: string; size: string; qty: number; }
 export interface ModelColor { id?: string; name: string; hex?: string; photo?: string; }
 export interface Accessory { id?: string; name: string; color?: string; size?: string; code?: string; qty?: number; photo?: string; }
 export interface ModelFile { id: string; name: string; url: string; mime?: string; size?: number; }
+export interface ModelPhoto { id: string; url: string; sortOrder?: number; }
 
 export interface ProductModel {
   id: string; code: string; name: string; category?: string; season?: string; color?: string;
   fabric?: string; lining?: string; cost?: string | number; description?: string; photo?: string;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   client?: Client | null;
-  sizes?: ModelSize[]; colors?: ModelColor[]; accessories?: Accessory[]; files?: ModelFile[];
+  sizes?: ModelSize[]; colors?: ModelColor[]; accessories?: Accessory[]; files?: ModelFile[]; photos?: ModelPhoto[];
   orders?: Order[]; _count?: { orders: number };
 }
 

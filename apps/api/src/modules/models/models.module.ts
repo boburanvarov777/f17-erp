@@ -89,22 +89,11 @@ export class ModelsService {
     return paginate(items, total, dto);
   }
 
-  findOne(id: string) {
-    return this.prisma.productModel.findFirstOrThrow({
-      where: { OR: [{ id }, { code: id }] },
-      include: {
-        client: true, sizes: { orderBy: { size: 'asc' } }, colors: true, accessories: true, files: true,
-        orders: {
-          where: { archivedAt: null },
-          select: { id: true, number: true, qty: true, status: true, deadline: true, orderDate: true },
-          orderBy: { orderDate: 'desc' }, take: 50,
-        },
-      },
-    });
-  }
-
   async create(dto: CreateModelDto, actor: JwtUser) {
-    const { sizes, colors, accessories, clientId, cost, ...rest } = dto;
+    const { sizes, colors, accessories, clientId, cost, photo, ...rest } = dto;
+    if (photo?.startsWith('data:')) {
+      throw new BadRequestException('Rasmni model yaratgach alohida yuklang: POST /models/:id/photos');
+    }
     const model = await this.prisma.productModel.create({
       data: {
         ...rest,
@@ -115,7 +104,7 @@ export class ModelsService {
         colors: colors?.length ? { create: colors } : undefined,
         accessories: accessories?.length ? { create: accessories } : undefined,
       },
-      include: { sizes: true, colors: true, accessories: true },
+      include: { sizes: true, colors: true, accessories: true, photos: { orderBy: { sortOrder: 'asc' } } },
     });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.MODEL_CREATED, entity: 'ProductModel', entityId: model.id, newValue: { code: model.code, name: model.name } });
     return model;
@@ -123,7 +112,10 @@ export class ModelsService {
 
   async update(id: string, dto: UpdateModelDto, actor: JwtUser) {
     const existing = await this.prisma.productModel.findUniqueOrThrow({ where: { id }, include: { sizes: true } });
-    const { sizes, colors, accessories, clientId, cost, code, ...rest } = dto;
+    const { sizes, colors, accessories, clientId, cost, code, photo, ...rest } = dto;
+    if (photo?.startsWith('data:')) {
+      throw new BadRequestException('Rasmni alohida yuklang: POST /models/:id/photos');
+    }
 
     const model = await this.prisma.$transaction(async (tx) => {
       if (sizes) {
@@ -146,12 +138,55 @@ export class ModelsService {
           cost: cost != null ? new Prisma.Decimal(cost) : undefined,
           ...(clientId !== undefined ? { client: clientId ? { connect: { id: clientId } } : { disconnect: true } } : {}),
         },
-        include: { sizes: true, colors: true, accessories: true, client: true },
+        include: { sizes: true, colors: true, accessories: true, client: true, photos: { orderBy: { sortOrder: 'asc' } } },
       });
     });
 
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.MODEL_UPDATED, entity: 'ProductModel', entityId: id, oldValue: { name: existing.name }, newValue: dto });
     return model;
+  }
+
+  findOne(id: string) {
+    return this.prisma.productModel.findFirstOrThrow({
+      where: { OR: [{ id }, { code: id }] },
+      include: {
+        client: true, sizes: { orderBy: { size: 'asc' } }, colors: true, accessories: true, files: true,
+        photos: { orderBy: { sortOrder: 'asc' } },
+        orders: {
+          where: { archivedAt: null },
+          select: { id: true, number: true, qty: true, status: true, deadline: true, orderDate: true },
+          orderBy: { orderDate: 'desc' }, take: 50,
+        },
+      },
+    }).then(async (model) => {
+      if (model.photo && !model.photos.length) {
+        const legacy = await this.prisma.modelPhoto.create({
+          data: { modelId: model.id, url: model.photo, sortOrder: 0 },
+        });
+        model.photos = [legacy];
+      }
+      return model;
+    });
+  }
+
+  private async syncCoverPhoto(modelId: string) {
+    const first = await this.prisma.modelPhoto.findFirst({ where: { modelId }, orderBy: { sortOrder: 'asc' } });
+    await this.prisma.productModel.update({ where: { id: modelId }, data: { photo: first?.url ?? null } });
+  }
+
+  async addPhoto(modelId: string, file: { mimetype: string; size: number; buffer: Buffer }) {
+    await this.prisma.productModel.findUniqueOrThrow({ where: { id: modelId } });
+    const url = toPhotoDataUrl(file);
+    const count = await this.prisma.modelPhoto.count({ where: { modelId } });
+    const photo = await this.prisma.modelPhoto.create({ data: { modelId, url, sortOrder: count } });
+    if (count === 0) await this.prisma.productModel.update({ where: { id: modelId }, data: { photo: url } });
+    return photo;
+  }
+
+  async removePhoto(photoId: string) {
+    const photo = await this.prisma.modelPhoto.delete({ where: { id: photoId } });
+    await this.syncCoverPhoto(photo.modelId);
+    return { success: true };
   }
 
   /** Models used by orders are archived, never physically deleted. */
@@ -188,12 +223,25 @@ export class ModelsController {
 
   @Post('upload-photo')
   @RequirePermissions('models.create', 'models.update')
-  @ApiOperation({ summary: 'Upload model photo — stored as base64 data URL in DB' })
+  @ApiOperation({ summary: 'Upload model photo (legacy) — prefer POST /models/:id/photos' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
   uploadPhoto(@UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
     if (!file) throw new BadRequestException('Rasm tanlanmadi');
     return { photo: toPhotoDataUrl(file) };
   }
+
+  @Post(':id/photos')
+  @RequirePermissions('models.create', 'models.update')
+  @ApiOperation({ summary: 'Attach photo to model (multipart, max 2 MB)' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
+  addPhoto(@Param('id') id: string, @UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
+    if (!file) throw new BadRequestException('Rasm tanlanmadi');
+    return this.service.addPhoto(id, file);
+  }
+
+  @Delete('photos/:photoId')
+  @RequirePermissions('models.update')
+  removePhoto(@Param('photoId') photoId: string) { return this.service.removePhoto(photoId); }
 
   @Get(':id') @RequirePermissions('models.read')
   findOne(@Param('id') id: string) { return this.service.findOne(id); }

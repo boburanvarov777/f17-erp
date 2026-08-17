@@ -18,7 +18,7 @@ export class NotificationsController {
   unreadCount(@CurrentUser('sub') userId: string) { return this.service.unreadCount(userId); }
 
   @Post(':id/read')
-  markRead(@Param('id') id: string) { return this.service.markRead(id); }
+  markRead(@Param('id') id: string, @CurrentUser('sub') userId: string) { return this.service.markRead(id, userId); }
 
   @Post('read-all')
   markAllRead(@CurrentUser('sub') userId: string) { return this.service.markAllRead(userId); }

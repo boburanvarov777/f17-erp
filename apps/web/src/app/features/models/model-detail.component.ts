@@ -33,9 +33,17 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
         <div class="grid layout">
           <div class="card">
-            <div class="photo">
-              @if (m.photo) { <img [src]="m.photo" [alt]="m.name" /> } @else { <ui-icon name="shirt" [size]="52" [stroke]="1.1" /> }
-            </div>
+            @if (m.photos?.length) {
+              <div class="photo-gallery">
+                @for (p of m.photos; track p.id) {
+                  <div class="photo"><img [src]="p.url" [alt]="m.name" /></div>
+                }
+              </div>
+            } @else {
+              <div class="photo">
+                @if (m.photo) { <img [src]="m.photo" [alt]="m.name" /> } @else { <ui-icon name="shirt" [size]="52" [stroke]="1.1" /> }
+              </div>
+            }
             <div class="card-body">
               <dl class="kv">
                 <dt>{{ 'category' | t }}</dt><dd>{{ m.category || '—' }}</dd>
@@ -124,7 +132,11 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
   styles: [`
     .grid.layout { grid-template-columns: 330px minmax(0, 1fr); align-items: start; }
     @media (max-width: 960px) { .grid.layout { grid-template-columns: 1fr; } }
-    .photo { height: 300px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); border-radius: var(--r-lg) var(--r-lg) 0 0; overflow: hidden; }
+    .photo { height: 300px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); overflow: hidden; }
+    .photo-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 2px; }
+    .photo-gallery .photo { height: 180px; border-radius: 0; }
+    .photo-gallery .photo:first-child { border-radius: var(--r-lg) 0 0 0; }
+    .photo-gallery .photo:last-child:nth-child(odd) { border-radius: 0 var(--r-lg) 0 0; }
     .photo img { width: 100%; height: 100%; object-fit: cover; }
     dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
     dl.kv dt { color: var(--text-3); } dl.kv dd { margin: 0; }

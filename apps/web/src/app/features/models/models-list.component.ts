@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import type { Client, ModelSize, Paginated, ProductModel } from '../../core/models';
+import { forkJoin, of, switchMap } from 'rxjs';
+import type { Client, ModelPhoto, ModelSize, Paginated, ProductModel } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -143,15 +144,29 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           <div class="field full">
             <label class="label">{{ 'photo' | t }}</label>
             <div class="photo-upload">
-              <div class="photo-preview">
-                @if (photoPreview()) {
-                  <img [src]="photoPreview()!" [alt]="form.name || 'model'" />
-                } @else {
-                  <ui-icon name="image" [size]="34" [stroke]="1.2" />
+              <div class="photo-gallery">
+                @for (p of existingPhotos(); track p.id) {
+                  <div class="photo-thumb">
+                    <img [src]="p.url" [alt]="form.name || 'model'" />
+                    <button class="photo-remove" type="button" (click)="removeExistingPhoto(p.id)" [attr.data-tip]="'photo_remove' | t">
+                      <ui-icon name="x" [size]="14" />
+                    </button>
+                  </div>
+                }
+                @for (p of pendingPreviews(); track p.key) {
+                  <div class="photo-thumb">
+                    <img [src]="p.url" [alt]="form.name || 'model'" />
+                    <button class="photo-remove" type="button" (click)="removePendingPhoto(p.key)" [attr.data-tip]="'photo_remove' | t">
+                      <ui-icon name="x" [size]="14" />
+                    </button>
+                  </div>
+                }
+                @if (!existingPhotos().length && !pendingPreviews().length) {
+                  <div class="photo-empty"><ui-icon name="image" [size]="34" [stroke]="1.2" /></div>
                 }
               </div>
               <div class="photo-actions col gap-2">
-                <input #photoInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden (change)="onPhotoSelected($event)" />
+                <input #photoInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden (change)="onPhotoSelected($event)" />
                 <button class="btn btn-sm" type="button" (click)="photoInput.click()" [disabled]="photoUploading()" [attr.data-tip]="'upload_photo' | t">
                   @if (photoUploading()) {
                     <span class="spinner"></span> {{ 'photo_uploading' | t }}
@@ -159,11 +174,6 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                     <ui-icon name="image" [size]="15" /> {{ 'upload_photo' | t }}
                   }
                 </button>
-                @if (photoPreview()) {
-                  <button class="btn btn-ghost btn-sm" type="button" (click)="clearPhoto()" [attr.data-tip]="'photo_remove' | t">
-                    <ui-icon name="trash" [size]="14" /> {{ 'photo_remove' | t }}
-                  </button>
-                }
                 <div class="tiny text-3">{{ 'photo_hint' | t }}</div>
               </div>
             </div>
@@ -211,11 +221,20 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
     .photo-upload { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-    .photo-preview {
-      width: 132px; height: 132px; border-radius: var(--r-lg); border: 1px dashed var(--border-strong);
-      background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); overflow: hidden; flex-shrink: 0;
+    .photo-gallery { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; min-width: 200px; }
+    .photo-thumb {
+      position: relative; width: 96px; height: 96px; border-radius: var(--r); border: 1px solid var(--border-strong);
+      background: var(--surface-3); overflow: hidden; flex-shrink: 0;
     }
-    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-remove {
+      position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 50%;
+      background: rgba(0,0,0,.55); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .photo-empty {
+      width: 96px; height: 96px; border-radius: var(--r); border: 1px dashed var(--border-strong);
+      background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3);
+    }
     .photo-actions { flex: 1; min-width: 200px; }
   `],
 })
@@ -236,7 +255,9 @@ export class ModelsListComponent {
   readonly editing = signal<Partial<ProductModel> | null>(null);
   readonly archiving = signal<ProductModel | null>(null);
   readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
-  readonly photoPreview = signal<string | null>(null);
+  readonly existingPhotos = signal<ModelPhoto[]>([]);
+  readonly pendingPreviews = signal<{ key: string; url: string; file: File }[]>([]);
+  readonly removedPhotoIds = signal<string[]>([]);
   readonly photoUploading = signal(false);
   readonly fe = new FieldErrorsState();
 
@@ -267,45 +288,57 @@ export class ModelsListComponent {
     this.form = {
       code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', season: m.season ?? '',
       color: m.color ?? '', clientId: m.client?.id ?? '', fabric: m.fabric ?? '', lining: m.lining ?? '',
-      cost: m.cost ? +m.cost : null, photo: m.photo ?? '', description: m.description ?? '',
+      cost: m.cost ? +m.cost : null, description: m.description ?? '',
     };
-    this.photoPreview.set(m.photo ?? null);
+    this.revokePendingPreviews();
+    this.removedPhotoIds.set([]);
     this.photoUploading.set(false);
     this.sizes.set((m.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
     this.editing.set(m);
+    if (m.id) {
+      this.api.get<ProductModel>(`/models/${m.id}`).subscribe({
+        next: (full) => this.existingPhotos.set(full.photos ?? []),
+        error: () => this.existingPhotos.set([]),
+      });
+    } else {
+      this.existingPhotos.set([]);
+    }
   }
 
   onPhotoSelected(e: Event): void {
     const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const files = Array.from(input.files ?? []);
     input.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      this.toast.error(this.i18n.t('photo_hint'));
-      return;
+    if (!files.length) return;
+    const valid: File[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) {
+        this.toast.error(this.i18n.t('photo_hint'));
+        continue;
+      }
+      valid.push(file);
     }
-    if (file.size > 2 * 1024 * 1024) {
-      this.toast.error(this.i18n.t('photo_hint'));
-      return;
-    }
-    this.photoUploading.set(true);
-    this.api.upload<{ photo: string }>('/models/upload-photo', file).subscribe({
-      next: (r) => {
-        this.form['photo'] = r.photo;
-        this.photoPreview.set(r.photo);
-        this.photoUploading.set(false);
-      },
-      error: (err) => {
-        this.photoUploading.set(false);
-        const m = err?.error?.message;
-        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
-      },
-    });
+    if (!valid.length) return;
+    this.pendingPreviews.update((p) => [
+      ...p,
+      ...valid.map((f) => ({ key: crypto.randomUUID(), url: URL.createObjectURL(f), file: f })),
+    ]);
   }
 
-  clearPhoto(): void {
-    this.form['photo'] = '';
-    this.photoPreview.set(null);
+  removeExistingPhoto(id: string): void {
+    this.existingPhotos.update((p) => p.filter((x) => x.id !== id));
+    this.removedPhotoIds.update((ids) => [...ids, id]);
+  }
+
+  removePendingPhoto(key: string): void {
+    const item = this.pendingPreviews().find((p) => p.key === key);
+    if (item) URL.revokeObjectURL(item.url);
+    this.pendingPreviews.update((p) => p.filter((x) => x.key !== key));
+  }
+
+  private revokePendingPreviews(): void {
+    for (const p of this.pendingPreviews()) URL.revokeObjectURL(p.url);
+    this.pendingPreviews.set([]);
   }
 
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); }
@@ -322,15 +355,35 @@ export class ModelsListComponent {
     const body: Record<string, unknown> = { ...this.form };
     if (!body['clientId']) delete body['clientId'];
     if (body['cost'] == null) delete body['cost'];
-    if (!body['photo']) delete body['photo'];
     const sizes = this.sizes().filter((s) => s.size);
     if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) }));
 
     const id = this.editing()?.id;
-    const req = id ? this.api.patch(`/models/${id}`, body) : this.api.post('/models', body);
-    req.subscribe({
-      next: () => { this.busy.set(false); this.editing.set(null); this.toast.success(this.i18n.t('saved')); this.reload(false); },
-      error: () => this.busy.set(false),
+    const pending = this.pendingPreviews().map((p) => p.file);
+    const removed = this.removedPhotoIds();
+    const req = id ? this.api.patch<ProductModel>(`/models/${id}`, body) : this.api.post<ProductModel>('/models', body);
+    req.pipe(
+      switchMap((model) => {
+        const modelId = id || model.id;
+        const ops = [
+          ...removed.map((pid) => this.api.delete(`/models/photos/${pid}`)),
+          ...pending.map((f) => this.api.upload(`/models/${modelId}/photos`, f)),
+        ];
+        return ops.length ? forkJoin(ops) : of(null);
+      }),
+    ).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.revokePendingPreviews();
+        this.editing.set(null);
+        this.toast.success(this.i18n.t('saved'));
+        this.reload(false);
+      },
+      error: (err) => {
+        this.busy.set(false);
+        const m = err?.error?.message;
+        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
     });
   }
 

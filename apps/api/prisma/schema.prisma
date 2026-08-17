@@ -241,6 +241,7 @@ model ProductModel {
   colors      ModelColor[]
   accessories Accessory[]
   files       ModelFile[]
+  photos      ModelPhoto[]
   orders      Order[]
 
   @@index([clientId])
@@ -295,6 +296,18 @@ model ModelFile {
   createdAt DateTime   @default(now())
 
   @@map("model_files")
+}
+
+model ModelPhoto {
+  id        String       @id @default(cuid())
+  modelId   String
+  model     ProductModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  @@index([modelId])
+  @@map("model_photos")
 }
 
 // ─────────────────────── ORDERS ──────────────────────
