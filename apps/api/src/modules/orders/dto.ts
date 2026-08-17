@@ -24,14 +24,15 @@ export class CreateOrderDto {
   @ApiPropertyOptional({ type: [OrderSizeDto] })
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => OrderSizeDto)
   sizes?: OrderSizeDto[];
-}
 
-export class UpdateOrderDto extends PartialType(CreateOrderDto) {
-  @ApiPropertyOptional() @IsOptional() @IsString() sampleStatus?: string;
+  @ApiPropertyOptional({ description: 'PENDING | SENT | APPROVED | REJECTED' })
+  @IsOptional() @IsString() sampleStatus?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() sampleSentAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() sampleApprovedAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() sampleNote?: string;
 }
+
+export class UpdateOrderDto extends PartialType(CreateOrderDto) {}
 
 export class QueryOrdersDto extends PaginationDto {
   @ApiPropertyOptional({ enum: OrderStatus }) @IsOptional() @IsEnum(OrderStatus) status?: OrderStatus;

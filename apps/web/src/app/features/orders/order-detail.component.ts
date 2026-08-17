@@ -126,17 +126,22 @@ const STAGE_ICON: Record<string, string> = {
                     <dt>{{ 'note' | t }}</dt><dd>{{ o.note || '—' }}</dd>
                   </dl>
                   <div class="divider"></div>
-                  <b class="small">{{ 'sample' | t }}</b>
-                  <dl class="kv mt-2">
-                    <dt>{{ 'status' | t }}</dt>
-                    <dd>@if (o.sampleStatus) { <ui-status [value]="o.sampleStatus" /> } @else { — }</dd>
-                    <dt>{{ 'sample_sent' | t }}</dt><dd>{{ o.sampleSentAt | shortDate }}</dd>
-                    <dt>{{ 'sample_approved' | t }}</dt><dd>{{ o.sampleApprovedAt | shortDate }}</dd>
-                  </dl>
-                  @if (sampleWarning()) {
-                    <div class="badge badge-warning mt-3" style="width:100%;justify-content:flex-start;padding:9px 11px;border-radius:var(--r)">
-                      <ui-icon name="alert-triangle" [size]="14" /> {{ 'sample_warning' | t }}
-                    </div>
+                  <div class="row-between">
+                    <b class="small">{{ 'sample' | t }}</b>
+                    @if (o.sampleStatus) { <ui-status [value]="o.sampleStatus" /> } @else { <span class="small text-3">{{ 'sample_not_tracked' | t }}</span> }
+                  </div>
+                  @if (o.sampleStatus) {
+                    <dl class="kv mt-2">
+                      <dt>{{ 'sample_sent' | t }}</dt><dd>{{ o.sampleSentAt ? (o.sampleSentAt | shortDate) : '—' }}</dd>
+                      <dt>{{ 'sample_approved' | t }}</dt><dd>{{ o.sampleApprovedAt ? (o.sampleApprovedAt | shortDate) : '—' }}</dd>
+                    </dl>
+                    @if (sampleWarning()) {
+                      <div class="badge badge-warning mt-3" style="width:100%;align-items:flex-start;justify-content:flex-start;padding:9px 11px;border-radius:var(--r);white-space:normal;text-align:left;line-height:1.4;height:auto">
+                        <ui-icon name="alert-triangle" [size]="14" /> {{ 'sample_warning' | t }}
+                      </div>
+                    }
+                  } @else {
+                    <div class="small text-3 mt-2">{{ 'sample_not_tracked_hint' | t }}</div>
                   }
                 </div>
               </div>
@@ -323,11 +328,12 @@ export class OrderDetailComponent {
 
   readonly totalDefects = computed(() => (this.order()?.stages ?? []).reduce((a, s) => a + s.defectQty, 0));
   readonly sizeTotal = computed(() => (this.order()?.sizes ?? []).reduce((a, s) => a + s.qty, 0));
+  /** Only warn when the sample is actively tracked and cutting is still running. */
   readonly sampleWarning = computed(() => {
     const o = this.order();
-    if (!o) return false;
+    if (!o?.sampleStatus || o.sampleStatus === 'APPROVED') return false;
     const cutting = o.stages?.find((s) => s.stage === 'CUTTING');
-    return !!cutting && cutting.doneQty > 0 && o.sampleStatus !== 'APPROVED';
+    return !!cutting && cutting.doneQty > 0 && cutting.doneQty < cutting.planQty;
   });
 
   constructor() {

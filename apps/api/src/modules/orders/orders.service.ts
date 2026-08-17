@@ -117,6 +117,10 @@ export class OrdersService {
           model: dto.modelId ? { connect: { id: dto.modelId } } : undefined,
           responsible: dto.responsibleId ? { connect: { id: dto.responsibleId } } : undefined,
           createdBy: { connect: { id: actor.sub } },
+          sampleStatus: dto.sampleStatus,
+          sampleSentAt: dto.sampleSentAt ? new Date(dto.sampleSentAt) : undefined,
+          sampleApprovedAt: dto.sampleApprovedAt ? new Date(dto.sampleApprovedAt) : undefined,
+          sampleNote: dto.sampleNote,
           sizes: dto.sizes?.length ? { create: dto.sizes } : undefined,
         },
       });

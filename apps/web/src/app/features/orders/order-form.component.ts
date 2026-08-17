@@ -99,6 +99,30 @@ interface SizeRow { size: string; qty: number | null; }
       <div class="divider"></div>
 
       <div class="row-between mb-3">
+        <b style="font-size:13.5px">{{ 'sample' | t }}</b>
+        <span class="small text-3">{{ 'sample_optional' | t }}</span>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label">{{ 'sample_status' | t }}</label>
+          <select class="select" [(ngModel)]="form.sampleStatus">
+            <option value="">{{ 'sample_not_tracked' | t }}</option>
+            @for (s of sampleStatuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+          </select>
+        </div>
+        <div class="field">
+          <label class="label">{{ 'sample_sent' | t }}</label>
+          <input class="input" type="date" [(ngModel)]="form.sampleSentAt" />
+        </div>
+        <div class="field">
+          <label class="label">{{ 'sample_approved' | t }}</label>
+          <input class="input" type="date" [(ngModel)]="form.sampleApprovedAt" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row-between mb-3">
         <b style="font-size:13.5px">{{ 'size_breakdown' | t }}</b>
         <div class="row gap-2">
           <span class="badge" [class.badge-success]="sizeTotal() === (form.qty ?? 0)" [class.badge-warning]="sizeTotal() !== (form.qty ?? 0)">
@@ -186,6 +210,7 @@ export class OrderFormComponent {
 
   readonly statuses: OrderStatus[] = ['NEW', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'LOADING', 'COMPLETED', 'DELAYED', 'CANCELLED'];
   readonly priorities: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+  readonly sampleStatuses = ['PENDING', 'SENT', 'APPROVED', 'REJECTED'];
 
   readonly users = signal<User[]>([]);
   readonly extraClients = signal<Client[]>([]);
@@ -204,6 +229,7 @@ export class OrderFormComponent {
     orderDate: '',
     deadline: '', priority: '' as Priority | '', status: '' as OrderStatus | '',
     note: '', responsibleId: '',
+    sampleStatus: '', sampleSentAt: '', sampleApprovedAt: '',
   };
 
   readonly isNew = computed(() => !this.order()?.id);
@@ -231,6 +257,9 @@ export class OrderFormComponent {
           status: o.status ?? 'NEW',
           note: o.note ?? '',
           responsibleId: o.responsible?.id ?? '',
+          sampleStatus: o.sampleStatus ?? '',
+          sampleSentAt: (o.sampleSentAt ?? '').slice(0, 10),
+          sampleApprovedAt: (o.sampleApprovedAt ?? '').slice(0, 10),
         };
         this.sizes.set((o.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
       }
@@ -324,6 +353,9 @@ export class OrderFormComponent {
       status: this.form.status || 'NEW',
       note: this.form.note || undefined,
       responsibleId: this.form.responsibleId || undefined,
+      sampleStatus: this.form.sampleStatus || undefined,
+      sampleSentAt: this.form.sampleSentAt ? new Date(this.form.sampleSentAt).toISOString() : undefined,
+      sampleApprovedAt: this.form.sampleApprovedAt ? new Date(this.form.sampleApprovedAt).toISOString() : undefined,
       sizes: sizes.length ? sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) })) : undefined,
     };
 
