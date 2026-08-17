@@ -76,28 +76,56 @@ const STAGE_ICON: Record<string, string> = {
 
         <!-- production chain -->
         <div class="card mb-6">
-          <div class="card-head"><h3>{{ 'production_progress' | t }}</h3></div>
+          <div class="card-head row-between">
+            <h3>{{ 'production_progress' | t }}</h3>
+            <span class="small text-3">{{ chainDoneCount(o) }} / {{ o.stages?.length ?? 0 }}</span>
+          </div>
           <div class="card-body">
-            <div class="chain">
-              @for (s of o.stages; track s.stage; let last = $last) {
-                <div class="chain-node">
-                  <a class="node" [routerLink]="['/production', s.stage.toLowerCase()]" [class.done]="s.status === 'COMPLETED'" [class.active]="s.status === 'IN_PROGRESS'">
-                    <span class="node-ic"><ui-icon [name]="stageIcon(s.stage)" [size]="17" /></span>
-                    <span class="node-body">
-                      <span class="node-name">{{ 'stage_' + s.stage | t }}</span>
-                      <span class="node-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
-                      <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
-                      <span class="node-meta">
-                        <ui-status [value]="s.status" />
-                        @if (s.defectQty) {
-                          <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="10" /> {{ 'defect_label' | t }} {{ s.defectQty }}</span>
-                        }
-                        @if (s.responsible) { <span class="tiny text-3">{{ s.responsible.lastName }}</span> }
+            <div class="pipeline-track" aria-hidden="true">
+              @for (s of o.stages; track s.stage) {
+                <span class="track-seg" [class.done]="s.status === 'COMPLETED'" [class.active]="s.status === 'IN_PROGRESS'"></span>
+              }
+            </div>
+            <div class="pipeline-grid">
+              @for (s of o.stages; track s.stage; let i = $index) {
+                <a
+                  class="pipeline-card"
+                  [routerLink]="['/production', s.stage.toLowerCase()]"
+                  [class.done]="s.status === 'COMPLETED'"
+                  [class.active]="s.status === 'IN_PROGRESS'"
+                  [class.waiting]="s.status === 'WAITING'"
+                  [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+                >
+                  <div class="pipeline-head">
+                    <span class="pipeline-icon"><ui-icon [name]="stageIcon(s.stage)" [size]="18" /></span>
+                    <div class="pipeline-title">
+                      <span class="pipeline-name">{{ 'stage_' + s.stage | t }}</span>
+                      <span class="pipeline-step">{{ i + 1 }} / {{ o.stages?.length ?? 0 }}</span>
+                    </div>
+                  </div>
+
+                  <div class="pipeline-metrics">
+                    <span class="pipeline-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
+                    <span class="pipeline-pct" [style.color]="stagePctColor(s)">{{ stagePct(s) }}%</span>
+                  </div>
+                  <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
+
+                  <div class="pipeline-foot">
+                    <ui-status [value]="s.status" [wrap]="true" />
+                    @if (s.defectQty) {
+                      <span class="badge badge-danger pipeline-defect" [attr.data-tip]="'defect_label' | t">
+                        <ui-icon name="alert-triangle" [size]="11" />
+                        {{ s.defectQty | num }}
                       </span>
-                    </span>
-                  </a>
-                  @if (!last) { <div class="chain-arrow"><ui-icon name="chevron-right" [size]="16" /></div> }
-                </div>
+                    }
+                  </div>
+
+                  @if (s.responsible) {
+                    <div class="pipeline-user" [attr.title]="s.responsible.lastName + ' ' + s.responsible.firstName">
+                      {{ s.responsible.lastName }} {{ s.responsible.firstName }}
+                    </div>
+                  }
+                </a>
               }
             </div>
           </div>
@@ -280,18 +308,97 @@ const STAGE_ICON: Record<string, string> = {
     dl.kv dt { color: var(--text-3); }
     dl.kv dd { margin: 0; font-weight: 450; }
 
-    .chain { display: flex; align-items: stretch; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
-    .chain-node { display: flex; align-items: center; flex: 1; min-width: 168px; }
-    .node { display: flex; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-2); flex: 1; text-decoration: none; color: inherit; transition: border-color .15s ease, background .15s ease; }
-    .node:hover { border-color: var(--border-strong); text-decoration: none; }
-    .node.done { background: var(--success-bg); border-color: var(--success-br); }
-    .node.active { background: var(--warning-bg); border-color: var(--warning-br); }
-    .node-ic { width: 30px; height: 30px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
-    .node-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
-    .node-name { font-size: 12.5px; font-weight: 600; }
-    .node-qty { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-    .node-meta { display: flex; gap: 5px; align-items: center; }
-    .chain-arrow { color: var(--text-3); padding: 0 2px; }
+    .pipeline-track {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .track-seg {
+      height: 5px;
+      border-radius: 100px;
+      background: var(--neutral-bg);
+      border: 1px solid var(--neutral-br);
+    }
+    .track-seg.done { background: var(--success); border-color: var(--success-br); }
+    .track-seg.active { background: var(--warning); border-color: var(--warning-br); }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .pipeline-card {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      background: var(--surface-2);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color .15s ease, box-shadow .15s ease, transform .12s ease;
+    }
+    .pipeline-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--sh-2);
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+    .pipeline-card.done { background: var(--success-bg); border-color: var(--success-br); }
+    .pipeline-card.active { background: var(--warning-bg); border-color: var(--warning-br); }
+    .pipeline-card.waiting { background: var(--info-bg); border-color: var(--info-br); }
+    .pipeline-card.idle { background: var(--surface-2); border-color: var(--border); opacity: .92; }
+
+    .pipeline-head { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+    .pipeline-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      color: var(--text-2);
+    }
+    .pipeline-card.done .pipeline-icon { background: #fff; color: var(--success); border-color: var(--success-br); }
+    .pipeline-card.active .pipeline-icon { background: #fff; color: var(--warning); border-color: var(--warning-br); }
+    .pipeline-title { min-width: 0; flex: 1; }
+    .pipeline-name { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+    .pipeline-step { display: block; margin-top: 2px; font-size: 10.5px; color: var(--text-3); letter-spacing: .02em; }
+
+    .pipeline-metrics { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .pipeline-qty { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pipeline-pct { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .pipeline-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .pipeline-foot ui-status { flex: 1 1 auto; min-width: 0; }
+    .pipeline-foot .status-badge { max-width: 100%; }
+    .pipeline-defect { flex-shrink: 0; gap: 4px; padding-inline: 8px; }
+
+    .pipeline-user {
+      font-size: 11.5px;
+      color: var(--text-3);
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border);
+    }
+
+    @media (max-width: 900px) {
+      .pipeline-track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .pipeline-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
 
     .size-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
     .chip { border: 1px solid var(--border); border-radius: var(--r); padding: 9px; text-align: center; background: var(--surface-2); }
@@ -368,6 +475,21 @@ export class OrderDetailComponent {
   }
 
   stageIcon(s: StageType): string { return STAGE_ICON[s] ?? 'circle-dot'; }
+
+  stagePct(s: { doneQty: number; planQty: number }): number {
+    return s.planQty ? Math.round((s.doneQty / s.planQty) * 100) : 0;
+  }
+
+  stagePctColor(s: { doneQty: number; planQty: number; status: string }): string {
+    const p = this.stagePct(s);
+    if (p >= 100) return 'var(--success)';
+    if (s.status === 'IN_PROGRESS') return 'var(--warning)';
+    return 'var(--text-3)';
+  }
+
+  chainDoneCount(o: Order): number {
+    return o.stages?.filter((s) => s.status === 'COMPLETED').length ?? 0;
+  }
 
   onSaved(): void {
     this.editing.set(null);

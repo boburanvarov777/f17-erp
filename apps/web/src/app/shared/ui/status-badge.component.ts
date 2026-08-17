@@ -39,19 +39,21 @@ const STAGE_ICONS: Record<string, string> = {
   imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="badge status-badge" [class]="'badge-' + tone()">
+    <span class="badge status-badge" [class.wrap]="wrap()" [class]="'badge-' + tone()">
       <ui-icon [name]="icon()" [size]="11" />
       <span>{{ prefix() + value() | t }}</span>
     </span>
   `,
   styles: [`
     .status-badge { gap: 5px; }
+    .status-badge.wrap { white-space: normal; height: auto; min-height: 22px; line-height: 1.25; padding-block: 3px; }
     .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
   `],
 })
 export class StatusBadgeComponent {
   readonly value = input.required<string>();
   readonly prefix = input('st_');
+  readonly wrap = input(false);
   readonly tone = computed<Tone>(() => {
     if (this.prefix() === 'stage_') return 'neutral';
     return TONES[this.value()] ?? 'neutral';
