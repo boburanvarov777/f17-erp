@@ -2,12 +2,11 @@ import {
   ChangeDetectionStrategy, Component, HostListener, computed, forwardRef, inject, input, signal,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import type { Lang } from '../../core/models';
 import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../pipes/t.pipe';
 import { IconComponent } from './icon.component';
 
-const LOCALE: Record<Lang, string> = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-GB' };
+const WEEKDAY_KEYS = ['wd_mon', 'wd_tue', 'wd_wed', 'wd_thu', 'wd_fri', 'wd_sat', 'wd_sun'] as const;
 
 interface DayCell {
   day: number;
@@ -217,10 +216,9 @@ function todayIso(): string {
     }
     .date-weekdays span {
       text-align: center;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .04em;
+      letter-spacing: .02em;
       color: var(--text-3);
       padding: 2px 0;
     }
@@ -323,29 +321,27 @@ export class DateInputComponent implements ControlValueAccessor {
   private onChange: (v: string) => void = () => void 0;
   private onTouched: () => void = () => void 0;
 
-  readonly locale = computed(() => LOCALE[this.i18n.lang()]);
+  readonly locale = computed(() => this.i18n.lang());
   readonly hasValue = computed(() => !!this.value());
   readonly displayText = computed(() => {
+    this.locale();
     const raw = this.value();
     if (!raw) return this.placeholder() || this.i18n.t('select_date');
     const parsed = parseIsoDate(raw);
     if (!parsed) return raw;
-    const d = new Date(parsed.y, parsed.m, parsed.d);
-    let text = d.toLocaleDateString(this.locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+    let text = this.formatDateLabel(parsed.d, parsed.m, parsed.y);
     if (this.mode() === 'datetime') text += ` · ${this.timePart()}`;
     return text;
   });
 
-  readonly monthLabel = computed(() =>
-    new Intl.DateTimeFormat(this.locale(), { month: 'long', year: 'numeric' }).format(
-      new Date(this.viewYear(), this.viewMonth(), 1),
-    ),
-  );
+  readonly monthLabel = computed(() => {
+    this.locale();
+    return `${this.monthName(this.viewMonth())} ${this.viewYear()}`;
+  });
 
   readonly weekdays = computed(() => {
-    const fmt = new Intl.DateTimeFormat(this.locale(), { weekday: 'short' });
-    const base = new Date(2024, 0, 1); // Monday
-    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)));
+    this.locale();
+    return WEEKDAY_KEYS.map((k) => this.i18n.t(k));
   });
 
   readonly cells = computed((): DayCell[] => {
@@ -386,6 +382,14 @@ export class DateInputComponent implements ControlValueAccessor {
 
     return cells;
   });
+
+  private monthName(m: number): string {
+    return this.i18n.t(`mo_${m + 1}`);
+  }
+
+  private formatDateLabel(day: number, month: number, year: number): string {
+    return `${pad2(day)} ${this.monthName(month)} ${year}`;
+  }
 
   writeValue(v: string | null): void {
     const raw = v ?? '';
