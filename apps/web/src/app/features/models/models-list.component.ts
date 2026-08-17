@@ -26,7 +26,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <div class="title">{{ 'models_title' | t }}</div>
           <div class="sub">{{ i18n.t('models_count', { n: data()?.total || 0 }) }}</div>
         </div>
-        <div class="row gap-2">
+        <div class="page-actions">
           <div class="seg">
             <button type="button" [class.on]="view() === 'grid'" (click)="view.set('grid')" [attr.data-tip]="'view_grid' | t"><ui-icon name="layout-dashboard" [size]="15" /></button>
             <button type="button" [class.on]="view() === 'table'" (click)="view.set('table')" [attr.data-tip]="'view_table' | t"><ui-icon name="list-checks" [size]="15" /></button>
@@ -74,8 +74,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                     <div class="small truncate">{{ m.name }}</div>
                     <div class="tiny text-3 truncate">{{ m.client?.name || '—' }} · {{ m.category || '—' }}</div>
                     <div class="row-between tiny text-3 mt-2">
-                      <span>{{ m.sizes?.length || 0 }} razmer</span>
-                      <span>{{ m._count?.orders || 0 }} zakaz</span>
+                      <span>{{ 'model_sizes_short' | t: { n: m.sizes?.length || 0 } }}</span>
+                      <span>{{ 'model_orders_short' | t: { n: m._count?.orders || 0 } }}</span>
                     </div>
                   </div>
                 </a>
@@ -122,11 +122,11 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <div class="field"><label class="label">{{ 'model_code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" /></div>
           <div class="field"><label class="label">{{ 'model_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.name" /></div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
-          <div class="field"><label class="label">{{ 'season' | t }}</label><input class="input" [(ngModel)]="form.season" placeholder="SS-26" /></div>
+          <div class="field"><label class="label">{{ 'season' | t }}</label><input class="input" [(ngModel)]="form.season" [placeholder]="'season_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'color' | t }}</label><input class="input" [(ngModel)]="form.color" /></div>
           <div class="field">
             <label class="label">{{ 'client' | t }}</label>
-            <select class="select" [(ngModel)]="form.clientId"><option value="">—</option>@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.clientId"><option value="" disabled hidden>{{ 'select_client' | t }}</option>@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
           </div>
           <div class="field full"><label class="label">{{ 'fabric' | t }}</label><input class="input" [(ngModel)]="form.fabric" /></div>
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>

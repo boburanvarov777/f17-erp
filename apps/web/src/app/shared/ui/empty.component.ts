@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { I18nService } from '../../core/services/i18n.service';
 import { IconComponent } from './icon.component';
 
 @Component({
@@ -9,16 +10,18 @@ import { IconComponent } from './icon.component';
   template: `
     <div class="empty">
       <ui-icon [name]="icon()" [size]="34" [stroke]="1.4" />
-      <h3>{{ title() }}</h3>
+      <h3>{{ resolvedTitle() }}</h3>
       @if (message()) { <div class="small">{{ message() }}</div> }
       <ng-content />
     </div>
   `,
 })
 export class EmptyComponent {
+  private readonly i18n = inject(I18nService);
   readonly icon = input('info');
-  readonly title = input('Ma’lumot yo‘q');
+  readonly title = input('');
   readonly message = input('');
+  readonly resolvedTitle = computed(() => this.title() || this.i18n.t('no_data'));
 }
 
 @Component({

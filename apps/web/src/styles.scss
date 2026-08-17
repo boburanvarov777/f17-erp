@@ -373,11 +373,21 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .modal-head { padding: 20px 26px 16px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 16px; }
 .modal-body { padding: 24px 26px; overflow-y: auto; flex: 1; }
-.modal-foot { padding: 16px 26px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; background: var(--surface-2); border-radius: 0 0 var(--r-xl) var(--r-xl); }
-.ma-modal-foot {
-  display: flex; flex-wrap: wrap; justify-content: stretch; gap: 10px; width: 100%;
+.modal-foot {
+  padding: 16px 26px 20px; border-top: 1px solid var(--border);
+  background: var(--surface-2); border-radius: 0 0 var(--r-xl) var(--r-xl);
 }
-.ma-modal-foot .btn { flex: 1 1 calc(50% - 5px); min-width: 0; justify-content: center; }
+.modal-foot > * {
+  display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; width: 100%;
+}
+.modal-foot .ma-modal-foot {
+  justify-content: stretch; gap: 10px;
+}
+@media (max-width: 520px) {
+  .modal-foot > *:not(.ma-modal-foot) { flex-direction: column-reverse; }
+  .modal-foot .btn { width: 100%; justify-content: center; min-height: 44px; }
+}
+.ma-modal-foot .btn { flex: 1 1 calc(50% - 5px); min-width: 0; justify-content: center; min-height: 44px; }
 .qty-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .badge-pick {
   appearance: none; font: inherit;
@@ -416,6 +426,16 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ─────────── page ─────────── */
 .page { padding: 22px 26px 40px; max-width: 1560px; margin: 0 auto; }
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+.page-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .page-head { flex-direction: column; align-items: stretch; }
+  .page-actions { width: 100%; }
+  .page-actions .btn { flex: 1 1 calc(50% - 4px); justify-content: center; min-height: 40px; }
+  .page-actions .btn:only-child { flex: 1 1 100%; }
+  .page-head > .btn { width: 100%; justify-content: center; min-height: 40px; }
+}
 .page-head .title { font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
 .page-head .sub { color: var(--text-3); font-size: 13px; margin-top: 4px; }
 .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); margin-bottom: 6px; }

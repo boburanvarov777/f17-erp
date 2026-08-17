@@ -25,7 +25,7 @@ interface ProductionReport {
           <div class="title">{{ 'reports_title' | t }}</div>
           <div class="sub">{{ from }} — {{ to }}</div>
         </div>
-        <div class="row gap-2">
+        <div class="page-actions">
           <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="from" (ngModelChange)="load()" />
           <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="to" (ngModelChange)="load()" />
           <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
@@ -127,7 +127,7 @@ interface ProductionReport {
               </div>
               <div class="card-foot row-between">
                 <b class="small">{{ 'total' | t }}</b>
-                <b>{{ warehouseValue() | num }} so‘m</b>
+                <b>{{ warehouseValue() | num }} {{ 'currency_uzs' | t }}</b>
               </div>
             </div>
           }

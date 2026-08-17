@@ -29,13 +29,14 @@ import { haptic } from './telegram';
           <div class="ma-center" style="padding:24px">
             <div class="mark">F17</div>
             <h2 class="mt-4">{{ 'ma_title' | t }}</h2>
+            <p class="small text-3 mt-2" style="text-align:center;max-width:320px">{{ 'ma_login_prompt' | t }}</p>
             @if (ma.message()) { <div class="small text-3 mt-2" style="text-align:center">{{ ma.message() }}</div> }
 
             <div class="col gap-3 mt-6" style="width:100%;max-width:320px">
               <div class="field">
                 <label class="label">{{ 'department' | t }}</label>
                 <select class="select" [(ngModel)]="departmentCode">
-                  <option value="">{{ 'select_department' | t }}</option>
+                  <option value="" disabled hidden>{{ 'select_department' | t }}</option>
                   @for (d of ma.departments(); track d.id) { <option [value]="d.code">{{ deptName(d) }}</option> }
                 </select>
               </div>
@@ -53,7 +54,7 @@ import { haptic } from './telegram';
                 </div>
               </div>
               @if (error()) { <div class="err-text">{{ error() }}</div> }
-              <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy() || !login || !password">
+              <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy() || !departmentCode || !login || !password">
                 @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'sign_in' | t }} }
               </button>
             </div>

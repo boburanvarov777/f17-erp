@@ -27,7 +27,7 @@ interface Tick { label: string; left: number; major: boolean; }
           <div class="title">{{ 'schedule_title' | t }}</div>
           <div class="sub">{{ i18n.t('schedule_count_sub', { n: rows().length, from, to }) }}</div>
         </div>
-        <div class="row gap-2">
+        <div class="page-actions">
           <div class="seg">
             @for (v of views; track v.key) {
               <button type="button" [class.on]="view() === v.key" (click)="setView(v.key)">{{ v.label | t }}</button>

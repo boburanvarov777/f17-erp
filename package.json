@@ -9,7 +9,7 @@
     "dev": "bash scripts/free-dev-ports.sh && concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:free": "bash scripts/free-dev-ports.sh",
     "dev:api": "npm --workspace apps/api run start:dev",
-    "dev:web": "npm --workspace apps/web run start",
+    "dev:web": "bash scripts/dev-web.sh",
     "build": "npm run build:web && npm run build:api",
     "build:api": "npm --workspace apps/api run build",
     "build:web": "bash scripts/build-web.sh",

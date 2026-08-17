@@ -87,6 +87,20 @@ export class BotService implements OnModuleInit {
     return new InlineKeyboard().webApp(t(lang, 'open_miniapp'), url);
   }
 
+  private async replyMiniAppOnly(
+    ctx: Context,
+    lang: Lang,
+    text?: string,
+    opts?: { parse_mode?: 'Markdown' },
+  ): Promise<void> {
+    await ctx.reply(text ?? t(lang, 'use_miniapp'), {
+      parse_mode: opts?.parse_mode,
+      reply_markup: { remove_keyboard: true },
+    });
+    const kb = this.miniAppKeyboard(lang);
+    if (kb) await ctx.reply(t(lang, 'open_miniapp'), { reply_markup: kb });
+  }
+
   private register(): void {
     const bot = this.bot!;
 
@@ -158,11 +172,10 @@ export class BotService implements OnModuleInit {
       const user = await this.linkedUser(telegramId);
       if (!user || user.status !== 'ACTIVE') {
         await this.setStep(telegramId, 'PHONE');
-        return ctx.reply(t(lang, 'err_not_found'));
+        return ctx.reply(t(lang, 'err_not_found'), { reply_markup: { remove_keyboard: true } });
       }
 
-      const kb = this.miniAppKeyboard(lang);
-      return ctx.reply(t(lang, 'use_miniapp'), { reply_markup: kb ?? { remove_keyboard: true } });
+      return this.replyMiniAppOnly(ctx, lang);
     });
   }
 
@@ -178,13 +191,9 @@ export class BotService implements OnModuleInit {
       await this.prisma.telegramSession.update({ where: { telegramId }, data: { phone, attempts: { increment: 1 } } });
       return ctx.reply(t(lang, 'err_not_found'), { reply_markup: { remove_keyboard: true } });
     }
-    if (matches.length > 1) {
-      const kb = this.miniAppKeyboard(lang);
-      return ctx.reply(t(lang, 'err_multi_phone'), {
-        parse_mode: 'Markdown',
-        reply_markup: kb ?? { remove_keyboard: true },
-      });
-    }
+      if (matches.length > 1) {
+        return this.replyMiniAppOnly(ctx, lang, t(lang, 'err_multi_phone'), { parse_mode: 'Markdown' });
+      }
 
     const user = matches[0];
     if (user.telegramId && user.telegramId !== telegramId) {

@@ -46,6 +46,7 @@ import type { Lang } from '../../core/models';
                 [class.btn-primary]="i18n.lang() === l.code"
                 type="button"
                 (click)="setLang(l.code)"
+                [attr.data-tip]="('lang_' + l.code) | t"
               >
                 <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
               </button>

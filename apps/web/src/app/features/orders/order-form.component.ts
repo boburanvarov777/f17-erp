@@ -20,14 +20,14 @@ interface SizeRow { size: string; qty: number; }
       <div class="form-grid">
         <div class="field">
           <label class="label">{{ 'order_no' | t }} <span class="req">*</span></label>
-          <input class="input mono" [(ngModel)]="form.number" placeholder="ZR-2026-060" />
+          <input class="input mono" [(ngModel)]="form.number" [placeholder]="'order_no_placeholder' | t" />
         </div>
 
         <div class="field">
           <label class="label">{{ 'client' | t }}</label>
           <div class="row gap-2">
             <select class="select grow" [(ngModel)]="form.clientId">
-              <option value="">—</option>
+              <option value="" disabled hidden>{{ 'select_client' | t }}</option>
               @for (c of clientOptions(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
             </select>
             @if (canAddClient()) {
@@ -41,7 +41,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field full">
           <label class="label">{{ 'model' | t }}</label>
           <select class="select" [(ngModel)]="form.modelId" (ngModelChange)="onModelChange()">
-            <option value="">—</option>
+            <option value="" disabled hidden>{{ 'select_model' | t }}</option>
             @for (m of models(); track m.id) { <option [value]="m.id">{{ m.code }} — {{ m.name }}</option> }
           </select>
         </div>
@@ -78,7 +78,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field">
           <label class="label">{{ 'responsible' | t }}</label>
           <select class="select" [(ngModel)]="form.responsibleId">
-            <option value="">—</option>
+            <option value="" disabled hidden>{{ 'select_responsible' | t }}</option>
             @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
           </select>
         </div>
@@ -105,7 +105,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="size-grid">
           @for (s of sizes(); track $index) {
             <div class="size-row">
-              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" placeholder="30" />
+              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
               <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch()" />
               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
                 <ui-icon name="x" [size]="14" />

@@ -43,7 +43,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                 <dt>{{ 'color' | t }}</dt><dd>{{ m.color || '—' }}</dd>
                 <dt>{{ 'fabric' | t }}</dt><dd>{{ m.fabric || '—' }}</dd>
                 <dt>{{ 'lining' | t }}</dt><dd>{{ m.lining || '—' }}</dd>
-                <dt>{{ 'cost' | t }}</dt><dd>{{ m.cost ? (m.cost | num) + ' so‘m' : '—' }}</dd>
+                <dt>{{ 'cost' | t }}</dt><dd>{{ m.cost ? (m.cost | num) + ' ' + ('currency_uzs' | t) : '—' }}</dd>
               </dl>
               @if (m.description) { <div class="divider"></div><div class="small text-2">{{ m.description }}</div> }
             </div>

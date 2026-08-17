@@ -106,7 +106,7 @@ const STAGE_ICON: Record<StageType, string> = {
               @if (maxTrend() > 0) {
                 <div class="chart">
                   @for (p of d.trend; track p.date) {
-                    <div class="bar-col" [attr.data-tip]="p.date + ' — ' + p.qty + ' dona'">
+                    <div class="bar-col" [attr.data-tip]="'trend_tooltip' | t: { date: p.date, qty: p.qty }">
                       <div class="bar-stack">
                         @if (p.defect > 0) {
                           <div class="bar defect" [style.height.%]="(p.defect / maxTrend()) * 100"></div>

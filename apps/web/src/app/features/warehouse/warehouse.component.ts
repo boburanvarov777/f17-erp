@@ -27,7 +27,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           <div class="title">{{ 'warehouse_title' | t }}</div>
           <div class="sub">{{ i18n.t('warehouse_positions_count', { n: data()?.total || 0 }) }}</div>
         </div>
-        <div class="row gap-2">
+        <div class="page-actions">
           <button class="btn btn-sm" type="button" (click)="tab.set(tab() === 'stock' ? 'tx' : 'stock')" [attr.data-tip]="tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t)">
             <ui-icon name="history" [size]="15" /> {{ tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t) }}
           </button>
@@ -160,7 +160,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           <div class="field"><label class="label">{{ 'code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" /></div>
           <div class="field"><label class="label">{{ 'material' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.name" /></div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
-          <div class="field"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" placeholder="m / dona / kg" /></div>
+          <div class="field"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" [placeholder]="'unit_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'min_stock' | t }}</label><input class="input" type="number" [(ngModel)]="form.minStock" /></div>
           <div class="field"><label class="label">{{ 'price' | t }}</label><input class="input" type="number" [(ngModel)]="form.price" /></div>
           <div class="field full"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>

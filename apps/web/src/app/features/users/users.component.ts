@@ -114,7 +114,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         <div class="form-grid">
           <div class="field"><label class="label">{{ 'last_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.lastName" /></div>
           <div class="field"><label class="label">{{ 'first_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.firstName" /></div>
-          <div class="field"><label class="label">{{ 'phone' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.phone" placeholder="+998901234567" /></div>
+          <div class="field"><label class="label">{{ 'phone' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'email' | t }}</label><input class="input" type="email" [(ngModel)]="form.email" /></div>
           <div class="field"><label class="label">{{ 'login' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.login" /></div>
           <div class="field">
@@ -123,12 +123,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           </div>
           <div class="field">
             <label class="label">{{ 'department' | t }}</label>
-            <select class="select" [(ngModel)]="form.departmentId"><option value="">—</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
+            <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled hidden>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
           </div>
           <div class="field"><label class="label">{{ 'position' | t }}</label><input class="input" [(ngModel)]="form.position" /></div>
           <div class="field">
             <label class="label">{{ 'role' | t }} <span class="req">*</span></label>
-            <select class="select" [(ngModel)]="form.roleId"><option value="">—</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.roleId"><option value="" disabled hidden>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
           </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>

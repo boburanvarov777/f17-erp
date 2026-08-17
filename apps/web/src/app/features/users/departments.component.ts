@@ -64,7 +64,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
           <div class="field"><label class="label">{{ 'code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" [disabled]="!!d.id" /></div>
           <div class="field">
             <label class="label">{{ 'linked_stage' | t }}</label>
-            <select class="select" [(ngModel)]="form.stage"><option value="">—</option>@for (s of stages; track s) { <option [value]="s">{{ 'stage_' + s | t }}</option> }</select>
+            <select class="select" [(ngModel)]="form.stage"><option value="" disabled hidden>{{ 'select_stage' | t }}</option>@for (s of stages; track s) { <option [value]="s">{{ 'stage_' + s | t }}</option> }</select>
           </div>
           <div class="field full"><label class="label">{{ 'dept_name_uz' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameUz" /></div>
           <div class="field full"><label class="label">{{ 'dept_name_ru' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameRu" /></div>

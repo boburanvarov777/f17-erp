@@ -35,7 +35,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
           <div class="title">{{ 'orders_title' | t }}</div>
           <div class="sub">{{ i18n.t('orders_count_sub', { n: data()?.total || 0 }) }}</div>
         </div>
-        <div class="row gap-2">
+        <div class="page-actions">
           <button class="btn btn-sm" type="button" (click)="exportCsv()" [attr.data-tip]="'export' | t"><ui-icon name="download" [size]="15" /> {{ 'export' | t }}</button>
           @if (auth.can('orders.create')) {
             <button class="btn btn-primary btn-sm" type="button" (click)="editing.set({})" [attr.data-tip]="'new_order' | t">
@@ -150,7 +150,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
             <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
                            (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
           } @else {
-            <ui-empty icon="clipboard-list" [title]="'no_orders' | t" [message]="'Yangi zakaz qo‘shing yoki filtrlarni tozalang'">
+            <ui-empty icon="clipboard-list" [title]="'no_orders' | t" [message]="'orders_empty_hint' | t">
               @if (auth.can('orders.create')) {
                 <button class="btn btn-primary btn-sm mt-2" type="button" (click)="editing.set({})" [attr.data-tip]="'new_order' | t">
                   <ui-icon name="plus" [size]="15" /> {{ 'new_order' | t }}

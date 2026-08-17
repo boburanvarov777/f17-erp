@@ -49,7 +49,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="sub">{{ i18n.t('prod_stage_orders_count', { n: data()?.total || 0 }) }}</div>
         </div>
-        <div class="row gap-3">
+        <div class="page-actions">
           @if (canWrite()) {
             <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()" [attr.data-tip]="'add_operation' | t">
               <ui-icon name="plus" [size]="15" /> {{ 'add_operation' | t }}
@@ -192,7 +192,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field full">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
             <select class="select" [(ngModel)]="entry.orderId">
-              <option value="">—</option>
+              <option value="" disabled hidden>{{ 'select_order' | t }}</option>
               @for (s of openStages(); track s.id) {
                 <option [value]="s.order?.id">{{ s.order?.number }} · {{ s.order?.model?.code }} — {{ s.doneQty }}/{{ s.planQty }}</option>
               }
@@ -215,7 +215,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           @switch (stageType()) {
             @case ('WASHING') {
               <div class="field"><label class="label">{{ 'batch' | t }}</label><input class="input" [(ngModel)]="entry.meta['batch']" /></div>
-              <div class="field"><label class="label">{{ 'washing_type' | t }}</label><input class="input" [(ngModel)]="entry.meta['washingType']" placeholder="Stone wash / Enzyme" /></div>
+              <div class="field"><label class="label">{{ 'washing_type' | t }}</label><input class="input" [(ngModel)]="entry.meta['washingType']" [placeholder]="'washing_type_placeholder' | t" /></div>
               <div class="field"><label class="label">{{ 'returned_date' | t }}</label><input class="input" type="date" [(ngModel)]="entry.meta['returnedDate']" /></div>
             }
             @case ('LASER') {
@@ -228,7 +228,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
               <div class="field">
                 <label class="label">{{ 'sub_stage' | t }}</label>
                 <select class="select" [(ngModel)]="entry.meta['subStage']">
-                  <option value="">—</option>
+                  <option value="" disabled hidden>{{ 'select_sub_stage' | t }}</option>
                   <option value="CLEANING">{{ 'pack_sub_CLEANING' | t }}</option>
                   <option value="IRONING">{{ 'pack_sub_IRONING' | t }}</option>
                   <option value="ACCESSORIES">{{ 'pack_sub_ACCESSORIES' | t }}</option>
@@ -332,7 +332,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
     @if (cancelling(); as e) {
       <ui-confirm
         [title]="'cancel_entry' | t"
-        [message]="'+' + e.qty + ' dona operatsiyasini bekor qilasizmi?'"
+        [message]="'cancel_entry_confirm' | t: { qty: e.qty }"
         [note]="'cancel_entry_note' | t"
         [confirmLabel]="'confirm' | t"
         (confirmed)="cancelEntry(e)" (cancelled)="cancelling.set(null)" />
@@ -345,7 +345,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field full">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
             <select class="select" [(ngModel)]="shipment.orderId" [disabled]="!!sh.id">
-              <option value="">—</option>
+              <option value="" disabled hidden>{{ 'select_order' | t }}</option>
               @for (s of data()?.items || []; track s.id) { <option [value]="s.order?.id">{{ s.order?.number }}</option> }
             </select>
           </div>

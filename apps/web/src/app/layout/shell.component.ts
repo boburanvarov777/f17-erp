@@ -31,8 +31,8 @@ interface NavGroup { label?: string; items: NavItem[]; }
           <div class="brand-mark">F17</div>
           @if (!collapsed()) {
             <div class="brand-text">
-              <div class="brand-1">F17 × ZARINA</div>
-              <div class="brand-2">DENIM ERP</div>
+              <div class="brand-1">{{ 'app_short' | t }}</div>
+              <div class="brand-2">{{ 'denim_erp' | t }}</div>
             </div>
           }
         </div>
@@ -91,7 +91,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
                   @for (l of langs; track l.code) {
                     <button class="menu-item" type="button" (click)="setLang(l.code)">
                       <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
-                      <span>{{ l.label }}</span>
+                      <span>{{ ('lang_' + l.code.toLowerCase()) | t }}</span>
                       @if (i18n.lang() === l.code) { <ui-icon name="check" [size]="15" /> }
                     </button>
                   }
