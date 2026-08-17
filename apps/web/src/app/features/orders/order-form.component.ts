@@ -7,6 +7,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 
 interface SizeRow { size: string; qty: number | null; }
@@ -14,7 +15,7 @@ interface SizeRow { size: string; qty: number | null; }
 @Component({
   selector: 'app-order-form',
   standalone: true,
-  imports: [FormsModule, ModalComponent, IconComponent, TPipe],
+  imports: [FormsModule, ModalComponent, IconComponent, DateInputComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ui-modal [title]="isNew() ? ('new_order' | t) : ('edit_order' | t)" [subtitle]="form.number" size="lg" (closed)="closed.emit()">
@@ -64,13 +65,13 @@ interface SizeRow { size: string; qty: number | null; }
 
         <div class="field" [class.field-invalid]="fe.has('orderDate')">
           <label class="label">{{ 'order_date' | t }} <span class="req">*</span></label>
-          <input class="input" type="date" [(ngModel)]="form.orderDate" (ngModelChange)="fe.clear('orderDate')" />
+          <ui-date-input [(ngModel)]="form.orderDate" (ngModelChange)="fe.clear('orderDate')" />
           @if (fe.get('orderDate'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
         <div class="field" [class.field-invalid]="fe.has('deadline')">
           <label class="label">{{ 'deadline' | t }} <span class="req">*</span></label>
-          <input class="input" type="date" [(ngModel)]="form.deadline" (ngModelChange)="fe.clear('deadline')" />
+          <ui-date-input [(ngModel)]="form.deadline" (ngModelChange)="fe.clear('deadline')" />
           @if (fe.get('deadline'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
@@ -112,11 +113,11 @@ interface SizeRow { size: string; qty: number | null; }
         </div>
         <div class="field">
           <label class="label">{{ 'sample_sent' | t }}</label>
-          <input class="input" type="date" [(ngModel)]="form.sampleSentAt" />
+          <ui-date-input [(ngModel)]="form.sampleSentAt" />
         </div>
         <div class="field">
           <label class="label">{{ 'sample_approved' | t }}</label>
-          <input class="input" type="date" [(ngModel)]="form.sampleApprovedAt" />
+          <ui-date-input [(ngModel)]="form.sampleApprovedAt" />
         </div>
       </div>
 

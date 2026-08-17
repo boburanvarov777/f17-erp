@@ -15,6 +15,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
 import { PriorityBadgeComponent, StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { OrderFormComponent } from './order-form.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 
 const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'LOADING', 'COMPLETED', 'DELAYED', 'CANCELLED'];
 const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -24,7 +25,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
   standalone: true,
   imports: [
     FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PriorityBadgeComponent,
-    PaginationComponent, EmptyComponent, LoadingComponent, ConfirmComponent, OrderFormComponent,
+    PaginationComponent, EmptyComponent, LoadingComponent, ConfirmComponent, OrderFormComponent, DateInputComponent,
     TPipe, NumPipe, ShortDatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -68,9 +69,9 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
           </select>
 
           <div class="row gap-2">
-            <input class="input" style="width:145px" type="date" [(ngModel)]="from" (ngModelChange)="reload()" />
+            <ui-date-input style="width:145px" size="sm" [(ngModel)]="from" (ngModelChange)="reload()" />
             <span class="text-3">—</span>
-            <input class="input" style="width:145px" type="date" [(ngModel)]="to" (ngModelChange)="reload()" />
+            <ui-date-input style="width:145px" size="sm" [(ngModel)]="to" (ngModelChange)="reload()" />
           </div>
 
           @if (hasFilters()) {

@@ -4,6 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { NumPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
@@ -16,7 +17,7 @@ interface ProductionReport {
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [FormsModule, IconComponent, StatusBadgeComponent, EmptyComponent, LoadingComponent, TPipe, NumPipe],
+  imports: [FormsModule, IconComponent, StatusBadgeComponent, EmptyComponent, LoadingComponent, DateInputComponent, TPipe, NumPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -26,8 +27,8 @@ interface ProductionReport {
           <div class="sub">{{ from }} — {{ to }}</div>
         </div>
         <div class="page-actions">
-          <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="from" (ngModelChange)="load()" />
-          <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="to" (ngModelChange)="load()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="load()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="load()" />
           <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
         </div>
       </div>

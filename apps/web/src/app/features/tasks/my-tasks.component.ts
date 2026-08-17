@@ -10,6 +10,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
@@ -18,7 +19,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
 @Component({
   selector: 'app-my-tasks',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, ShortDatePipe],
+  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, DateInputComponent, TPipe, NumPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -107,7 +108,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
           <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
           <div class="field" [class.field-invalid]="fe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
-            <input class="input" type="date" [(ngModel)]="form.date" (ngModelChange)="fe.clear('date')" />
+            <ui-date-input [(ngModel)]="form.date" (ngModelChange)="fe.clear('date')" />
             @if (fe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
@@ -117,8 +118,8 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
               @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
             </select>
           </div>
-          <div class="field"><label class="label">{{ 'started_at' | t }}</label><input class="input" type="datetime-local" [(ngModel)]="form.startedAt" /></div>
-          <div class="field"><label class="label">{{ 'finished_at' | t }}</label><input class="input" type="datetime-local" [(ngModel)]="form.finishedAt" /></div>
+          <div class="field"><label class="label">{{ 'started_at' | t }}</label><ui-date-input mode="datetime" [(ngModel)]="form.startedAt" /></div>
+          <div class="field"><label class="label">{{ 'finished_at' | t }}</label><ui-date-input mode="datetime" [(ngModel)]="form.finishedAt" /></div>
           <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="form.note" /></div>
         </div>
         <div footer>

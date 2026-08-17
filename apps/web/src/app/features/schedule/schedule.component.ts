@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 const STAGE_COLOR: Record<StageType, string> = {
@@ -18,7 +19,7 @@ interface Tick { label: string; left: number; major: boolean; }
 @Component({
   selector: 'app-schedule',
   standalone: true,
-  imports: [FormsModule, RouterLink, StatusBadgeComponent, EmptyComponent, LoadingComponent, TPipe],
+  imports: [FormsModule, RouterLink, StatusBadgeComponent, EmptyComponent, LoadingComponent, DateInputComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -33,8 +34,8 @@ interface Tick { label: string; left: number; major: boolean; }
               <button type="button" [class.on]="view() === v.key" (click)="setView(v.key)">{{ v.label | t }}</button>
             }
           </div>
-          <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="from" (ngModelChange)="load()" />
-          <input class="input btn-sm" style="width:150px;height:32px" type="date" [(ngModel)]="to" (ngModelChange)="load()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="load()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="load()" />
         </div>
       </div>
 

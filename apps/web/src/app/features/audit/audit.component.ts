@@ -6,6 +6,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { InitialsPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
@@ -13,7 +14,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
 @Component({
   selector: 'app-audit',
   standalone: true,
-  imports: [FormsModule, IconComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, ShortDatePipe, InitialsPipe],
+  imports: [FormsModule, IconComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, DateInputComponent, TPipe, ShortDatePipe, InitialsPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -34,8 +35,8 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
             <option value="">{{ 'what' | t }}: {{ 'all' | t }}</option>
             @for (a of actions(); track a) { <option [value]="a">{{ a }}</option> }
           </select>
-          <input class="input" style="width:150px" type="date" [(ngModel)]="from" (ngModelChange)="reload()" />
-          <input class="input" style="width:150px" type="date" [(ngModel)]="to" (ngModelChange)="reload()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="reload()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="reload()" />
         </div>
 
         @if (loading()) { <ui-loading /> }

@@ -10,6 +10,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { NumPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { ConfirmComponent } from '../../shared/ui/confirm.component';
+import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
@@ -37,7 +38,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
   standalone: true,
   imports: [
     FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PaginationComponent,
-    EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, NumPipe, ShortDatePipe,
+    EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, DateInputComponent, TPipe, NumPipe, ShortDatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -211,7 +212,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
-            <input class="input" type="date" [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
+            <ui-date-input [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
             @if (entryFe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
@@ -220,7 +221,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             @case ('WASHING') {
               <div class="field"><label class="label">{{ 'batch' | t }}</label><input class="input" [(ngModel)]="entry.meta['batch']" /></div>
               <div class="field"><label class="label">{{ 'washing_type' | t }}</label><input class="input" [(ngModel)]="entry.meta['washingType']" [placeholder]="'washing_type_placeholder' | t" /></div>
-              <div class="field"><label class="label">{{ 'returned_date' | t }}</label><input class="input" type="date" [(ngModel)]="entry.meta['returnedDate']" /></div>
+              <div class="field"><label class="label">{{ 'returned_date' | t }}</label><ui-date-input [(ngModel)]="entry.meta['returnedDate']" /></div>
             }
             @case ('LASER') {
               <div class="field"><label class="label">{{ 'machine' | t }}</label><input class="input" [(ngModel)]="entry.meta['machine']" /></div>
@@ -368,7 +369,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field"><label class="label">{{ 'driver_phone' | t }}</label><input class="input" [(ngModel)]="shipment.driverPhone" /></div>
           <div class="field"><label class="label">{{ 'quantity' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="shipment.qty" /></div>
           <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="shipment.boxCount" /></div>
-          <div class="field"><label class="label">{{ 'loading_date' | t }}</label><input class="input" type="date" [(ngModel)]="shipment.loadingDate" /></div>
+          <div class="field"><label class="label">{{ 'loading_date' | t }}</label><ui-date-input [(ngModel)]="shipment.loadingDate" /></div>
           <div class="field"><label class="label">{{ 'track_no' | t }}</label><input class="input" [(ngModel)]="shipment.trackNo" /></div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
