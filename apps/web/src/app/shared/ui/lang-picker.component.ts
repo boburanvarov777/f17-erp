@@ -23,7 +23,6 @@ export type LangPickerVariant = 'compact' | 'segment' | 'grid';
             (click)="pick(l.code)"
           >
             <ui-lang-flag [code]="l.code" />
-            <span class="lang-grid-code">{{ l.short }}</span>
             <span class="lang-grid-label">{{ ('lang_' + l.code) | t }}</span>
           </button>
         }
@@ -45,7 +44,6 @@ export type LangPickerVariant = 'compact' | 'segment' | 'grid';
             (click)="pick(l.code)"
           >
             <ui-lang-flag [code]="l.code" />
-            <span class="lang-seg-code">{{ l.short }}</span>
             @if (variant() === 'segment') {
               <span class="lang-seg-label">{{ ('lang_' + l.code) | t }}</span>
             }

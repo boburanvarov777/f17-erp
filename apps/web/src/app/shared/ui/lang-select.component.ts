@@ -20,7 +20,6 @@ import { LangFlagComponent } from './lang-flag.component';
         (click)="toggle()"
       >
         <ui-lang-flag [code]="current()" />
-        <span class="lang-select-label">{{ ('lang_' + current()) | t }}</span>
         <ui-icon name="chevron-down" [size]="14" class="lang-select-chevron" />
       </button>
 
