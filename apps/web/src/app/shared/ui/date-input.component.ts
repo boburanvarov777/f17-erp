@@ -388,7 +388,7 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   private formatDateLabel(day: number, month: number, year: number): string {
-    return `${pad2(day)} ${this.monthName(month)} ${year}`;
+    return `${pad2(day)}.${pad2(month + 1)}.${year}`;
   }
 
   writeValue(v: string | null): void {
