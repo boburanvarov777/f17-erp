@@ -11,7 +11,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
-      const silent = req.headers.has('X-Silent') || req.url.includes('/auth/refresh');
+      const silent = req.headers.has('X-Silent') || req.url.includes('/auth/refresh') || req.url.includes('/auth/login');
       if (!silent && err.status !== 401 && err.status !== 403) {
         const raw = err.error?.message;
         const msg = Array.isArray(raw) ? raw.join(', ') : raw;

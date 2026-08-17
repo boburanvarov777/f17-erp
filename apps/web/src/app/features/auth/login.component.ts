@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { I18nService } from '../../core/services/i18n.service';
@@ -9,6 +9,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { LangPickerComponent } from '../../shared/ui/lang-picker.component';
 import type { Lang } from '../../core/models';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
+import { loginErrorKey } from '../../shared/utils/login-error';
 
 @Component({
   selector: 'app-login',
@@ -67,7 +68,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
             @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
-          @if (error()) {
+          @if (errorKey()) {
             <div class="badge badge-danger mb-4" style="width:100%;justify-content:flex-start;padding:9px 12px;border-radius:var(--r)">
               <ui-icon name="alert-circle" [size]="15" /> {{ error() }}
             </div>
@@ -142,7 +143,8 @@ export class LoginComponent {
   password = '';
   readonly show = signal(false);
   readonly busy = signal(false);
-  readonly error = signal('');
+  readonly errorKey = signal<string | null>(null);
+  readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
   readonly year = new Date().getFullYear();
 
@@ -156,7 +158,7 @@ export class LoginComponent {
     ], t)) || this.busy()) return;
 
     this.busy.set(true);
-    this.error.set('');
+    this.errorKey.set(null);
 
     this.auth.login(this.login.trim(), this.password).subscribe({
       next: () => {
@@ -166,21 +168,7 @@ export class LoginComponent {
       },
       error: (e) => {
         this.busy.set(false);
-        // Distinguish "backend is down" from "wrong credentials" — otherwise a
-        // stopped API looks exactly like a typo.
-        if (e?.status === 0) {
-          const host = typeof window !== 'undefined' ? window.location.hostname : '';
-          this.error.set(host === 'localhost' || host === '127.0.0.1'
-            ? this.i18n.t('login_error_network_local')
-            : this.i18n.t('login_error_network_prod'));
-          return;
-        }
-        if (e?.status === 404) {
-          this.error.set(this.i18n.t('login_error_api_not_found'));
-          return;
-        }
-        const msg = e?.error?.message;
-        this.error.set(Array.isArray(msg) ? msg.join(', ') : msg || this.i18n.t('login_error'));
+        this.errorKey.set(loginErrorKey(e));
       },
     });
   }

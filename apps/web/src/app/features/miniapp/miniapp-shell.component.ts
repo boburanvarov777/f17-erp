@@ -11,6 +11,7 @@ import type { Lang } from '../../core/models';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
+import { loginErrorKey } from '../../shared/utils/login-error';
 
 @Component({
   selector: 'app-miniapp-shell',
@@ -64,7 +65,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                 </div>
                 @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
-              @if (error()) { <div class="err-text">{{ error() }}</div> }
+              @if (errorKey()) { <div class="err-text">{{ error() }}</div> }
               <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy()">
                 @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'sign_in' | t }} }
               </button>
@@ -126,7 +127,8 @@ export class MiniAppShellComponent {
   departmentCode = '';
   readonly show = signal(false);
   readonly busy = signal(false);
-  readonly error = signal('');
+  readonly errorKey = signal<string | null>(null);
+  readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
 
   readonly tabs = computed(() => {
@@ -163,14 +165,13 @@ export class MiniAppShellComponent {
     ], t))) return;
 
     this.busy.set(true);
-    this.error.set('');
+    this.errorKey.set(null);
     this.ma.login(this.login.trim(), this.password, this.departmentCode || undefined).subscribe({
       next: (res) => { this.busy.set(false); this.ma.apply(res); haptic('success'); },
       error: (e) => {
         this.busy.set(false);
         haptic('error');
-        const m = e?.error?.message;
-        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+        this.errorKey.set(loginErrorKey(e));
       },
     });
   }
