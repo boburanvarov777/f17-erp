@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export interface Toast { id: number; type: 'success' | 'error' | 'info'; title: string; body?: string; }
+export interface Toast { id: number; type: 'success' | 'error' | 'info'; title: string; body?: string; ttl: number; }
 
 @Injectable({ providedIn: 'root' })
 export class ToastService {
@@ -9,8 +9,7 @@ export class ToastService {
 
   private push(type: Toast['type'], title: string, body?: string, ttl = 4200): void {
     const id = ++this.seq;
-    this.toasts.update((list) => [...list, { id, type, title, body }]);
-    setTimeout(() => this.dismiss(id), ttl);
+    this.toasts.update((list) => [...list, { id, type, title, body, ttl }]);
   }
 
   success(title: string, body?: string) { this.push('success', title, body); }

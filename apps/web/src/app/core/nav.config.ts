@@ -46,7 +46,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { label: 'nav_users', icon: 'users', path: 'users', perms: ['users.read'] },
       { label: 'nav_roles', icon: 'shield-check', path: 'roles', perms: ['roles.read'] },
       { label: 'nav_departments', icon: 'building', path: 'departments', perms: ['departments.read'] },
-      { label: 'nav_audit', icon: 'scroll-text', path: 'audit', perms: ['audit.read'] },
+      { label: 'nav_audit', icon: 'scroll-text', path: 'audit' },
     ],
   },
 ];

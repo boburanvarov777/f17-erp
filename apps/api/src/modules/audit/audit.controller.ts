@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
-import { RequirePermissions } from '../../common/decorators';
+import { CurrentUser, JwtUser } from '../../common/decorators';
+import { isSuperProAdmin } from '../../common/permissions';
 import { dateRange } from '../../common/utils/order-by';
 
 @ApiTags('audit')
@@ -12,8 +13,8 @@ export class AuditController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  @RequirePermissions('audit.read')
   async list(
+    @CurrentUser() user: JwtUser,
     @Query() dto: PaginationDto,
     @Query('action') action?: string,
     @Query('entity') entity?: string,
@@ -21,6 +22,7 @@ export class AuditController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
+    if (!isSuperProAdmin(user)) throw new ForbiddenException('Audit jurnali faqat Super Pro Admin uchun');
     const where: any = {};
     if (action) where.action = action;
     if (entity) where.entity = entity;
@@ -45,8 +47,8 @@ export class AuditController {
   }
 
   @Get('actions')
-  @RequirePermissions('audit.read')
-  actions() {
+  actions(@CurrentUser() user: JwtUser) {
+    if (!isSuperProAdmin(user)) throw new ForbiddenException('Audit jurnali faqat Super Pro Admin uchun');
     return Object.values(AUDIT_ACTIONS_LIST);
   }
 }

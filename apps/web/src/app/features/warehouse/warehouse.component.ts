@@ -271,8 +271,8 @@ export class WarehouseComponent {
   openMaterial(m: Partial<Material>): void {
     this.materialFe.reset();
     this.form = {
-      code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', unit: m.unit ?? 'm',
-      minStock: m.minStock ?? 0, price: m.price ?? null, supplier: m.supplier ?? '', quantity: 0,
+      code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', unit: m.unit ?? '',
+      minStock: m.minStock ?? null, price: m.price ?? null, supplier: m.supplier ?? '', quantity: null as number | null,
     };
     this.materialModal.set(m);
   }

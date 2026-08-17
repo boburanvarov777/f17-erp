@@ -6,7 +6,6 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
-import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
 import { InitialsPipe, NumPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
@@ -31,7 +30,7 @@ interface Row {
   imports: [
     FormsModule, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, IconComponent,
     PlanLinesFormComponent,
-    TPipe, InitialsPipe, NumPipe, DigitsOnlyDirective,
+    TPipe, InitialsPipe, NumPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

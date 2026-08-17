@@ -35,6 +35,13 @@ export const STAGE_PERMISSION_PREFIX: Record<string, string> = {
 /** Full access marker — Super Pro Admin bypasses granular checks. */
 export const ALL_PERMISSIONS = '*';
 
+export const SUPER_PRO_ADMIN_ROLE = 'SUPER_PRO_ADMIN';
+
+export function isSuperProAdmin(user: { roleCode?: string; permissions?: string[] } | null | undefined): boolean {
+  if (!user) return false;
+  return user.permissions?.includes(ALL_PERMISSIONS) === true || user.roleCode === SUPER_PRO_ADMIN_ROLE;
+}
+
 /** Super Admin: everything except role management and audit logs. */
 export const SUPER_ADMIN_PERMISSIONS = PERMISSIONS.filter(
   (p) => !p.startsWith('roles.') && p !== 'audit.read',

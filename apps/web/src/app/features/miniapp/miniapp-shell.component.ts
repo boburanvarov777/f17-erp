@@ -3,10 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { LangSelectComponent } from '../../shared/ui/lang-select.component';
 import { deptLabel } from '../../core/dept-label';
 import type { Department } from '../../core/models';
 import { I18nService } from '../../core/services/i18n.service';
-import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
@@ -15,10 +15,16 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
 @Component({
   selector: 'app-miniapp-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, TPipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, LangSelectComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="ma">
+      @if (ma.state() !== 'loading') {
+        <div class="ma-topbar">
+          <ui-lang-select [current]="i18n.lang()" (changed)="setLang($event)" />
+        </div>
+      }
+
       @switch (ma.state()) {
         @case ('loading') {
           <div class="ma-center">
@@ -34,37 +40,24 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
             <h2 class="mt-4">{{ 'ma_title' | t }}</h2>
             <p class="small text-3 mt-2" style="text-align:center;max-width:320px">{{ ma.message() || ('ma_login_prompt' | t) }}</p>
 
-            <div class="lang-picker mt-4" role="group" [attr.aria-label]="'language' | t">
-              @for (l of langs; track l.code) {
-                <button
-                  type="button"
-                  class="lang-picker-item"
-                  [class.active]="i18n.lang() === l.code"
-                  (click)="setLang(l.code)"
-                >
-                  {{ l.short }}
-                </button>
-              }
-            </div>
-
             <div class="col gap-3 mt-5" style="width:100%;max-width:320px">
               <div class="field" [class.field-invalid]="fe.has('departmentCode')">
                 <label class="label">{{ 'department' | t }}</label>
                 <select class="select" [(ngModel)]="departmentCode" (ngModelChange)="fe.clear('departmentCode')">
-                  <option value="" disabled hidden>{{ 'select_department' | t }}</option>
+                  <option value="" disabled>{{ 'select_department' | t }}</option>
                   @for (d of ma.departments(); track d.id) { <option [value]="d.code">{{ deptName(d) }}</option> }
                 </select>
                 @if (fe.get('departmentCode'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
               <div class="field" [class.field-invalid]="fe.has('login')">
                 <label class="label">{{ 'login' | t }}</label>
-                <input class="input" [(ngModel)]="login" autocomplete="username" (ngModelChange)="fe.clear('login')" />
+                <input class="input" [(ngModel)]="login" autocomplete="username" (ngModelChange)="fe.clear('login')" [placeholder]="'login' | t" />
                 @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
               <div class="field" [class.field-invalid]="fe.has('password')">
                 <label class="label">{{ 'password' | t }}</label>
                 <div class="pass-wrap">
-                  <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" (ngModelChange)="fe.clear('password')" />
+                  <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" (ngModelChange)="fe.clear('password')" [placeholder]="'password' | t" />
                   <button type="button" class="peek" (click)="toggleShow()" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
                     <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
                   </button>
@@ -101,10 +94,18 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     </div>
   `,
   styles: [`
-    .ma { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
-    .ma-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ma { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+    .ma-topbar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 40;
+      padding: 10px 12px;
+      padding-top: max(10px, env(safe-area-inset-top));
+    }
+    .ma-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 48px; }
     .mark { width: 56px; height: 56px; border-radius: 15px; background: linear-gradient(135deg, #3f6cba, #1b3a6b); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; box-shadow: 0 8px 22px rgba(27,58,107,.35); }
-    .ma-body { flex: 1; padding: 14px 14px 82px; overflow-y: auto; }
+    .ma-body { flex: 1; padding: 56px 14px 82px; overflow-y: auto; }
     .ma-nav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
       display: grid;
@@ -127,7 +128,6 @@ export class MiniAppShellComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly fe = new FieldErrorsState();
-  readonly langs = LANG_OPTIONS;
 
   readonly tabs = computed(() => {
     const tabs: { link: string; icon: string; label: string }[] = [

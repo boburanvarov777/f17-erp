@@ -36,6 +36,7 @@ export class BotService implements OnModuleInit {
       );
       await Promise.race([init, timeout]);
       this.logger.log(`Telegram bot @${this.bot.botInfo.username} initialised`);
+      await this.setupMenuButton();
     } catch (e) {
       this.logger.error(`Telegram init failed: ${(e as Error).message}`);
       this.bot = undefined;
@@ -81,8 +82,30 @@ export class BotService implements OnModuleInit {
     });
   }
 
+  private miniAppUrl(): string {
+    return process.env.TELEGRAM_MINIAPP_URL || `${(process.env.APP_URL || '').replace(/\/$/, '')}/miniapp`;
+  }
+
+  /** Persistent "Mini App" button in chat input bar (Telegram menu button). */
+  private async setupMenuButton(): Promise<void> {
+    if (!this.bot) return;
+    const url = this.miniAppUrl();
+    if (!/^https:\/\//.test(url)) {
+      this.logger.warn('Mini App URL is not HTTPS — chat menu button skipped');
+      return;
+    }
+    try {
+      await this.bot.api.setChatMenuButton({
+        menu_button: { type: 'web_app', text: 'Mini App', web_app: { url } },
+      });
+      this.logger.log('Chat menu button set to Mini App');
+    } catch (e) {
+      this.logger.warn(`setChatMenuButton failed: ${(e as Error).message}`);
+    }
+  }
+
   private miniAppKeyboard(lang: Lang) {
-    const url = process.env.TELEGRAM_MINIAPP_URL || `${(process.env.APP_URL || '').replace(/\/$/, '')}/miniapp`;
+    const url = this.miniAppUrl();
     if (!/^https:\/\//.test(url)) return undefined;
     return new InlineKeyboard().webApp(t(lang, 'open_miniapp'), url);
   }

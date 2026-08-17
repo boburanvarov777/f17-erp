@@ -52,8 +52,8 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         </div>
         <div class="page-actions">
           @if (canWrite()) {
-            <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()" [attr.data-tip]="'add_operation' | t">
-              <ui-icon name="plus" [size]="15" /> {{ 'add_operation' | t }}
+            <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()" [attr.data-tip]="'update_operation' | t">
+              <ui-icon name="pencil" [size]="15" /> {{ 'update_operation' | t }}
             </button>
           }
           @if (isLoading()) {
@@ -129,8 +129,8 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                           <ui-icon name="eye" [size]="15" />
                         </button>
                         @if (canWrite() && s.status !== 'COMPLETED') {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'add_operation' | t">
-                            <ui-icon name="plus" [size]="15" />
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'update_operation' | t">
+                            <ui-icon name="pencil" [size]="15" />
                           </button>
                         }
                         @if (canWrite()) {
@@ -186,14 +186,14 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
       }
     </div>
 
-    <!-- ─── add operation ─── -->
+    <!-- ─── update operation ─── -->
     @if (entryModal()) {
-      <ui-modal [title]="'add_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
+      <ui-modal [title]="'update_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
         <div class="form-grid">
           <div class="field full" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
             <select class="select" [(ngModel)]="entry.orderId" (ngModelChange)="entryFe.clear('orderId')">
-              <option value="" disabled hidden>{{ 'select_order' | t }}</option>
+              <option value="" disabled>{{ 'select_order' | t }}</option>
               @for (s of openStages(); track s.id) {
                 <option [value]="s.order?.id">{{ s.order?.number }} · {{ s.order?.model?.code }} — {{ s.doneQty }}/{{ s.planQty }}</option>
               }
@@ -202,16 +202,17 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('qty')">
             <label class="label">{{ 'operation_qty' | t }} <span class="req">*</span></label>
-            <input class="input" type="number" min="1" [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" />
+            <input class="input" type="number" min="1" [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
             @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'defect_qty' | t }}</label>
-            <input class="input" type="number" min="0" [(ngModel)]="entry.defectQty" />
+            <input class="input" type="number" min="0" [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
           <div class="field">
             <label class="label">{{ 'date' | t }}</label>
             <input class="input" type="date" [(ngModel)]="entry.date" />
+            <div class="tiny text-3 mt-2">{{ 'date_empty_hint' | t }}</div>
           </div>
 
           <!-- stage-specific fields -->
@@ -231,7 +232,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
               <div class="field">
                 <label class="label">{{ 'sub_stage' | t }}</label>
                 <select class="select" [(ngModel)]="entry.meta['subStage']">
-                  <option value="" disabled hidden>{{ 'select_sub_stage' | t }}</option>
+                  <option value="" disabled>{{ 'select_sub_stage' | t }}</option>
                   <option value="CLEANING">{{ 'pack_sub_CLEANING' | t }}</option>
                   <option value="IRONING">{{ 'pack_sub_IRONING' | t }}</option>
                   <option value="ACCESSORIES">{{ 'pack_sub_ACCESSORIES' | t }}</option>
@@ -249,7 +250,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
           <div class="field full">
             <label class="label">{{ 'note' | t }}</label>
-            <input class="input" [(ngModel)]="entry.note" />
+            <input class="input" [(ngModel)]="entry.note" [placeholder]="'note_optional' | t" />
           </div>
         </div>
         @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
@@ -357,7 +358,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field full" [class.field-invalid]="shipmentFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
             <select class="select" [(ngModel)]="shipment.orderId" [disabled]="!!sh.id" (ngModelChange)="shipmentFe.clear('orderId')">
-              <option value="" disabled hidden>{{ 'select_order' | t }}</option>
+              <option value="" disabled>{{ 'select_order' | t }}</option>
               @for (s of data()?.items || []; track s.id) { <option [value]="s.order?.id">{{ s.order?.number }}</option> }
             </select>
             @if (shipmentFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
@@ -372,6 +373,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
             <select class="select" [(ngModel)]="shipment.status">
+              <option [ngValue]="undefined" disabled>{{ 'select_status' | t }}</option>
               @for (s of shipmentStatuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
             </select>
           </div>
@@ -423,9 +425,9 @@ export class ProductionComponent {
   readonly shipmentFe = new FieldErrorsState();
   readonly assignFe = new FieldErrorsState();
 
-  entry = { orderId: '', qty: null as number | null, defectQty: 0, date: new Date().toISOString().slice(0, 10), note: '', meta: {} as Record<string, unknown> };
+  entry = { orderId: '', qty: null as number | null, defectQty: null as number | null, date: '', note: '', meta: {} as Record<string, unknown> };
   defect = { type: '', qty: null as number | null, reason: '', comment: '' };
-  shipment: Partial<Shipment> & { orderId?: string } = {};
+  shipment: Partial<Shipment> & { orderId?: string; status?: string } = {};
 
   readonly stageType = computed<StageType>(() => SLUG_TO_STAGE[this.stage()?.toLowerCase()] ?? 'CUTTING');
   readonly icon = computed(() => STAGE_ICON[this.stageType()]);
@@ -485,8 +487,8 @@ export class ProductionComponent {
   openEntry(s?: OrderStage): void {
     this.entryFe.reset();
     this.entry = {
-      orderId: s?.order?.id ?? '', qty: null, defectQty: 0,
-      date: new Date().toISOString().slice(0, 10), note: '', meta: {},
+      orderId: s?.order?.id ?? '', qty: null, defectQty: null,
+      date: '', note: '', meta: {},
     };
     this.entryError.set('');
     this.entryModal.set(s ?? {});
@@ -507,7 +509,7 @@ export class ProductionComponent {
         orderId: this.entry.orderId,
         qty: +this.entry.qty!,
         defectQty: +(this.entry.defectQty || 0),
-        date: this.entry.date ? new Date(this.entry.date).toISOString() : undefined,
+        date: this.entry.date ? new Date(this.entry.date).toISOString() : new Date().toISOString(),
         note: this.entry.note || undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })
@@ -609,9 +611,9 @@ export class ProductionComponent {
       driverPhone: sh.driverPhone ?? '',
       qty: sh.qty ?? undefined,
       boxCount: sh.boxCount ?? undefined,
-      loadingDate: sh.loadingDate ? sh.loadingDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      loadingDate: sh.loadingDate ? sh.loadingDate.slice(0, 10) : '',
       trackNo: sh.trackNo ?? '',
-      status: sh.status ?? 'READY',
+      status: sh.status ?? undefined,
     };
     this.shipmentModal.set(sh);
   }
@@ -625,9 +627,10 @@ export class ProductionComponent {
     this.busy.set(true);
     const body = {
       ...this.shipment,
-      loadingDate: this.shipment.loadingDate ? new Date(this.shipment.loadingDate).toISOString() : undefined,
-      qty: this.shipment.qty ? +this.shipment.qty : 0,
-      boxCount: this.shipment.boxCount ? +this.shipment.boxCount : 0,
+      loadingDate: this.shipment.loadingDate ? new Date(this.shipment.loadingDate).toISOString() : new Date().toISOString(),
+      qty: this.shipment.qty != null ? +this.shipment.qty : 0,
+      boxCount: this.shipment.boxCount != null ? +this.shipment.boxCount : 0,
+      status: (this.shipment.status || 'READY') as Shipment['status'],
     };
     const req = sh.id ? this.api.patch(`/production/shipments/${sh.id}`, body) : this.api.post('/production/shipments', body);
     req.subscribe({

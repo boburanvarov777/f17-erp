@@ -141,22 +141,31 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           </div>
           <div class="field">
             <label class="label">{{ 'department' | t }}</label>
-            <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled hidden>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
+            <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
           </div>
           <div class="field"><label class="label">{{ 'position' | t }}</label><input class="input" [(ngModel)]="form.position" /></div>
           <div class="field" [class.field-invalid]="fe.has('roleId')">
             <label class="label">{{ 'role' | t }} <span class="req">*</span></label>
-            <select class="select" [(ngModel)]="form.roleId" (ngModelChange)="fe.clear('roleId')"><option value="" disabled hidden>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.roleId" (ngModelChange)="fe.clear('roleId')"><option value="" disabled>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
             @if (fe.get('roleId'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
-            <select class="select" [(ngModel)]="form.status"><option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option><option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option></select>
+            <select class="select" [(ngModel)]="form.status">
+              <option value="" disabled>{{ 'select_status' | t }}</option>
+              <option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option>
+              <option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option>
+            </select>
           </div>
           <div class="field"><label class="label">{{ 'employee_id' | t }}</label><input class="input" [(ngModel)]="form.employeeId" /></div>
           <div class="field">
             <label class="label">{{ 'language' | t }}</label>
-            <select class="select" [(ngModel)]="form.lang"><option value="UZ">{{ 'lang_uz' | t }}</option><option value="RU">{{ 'lang_ru' | t }}</option><option value="EN">{{ 'lang_en' | t }}</option></select>
+            <select class="select" [(ngModel)]="form.lang">
+              <option value="" disabled>{{ 'select_lang' | t }}</option>
+              <option value="UZ">{{ 'lang_uz' | t }}</option>
+              <option value="RU">{{ 'lang_ru' | t }}</option>
+              <option value="EN">{{ 'lang_en' | t }}</option>
+            </select>
           </div>
           <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="form.note" /></div>
         </div>
@@ -252,8 +261,8 @@ export class UsersComponent {
       firstName: u.firstName ?? '', lastName: u.lastName ?? '', phone: u.phone ?? '',
       email: u.email ?? '', login: u.login ?? '', password: '',
       departmentId: u.department?.id ?? '', position: u.position ?? '',
-      roleId: u.role?.id ?? '', status: u.status ?? 'ACTIVE',
-      employeeId: u.employeeId ?? '', lang: u.lang ?? 'UZ', note: u.note ?? '',
+      roleId: u.role?.id ?? '', status: u.status ?? '',
+      employeeId: u.employeeId ?? '', lang: u.lang ?? '', note: u.note ?? '',
     };
     this.editing.set(u);
   }
@@ -268,6 +277,8 @@ export class UsersComponent {
       { key: 'login', label: t('login'), value: this.form['login'], required: true },
       { key: 'roleId', label: t('role'), value: this.form['roleId'], required: true },
       { key: 'password', label: t('password'), value: this.form['password'], required: isNew },
+      { key: 'status', label: t('status'), value: this.form['status'], required: true },
+      { key: 'lang', label: t('language'), value: this.form['lang'], required: true },
     ], t))) return;
 
     this.busy.set(true);

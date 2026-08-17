@@ -54,7 +54,7 @@ async function main() {
         'models.create', 'models.update', 'models.delete',
         'warehouse.create', 'warehouse.update', 'clients.read', 'clients.create', 'clients.update',
         'users.read', 'users.create', 'users.update', 'roles.read', 'departments.read',
-        'tasks.create', 'tasks.update', 'tasks.delete', 'plans.update', 'schedule.update', 'audit.read',
+        'tasks.create', 'tasks.update', 'tasks.delete', 'plans.update', 'schedule.update',
         ...STAGES.flatMap((s) => stagePerms(s.toLowerCase())),
       ],
       isSystem: true,

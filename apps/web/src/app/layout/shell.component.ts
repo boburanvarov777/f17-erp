@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { filterNavGroupsForUser } from '../core/nav-filter';
-import { LANG_OPTIONS, langOption } from '../core/lang-options';
 import { AuthService } from '../core/services/auth.service';
 import { I18nService } from '../core/services/i18n.service';
 import { NotificationService } from '../core/services/notification.service';
@@ -12,6 +11,7 @@ import { ThemeService } from '../core/services/theme.service';
 import { AgoPipe, InitialsPipe } from '../shared/pipes/format.pipe';
 import { TPipe } from '../shared/pipes/t.pipe';
 import { IconComponent } from '../shared/ui/icon.component';
+import { LangPickerComponent } from '../shared/ui/lang-picker.component';
 import { GlobalSearchComponent } from './global-search.component';
 import type { Lang } from '../core/models';
 
@@ -21,7 +21,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, TPipe, AgoPipe, InitialsPipe, GlobalSearchComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, LangPickerComponent, TPipe, AgoPipe, InitialsPipe, GlobalSearchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -43,7 +43,9 @@ interface NavGroup { label?: string; items: NavItem[]; }
               @if (g.label && !collapsed()) { <div class="nav-label">{{ g.label | t }}</div> }
               @if (g.label && collapsed()) { <div class="nav-sep"></div> }
               @for (it of g.items; track it.link) {
-                <a class="nav-item" [routerLink]="it.link" routerLinkActive="active" [attr.data-tip]="collapsed() ? (it.label | t) : null">
+                <a class="nav-item" [routerLink]="it.link" routerLinkActive="active"
+                   [attr.data-tip]="collapsed() ? (it.label | t) : null"
+                   [attr.data-tip-prefer]="collapsed() ? 'right' : null">
                   <ui-icon [name]="it.icon" [size]="17.5" />
                   @if (!collapsed()) { <span>{{ it.label | t }}</span> }
                 </a>
@@ -62,7 +64,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
 
       <!-- ───────── main ───────── -->
       <div class="main">
-        <header class="topbar no-print">
+        <header class="topbar no-print" data-tip-zone="bottom">
           <button class="btn btn-ghost btn-icon burger" type="button" (click)="mobileOpen.set(!mobileOpen())" [attr.data-tip]="'menu' | t">
             <ui-icon name="menu" [size]="19" />
           </button>
@@ -76,28 +78,14 @@ interface NavGroup { label?: string; items: NavItem[]; }
           <div class="grow"></div>
 
           <div class="row gap-1">
-            <span class="conn" [class.on]="rt.connected()" [attr.data-tip]="rt.connected() ? ('connected' | t) : ('disconnected' | t)">
+            <span class="conn" [class.on]="rt.connected()"
+                  [attr.data-tip]="rt.connected() ? ('connected' | t) : ('disconnected' | t)"
+                  data-tip-prefer="bottom">
               <ui-icon [name]="rt.connected() ? 'wifi' : 'wifi-off'" [size]="15" />
             </span>
 
             <!-- language -->
-            <div class="dropdown">
-              <button class="btn btn-ghost btn-sm lang-trigger" type="button" (click)="toggle('lang')" [attr.data-tip]="'language' | t">
-                <ui-icon name="globe" [size]="16" />
-                <span class="lang-chip" [class]="langOption(i18n.lang()).flagClass">{{ langOption(i18n.lang()).short }}</span>
-              </button>
-              @if (open() === 'lang') {
-                <div class="menu" style="min-width:190px">
-                  @for (l of langs; track l.code) {
-                    <button class="menu-item" type="button" (click)="setLang(l.code)">
-                      <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
-                      <span>{{ ('lang_' + l.code.toLowerCase()) | t }}</span>
-                      @if (i18n.lang() === l.code) { <ui-icon name="check" [size]="15" /> }
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+            <ui-lang-picker variant="compact" [current]="i18n.lang()" (changed)="setLang($event)" />
 
             <!-- theme -->
             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
@@ -300,9 +288,6 @@ export class ShellComponent {
   readonly open = signal<string | null>(null);
   readonly user = this.auth.user;
 
-  readonly langs = LANG_OPTIONS;
-  readonly langOption = langOption;
-
   /** Sidebar shrinks to what the signed-in role is actually allowed to open. */
   readonly groups = computed<NavGroup[]>(() =>
     filterNavGroupsForUser((...p) => this.auth.can(...p), this.auth.user()).map((g) => ({
@@ -337,7 +322,6 @@ export class ShellComponent {
 
   setLang(l: Lang): void {
     this.i18n.set(l);
-    this.open.set(null);
   }
 
   openNotif(id: string, link?: string): void {

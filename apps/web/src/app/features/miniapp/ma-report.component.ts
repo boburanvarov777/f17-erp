@@ -54,7 +54,7 @@ import { haptic } from './telegram';
 
         <div class="field mt-4" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'ma_enter_qty' | t }}</label>
-          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" (ngModelChange)="fe.clear('qty')" />
+          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" (ngModelChange)="fe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
           @if (fe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
@@ -64,12 +64,12 @@ import { haptic } from './telegram';
 
         <div class="field mt-4">
           <label class="label">{{ 'defect_qty' | t }}</label>
-          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="defectQty" />
+          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="defectQty" [placeholder]="'defect_qty_placeholder' | t" />
         </div>
 
         <div class="field mt-3">
           <label class="label">{{ 'note' | t }}</label>
-          <input class="input" [(ngModel)]="note" />
+          <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
         </div>
 
         @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
@@ -105,7 +105,7 @@ export class MaReportComponent {
   readonly ok = signal(false);
 
   qty: number | null = null;
-  defectQty = 0;
+  defectQty: number | null = null;
   note = '';
 
   readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
@@ -132,7 +132,7 @@ export class MaReportComponent {
     this.fe.reset();
     this.selected.set(s);
     this.qty = null;
-    this.defectQty = 0;
+    this.defectQty = null;
     this.note = '';
     this.error.set('');
     this.ok.set(false);
@@ -156,7 +156,7 @@ export class MaReportComponent {
       .post(`/production/${this.stageSlug()}/entries`, {
         orderId: s.order?.id ?? s.orderId,
         qty: +this.qty!,
-        defectQty: +this.defectQty || 0,
+        defectQty: +(this.defectQty || 0),
         note: this.note || this.i18n.t('ma_source_miniapp'),
       })
       .subscribe({

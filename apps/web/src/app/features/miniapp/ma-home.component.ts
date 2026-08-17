@@ -53,7 +53,7 @@ import { haptic } from './telegram';
               <div class="row-between mt-3 tiny text-3">
                 <span>{{ 'produced' | t }}: <b class="text-2">{{ plans()[p.key]?.producedQty || 0 | num }}</b> {{ 'pieces' | t }}</span>
                 @if (p.key === 'DAILY') {
-                  <span class="edit-hint"><ui-icon name="plus" [size]="12" /> {{ 'ma_add_result' | t }}</span>
+                  <span class="edit-hint"><ui-icon name="pencil" [size]="12" /> {{ 'ma_update_result' | t }}</span>
                 }
               </div>
               @if (p.key === 'DAILY' && dailyLines().length) {
@@ -74,11 +74,12 @@ import { haptic } from './telegram';
     }
 
     @if (entryModal()) {
-      <ui-modal [title]="'ma_add_result' | t" (closed)="closeEntry()">
+      <ui-modal [title]="'ma_update_result' | t" (closed)="closeEntry()">
         @if (entryOrders().length) {
           <div class="field" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'ma_select_order' | t }}</label>
             <select class="select" [(ngModel)]="entryOrderId" (ngModelChange)="entryFe.clear('orderId')">
+              <option value="" disabled>{{ 'ma_select_order' | t }}</option>
               @for (o of entryOrders(); track o.orderId) {
                 <option [value]="o.orderId">{{ orderLabel(o) }}</option>
               }
@@ -87,7 +88,7 @@ import { haptic } from './telegram';
           </div>
           <div class="field mt-3" [class.field-invalid]="entryFe.has('qty')">
             <label class="label">{{ 'quantity' | t }}</label>
-            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryQty" (ngModelChange)="entryFe.clear('qty')" />
+            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryQty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
             @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="quick mt-2">
@@ -97,7 +98,7 @@ import { haptic } from './telegram';
           </div>
           <div class="field mt-3">
             <label class="label">{{ 'defect_qty' | t }}</label>
-            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryDefect" />
+            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryDefect" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
           <div class="field mt-3">
             <label class="label">{{ 'note' | t }}</label>
@@ -152,7 +153,7 @@ export class MaHomeComponent {
 
   entryOrderId = '';
   entryQty: number | null = null;
-  entryDefect = 0;
+  entryDefect: number | null = null;
   entryNote = '';
 
   constructor() {
@@ -202,9 +203,9 @@ export class MaHomeComponent {
 
   openEntry(): void {
     this.entryFe.reset();
-    this.entryOrderId = this.entryOrders()[0]?.orderId ?? '';
+    this.entryOrderId = '';
     this.entryQty = null;
-    this.entryDefect = 0;
+    this.entryDefect = null;
     this.entryNote = '';
     this.entryError.set('');
     this.entryModal.set(true);
@@ -232,9 +233,6 @@ export class MaHomeComponent {
             targetQty: 0,
           })),
         );
-        if (!this.entryOrderId && this.fallbackOrders()[0]) {
-          this.entryOrderId = this.fallbackOrders()[0].orderId;
-        }
       },
     });
   }
@@ -263,7 +261,7 @@ export class MaHomeComponent {
     this.api.post(`/production/${slug}/entries`, {
       orderId: this.entryOrderId,
       qty: +this.entryQty!,
-      defectQty: +this.entryDefect || 0,
+      defectQty: +(this.entryDefect || 0),
       note: this.entryNote || this.i18n.t('ma_source_dashboard'),
     }).subscribe({
       next: () => {

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import type { AuthResponse, CurrentUser } from '../models';
+import { isSuperProAdmin } from '../role.util';
 import { ApiService } from './api.service';
 
 const ACCESS = 'f17_access';
@@ -17,7 +18,7 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.user() && !!this.accessToken);
   readonly permissions = computed(() => this.user()?.permissions ?? []);
   readonly isSuperAdmin = computed(() => this.permissions().includes('*'));
-  readonly isSuperProAdmin = computed(() => this.permissions().includes('*'));
+  readonly isSuperProAdmin = computed(() => isSuperProAdmin(this.user()));
 
   get accessToken(): string | null { return localStorage.getItem(ACCESS); }
   get refreshToken(): string | null { return localStorage.getItem(REFRESH); }

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, permissionGuard } from './core/guards/auth.guard';
+import { authGuard, permissionGuard, superProAdminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -98,8 +98,7 @@ export const routes: Routes = [
       },
       {
         path: 'audit',
-        canActivate: [permissionGuard],
-        data: { permissions: ['audit.read'] },
+        canActivate: [superProAdminGuard],
         loadComponent: () => import('./features/audit/audit.component').then((m) => m.AuditComponent),
       },
       {

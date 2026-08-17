@@ -7,14 +7,14 @@ import { ToastService } from '../../core/services/toast.service';
 import { InitialsPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
-import { LANG_OPTIONS } from '../../core/lang-options';
+import { LangPickerComponent } from '../../shared/ui/lang-picker.component';
 import type { Lang } from '../../core/models';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [FormsModule, IconComponent, TPipe, InitialsPipe],
+  imports: [FormsModule, IconComponent, LangPickerComponent, TPipe, InitialsPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page" style="max-width:860px">
@@ -44,21 +44,9 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
 
         <div class="card card-pad mb-4">
           <h3 class="mb-4">{{ 'settings' | t }}</h3>
-          <div class="row-between mb-4">
-            <span class="small">{{ 'language' | t }}</span>
-            <div class="row gap-1">
-              @for (l of langs; track l.code) {
-                <button
-                  class="btn btn-sm lang-btn"
-                  [class.btn-primary]="i18n.lang() === l.code"
-                  type="button"
-                  (click)="setLang(l.code)"
-                >
-                  <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
-                  <span>{{ ('lang_' + l.code) | t }}</span>
-                </button>
-              }
-            </div>
+          <div class="mb-4">
+            <div class="small mb-3">{{ 'language' | t }}</div>
+            <ui-lang-picker variant="grid" [current]="i18n.lang()" (changed)="setLang($event)" />
           </div>
           <div class="row-between">
             <span class="small">{{ 'theme' | t }}</span>
@@ -104,7 +92,6 @@ export class ProfileComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly fe = new FieldErrorsState();
-  readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 

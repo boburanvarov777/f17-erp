@@ -112,7 +112,10 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
           </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
-            <select class="select" [(ngModel)]="form.status">@for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }</select>
+            <select class="select" [(ngModel)]="form.status" (ngModelChange)="fe.clear('status')">
+              <option value="" disabled>{{ 'select_status' | t }}</option>
+              @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+            </select>
           </div>
           <div class="field"><label class="label">{{ 'started_at' | t }}</label><input class="input" type="datetime-local" [(ngModel)]="form.startedAt" /></div>
           <div class="field"><label class="label">{{ 'finished_at' | t }}</label><input class="input" type="datetime-local" [(ngModel)]="form.finishedAt" /></div>
@@ -204,8 +207,8 @@ export class MyTasksComponent {
     this.fe.reset();
     this.form = {
       title: t.title ?? '', description: t.description ?? '',
-      date: (t.date ?? new Date().toISOString()).slice(0, 10),
-      status: t.status ?? 'TODO',
+      date: (t.date ?? '').slice(0, 10) || '',
+      status: t.status ?? '',
       startedAt: t.startedAt ? t.startedAt.slice(0, 16) : '',
       finishedAt: t.finishedAt ? t.finishedAt.slice(0, 16) : '',
       note: t.note ?? '',
@@ -218,6 +221,7 @@ export class MyTasksComponent {
     if (!this.fe.apply(runValidation([
       { key: 'title', label: t('task_title'), value: this.form['title'], required: true },
       { key: 'date', label: t('date'), value: this.form['date'], required: true },
+      { key: 'status', label: t('status'), value: this.form['status'], required: true },
     ], t))) return;
 
     this.busy.set(true);

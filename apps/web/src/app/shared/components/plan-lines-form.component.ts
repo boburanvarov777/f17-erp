@@ -14,8 +14,7 @@ interface LineDraft {
   orderId: string;
   orderNumber: string;
   modelCode: string;
-  targetQty: number;
-  _active?: boolean;
+  targetQty: number | null;
 }
 
 interface StageCandidate {
@@ -36,8 +35,8 @@ interface StageCandidate {
       @if (rows().length) {
         <div class="col gap-2">
           @for (r of rows(); track r.orderId) {
-            <label class="plan-line-row" [class.on]="r.targetQty > 0">
-              <input type="checkbox" [checked]="r.targetQty > 0" (change)="toggle(r, $event)" />
+            <label class="plan-line-row" [class.on]="qtyVal(r) > 0">
+              <input type="checkbox" [checked]="qtyVal(r) > 0" (change)="toggle(r, $event)" />
               <span class="grow">
                 <span class="mono small bold">{{ r.orderNumber }}</span>
                 <span class="tiny text-3"> · {{ r.modelCode }}</span>
@@ -49,6 +48,7 @@ interface StageCandidate {
                 digitsOnly
                 [(ngModel)]="r.targetQty"
                 (ngModelChange)="onQtyChange(r)"
+                [placeholder]="'plan_done_placeholder' | t"
               />
             </label>
           }
@@ -97,21 +97,22 @@ export class PlanLinesFormComponent {
     });
   }
 
+  qtyVal(r: LineDraft): number {
+    return +r.targetQty! || 0;
+  }
+
   total(): number {
-    return this.rows().filter((r) => r.targetQty > 0).reduce((a, r) => a + (+r.targetQty || 0), 0);
+    return this.rows().reduce((a, r) => a + this.qtyVal(r), 0);
   }
 
   toggle(r: LineDraft, ev: Event): void {
     const on = (ev.target as HTMLInputElement).checked;
-    r._active = on;
-    if (!on) r.targetQty = 0;
-    else if (!r.targetQty) r.targetQty = 50;
+    if (!on) r.targetQty = null;
     this.rows.update((list) => [...list]);
     this.fe.clear('lines');
   }
 
   onQtyChange(r: LineDraft): void {
-    r._active = (+r.targetQty || 0) > 0;
     this.rows.update((list) => [...list]);
     this.fe.clear('lines');
   }
@@ -147,7 +148,7 @@ export class PlanLinesFormComponent {
         orderId: c.orderId,
         orderNumber: c.order?.number ?? '—',
         modelCode: c.order?.model?.code ?? '—',
-        targetQty: existing.get(c.orderId) ?? 0,
+        targetQty: existing.get(c.orderId) ?? null,
       });
     }
     for (const l of plan?.lines ?? []) {
@@ -156,7 +157,7 @@ export class PlanLinesFormComponent {
           orderId: l.orderId,
           orderNumber: l.orderNumber,
           modelCode: l.modelCode,
-          targetQty: l.targetQty ?? 0,
+          targetQty: l.targetQty ?? null,
         });
       }
     }
@@ -166,8 +167,8 @@ export class PlanLinesFormComponent {
   submit(): void {
     const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
     const lines = this.rows()
-      .filter((r) => (+r.targetQty || 0) > 0)
-      .map((r) => ({ orderId: r.orderId, targetQty: +r.targetQty }));
+      .filter((r) => this.qtyVal(r) > 0)
+      .map((r) => ({ orderId: r.orderId, targetQty: +r.targetQty! }));
     if (!this.fe.apply(runValidation([
       {
         key: 'lines',

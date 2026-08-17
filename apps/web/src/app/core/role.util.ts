@@ -3,6 +3,13 @@ import type { CurrentUser } from './models';
 const TOP_ADMIN_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN']);
 const FULL_MANAGE_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN', 'PRODUCTION_MANAGER', 'PLANNING']);
 
+/** Audit logs and full system control — Super Pro Admin only. */
+export function isSuperProAdmin(u: CurrentUser | null | undefined): boolean {
+  if (!u) return false;
+  if (u.permissions?.includes('*')) return true;
+  return u.role?.code === 'SUPER_PRO_ADMIN';
+}
+
 export function isTopAdmin(u: CurrentUser | null | undefined): boolean {
   if (!u) return false;
   if (u.permissions?.includes('*')) return true;

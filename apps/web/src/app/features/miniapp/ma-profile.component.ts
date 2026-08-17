@@ -1,12 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
-import { I18nService } from '../../core/services/i18n.service';
 import { InitialsPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { MiniAppService } from './miniapp.service';
-import { LANG_OPTIONS } from '../../core/lang-options';
-import type { Lang } from '../../core/models';
 
 @Component({
   selector: 'app-ma-profile',
@@ -36,23 +33,6 @@ import type { Lang } from '../../core/models';
         </dl>
       </div>
 
-      <div class="card card-pad mt-3">
-        <div class="small mb-3">{{ 'language' | t }}</div>
-        <div class="lang-picker" role="group" [attr.aria-label]="'language' | t">
-          @for (l of langs; track l.code) {
-            <button
-              type="button"
-              class="lang-picker-item"
-              [class.active]="i18n.lang() === l.code"
-              (click)="setLang(l.code)"
-            >
-              <span class="lang-picker-code">{{ l.short }}</span>
-              <span class="lang-picker-label">{{ ('lang_' + l.code) | t }}</span>
-            </button>
-          }
-        </div>
-      </div>
-
       <button class="btn btn-block mt-4" type="button" (click)="auth.logout(false); ma.state.set('login')">
         <ui-icon name="log-out" [size]="15" /> {{ 'logout' | t }}
       </button>
@@ -63,8 +43,4 @@ import type { Lang } from '../../core/models';
 export class MaProfileComponent {
   readonly ma = inject(MiniAppService);
   readonly auth = inject(AuthService);
-  readonly i18n = inject(I18nService);
-  readonly langs = LANG_OPTIONS;
-
-  setLang(l: Lang): void { this.i18n.set(l); }
 }

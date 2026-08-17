@@ -9,7 +9,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 
-interface SizeRow { size: string; qty: number; }
+interface SizeRow { size: string; qty: number | null; }
 
 @Component({
   selector: 'app-order-form',
@@ -29,7 +29,7 @@ interface SizeRow { size: string; qty: number; }
           <label class="label">{{ 'client' | t }}</label>
           <div class="row gap-2">
             <select class="select grow" [(ngModel)]="form.clientId">
-              <option value="" disabled hidden>{{ 'select_client' | t }}</option>
+              <option value="" disabled>{{ 'select_client' | t }}</option>
               @for (c of clientOptions(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
             </select>
             @if (canAddClient()) {
@@ -43,7 +43,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field full">
           <label class="label">{{ 'model' | t }}</label>
           <select class="select" [(ngModel)]="form.modelId" (ngModelChange)="onModelChange()">
-            <option value="" disabled hidden>{{ 'select_model' | t }}</option>
+            <option value="" disabled>{{ 'select_model' | t }}</option>
             @for (m of models(); track m.id) { <option [value]="m.id">{{ m.code }} — {{ m.name }}</option> }
           </select>
         </div>
@@ -57,6 +57,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field">
           <label class="label">{{ 'priority' | t }}</label>
           <select class="select" [(ngModel)]="form.priority">
+            <option value="" disabled>{{ 'select_priority' | t }}</option>
             @for (p of priorities; track p) { <option [value]="p">{{ 'pr_' + p | t }}</option> }
           </select>
         </div>
@@ -76,6 +77,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field">
           <label class="label">{{ 'status' | t }}</label>
           <select class="select" [(ngModel)]="form.status">
+            <option value="" disabled>{{ 'select_status' | t }}</option>
             @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
           </select>
         </div>
@@ -83,7 +85,7 @@ interface SizeRow { size: string; qty: number; }
         <div class="field">
           <label class="label">{{ 'responsible' | t }}</label>
           <select class="select" [(ngModel)]="form.responsibleId">
-            <option value="" disabled hidden>{{ 'select_responsible' | t }}</option>
+            <option value="" disabled>{{ 'select_responsible' | t }}</option>
             @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
           </select>
         </div>
@@ -99,8 +101,8 @@ interface SizeRow { size: string; qty: number; }
       <div class="row-between mb-3">
         <b style="font-size:13.5px">{{ 'size_breakdown' | t }}</b>
         <div class="row gap-2">
-          <span class="badge" [class.badge-success]="sizeTotal() === form.qty" [class.badge-warning]="sizeTotal() !== form.qty">
-            {{ sizeTotal() }} / {{ form.qty || 0 }}
+          <span class="badge" [class.badge-success]="sizeTotal() === (form.qty ?? 0)" [class.badge-warning]="sizeTotal() !== (form.qty ?? 0)">
+            {{ sizeTotal() }} / {{ form.qty ?? 0 }}
           </span>
           <button class="btn btn-sm" type="button" (click)="addSize()"><ui-icon name="plus" [size]="14" /></button>
         </div>
@@ -111,7 +113,7 @@ interface SizeRow { size: string; qty: number; }
           @for (s of sizes(); track $index) {
             <div class="size-row">
               <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
-              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch(); fe.clear('sizes')" />
+              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch(); fe.clear('sizes')" [placeholder]="'plan_done_placeholder' | t" />
               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
                 <ui-icon name="x" [size]="14" />
               </button>
@@ -198,9 +200,9 @@ export class OrderFormComponent {
   clientForm = { code: '', name: '', phone: '', contact: '' };
 
   form = {
-    number: '', clientId: '', modelId: '', qty: 0,
-    orderDate: new Date().toISOString().slice(0, 10),
-    deadline: '', priority: 'NORMAL' as Priority, status: 'NEW' as OrderStatus,
+    number: '', clientId: '', modelId: '', qty: null as number | null,
+    orderDate: '',
+    deadline: '', priority: '' as Priority | '', status: '' as OrderStatus | '',
     note: '', responsibleId: '',
   };
 
@@ -211,7 +213,7 @@ export class OrderFormComponent {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
   readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
-  readonly sizeTotal = computed(() => { this.version(); return this.sizes().reduce((a, s) => a + (+s.qty || 0), 0); });
+  readonly sizeTotal = computed(() => { this.version(); return this.sizes().reduce((a, s) => a + (+s.qty! || 0), 0); });
 
   constructor() {
     this.fe.reset();
@@ -222,7 +224,7 @@ export class OrderFormComponent {
           number: o.number ?? '',
           clientId: o.client?.id ?? '',
           modelId: o.model?.id ?? '',
-          qty: o.qty ?? 0,
+          qty: o.qty ?? null,
           orderDate: (o.orderDate ?? '').slice(0, 10),
           deadline: (o.deadline ?? '').slice(0, 10),
           priority: o.priority ?? 'NORMAL',
@@ -231,10 +233,6 @@ export class OrderFormComponent {
           responsibleId: o.responsible?.id ?? '',
         };
         this.sizes.set((o.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
-      } else {
-        const d = new Date();
-        d.setDate(d.getDate() + 30);
-        this.form.deadline = d.toISOString().slice(0, 10);
       }
       this.touch();
     });
@@ -249,12 +247,12 @@ export class OrderFormComponent {
   onModelChange(): void {
     const m = this.models().find((x) => x.id === this.form.modelId);
     if (m?.sizes?.length && !this.sizes().length) {
-      this.sizes.set(m.sizes.map((s) => ({ size: s.size, qty: 0 })));
+      this.sizes.set(m.sizes.map((s) => ({ size: s.size, qty: s.qty ?? null })));
     }
     this.touch();
   }
 
-  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); this.touch(); this.fe.clear('sizes'); }
+  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); this.touch(); this.fe.clear('sizes'); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); this.touch(); this.fe.clear('sizes'); }
 
   openClientForm(): void {
@@ -307,26 +305,26 @@ export class OrderFormComponent {
         label: t('size_breakdown'),
         value: sizeTotal,
         when: () => this.sizes().length > 0,
-        custom: () => sizeTotal === +this.form.qty ? null : t('sizes_mismatch'),
+        custom: () => sizeTotal === +(this.form.qty ?? 0) ? null : t('sizes_mismatch'),
       },
     ], t))) return;
 
     this.busy.set(true);
     this.error.set('');
 
-    const sizes = this.sizes().filter((s) => s.size && s.qty > 0);
+    const sizes = this.sizes().filter((s) => s.size && (s.qty ?? 0) > 0);
     const body: Record<string, unknown> = {
       number: this.form.number.trim(),
       clientId: this.form.clientId || undefined,
       modelId: this.form.modelId || undefined,
-      qty: +this.form.qty,
+      qty: +this.form.qty!,
       orderDate: new Date(this.form.orderDate).toISOString(),
       deadline: new Date(this.form.deadline).toISOString(),
-      priority: this.form.priority,
-      status: this.form.status,
+      priority: this.form.priority || 'NORMAL',
+      status: this.form.status || 'NEW',
       note: this.form.note || undefined,
       responsibleId: this.form.responsibleId || undefined,
-      sizes: sizes.length ? sizes.map((s) => ({ size: s.size, qty: +s.qty })) : undefined,
+      sizes: sizes.length ? sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) })) : undefined,
     };
 
     const id = this.order()?.id;

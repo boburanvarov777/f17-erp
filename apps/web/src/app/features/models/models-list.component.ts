@@ -135,7 +135,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           <div class="field"><label class="label">{{ 'color' | t }}</label><input class="input" [(ngModel)]="form.color" /></div>
           <div class="field">
             <label class="label">{{ 'client' | t }}</label>
-            <select class="select" [(ngModel)]="form.clientId"><option value="" disabled hidden>{{ 'select_client' | t }}</option>@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.clientId"><option value="" disabled>{{ 'select_client' | t }}</option>@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
           </div>
           <div class="field full"><label class="label">{{ 'fabric' | t }}</label><input class="input" [(ngModel)]="form.fabric" /></div>
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>
@@ -179,8 +179,8 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
         <div class="size-grid">
           @for (s of sizes(); track $index) {
             <div class="row gap-2">
-              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" />
-              <input class="input btn-sm" style="height:32px" type="number" [(ngModel)]="s.qty" />
+              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
+              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" [placeholder]="'plan_done_placeholder' | t" />
               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
             </div>
           }
@@ -235,7 +235,7 @@ export class ModelsListComponent {
   readonly busy = signal(false);
   readonly editing = signal<Partial<ProductModel> | null>(null);
   readonly archiving = signal<ProductModel | null>(null);
-  readonly sizes = signal<ModelSize[]>([]);
+  readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
   readonly photoPreview = signal<string | null>(null);
   readonly photoUploading = signal(false);
   readonly fe = new FieldErrorsState();
@@ -308,7 +308,7 @@ export class ModelsListComponent {
     this.photoPreview.set(null);
   }
 
-  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); }
+  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); }
 
   save(): void {
@@ -324,7 +324,7 @@ export class ModelsListComponent {
     if (body['cost'] == null) delete body['cost'];
     if (!body['photo']) delete body['photo'];
     const sizes = this.sizes().filter((s) => s.size);
-    if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +s.qty || 0 }));
+    if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) }));
 
     const id = this.editing()?.id;
     const req = id ? this.api.patch(`/models/${id}`, body) : this.api.post('/models', body);

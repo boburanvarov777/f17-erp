@@ -6,14 +6,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
-import { LANG_OPTIONS } from '../../core/lang-options';
+import { LangPickerComponent } from '../../shared/ui/lang-picker.component';
 import type { Lang } from '../../core/models';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, TPipe, IconComponent],
+  imports: [FormsModule, TPipe, IconComponent, LangPickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="auth">
@@ -37,19 +37,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
       <!-- form -->
       <div class="form-side">
         <div class="topline">
-          <div class="row gap-1 lang-row">
-            @for (l of langs; track l.code) {
-              <button
-                class="btn btn-sm lang-btn"
-                [class.btn-primary]="i18n.lang() === l.code"
-                type="button"
-                (click)="setLang(l.code)"
-                [attr.data-tip]="('lang_' + l.code) | t"
-              >
-                <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
-              </button>
-            }
-          </div>
+          <ui-lang-picker variant="segment" [current]="i18n.lang()" (changed)="setLang($event)" />
           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
             <ui-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="15" />
           </button>
@@ -129,7 +117,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .panel-foot { position: relative; color: rgba(255,255,255,.35); font-size: 12px; }
 
     .form-side { background: var(--surface); display: flex; flex-direction: column; padding: 20px; }
-    .topline { display: flex; justify-content: flex-end; gap: 4px; }
+    .topline { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
     .form { margin: auto; width: 100%; max-width: 372px; padding-bottom: 8vh; }
     .small-mark { width: 42px; height: 42px; border-radius: 11px; font-size: 13px; margin-bottom: 20px; display: none; }
     .form h2 { font-size: 23px; letter-spacing: -.02em; margin-bottom: 4px; }
@@ -157,7 +145,6 @@ export class LoginComponent {
   readonly error = signal('');
   readonly fe = new FieldErrorsState();
   readonly year = new Date().getFullYear();
-  readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 250" aria-hidden="true">
+  <rect width="500" height="80" fill="#0099b5"/>
+  <rect y="80" width="500" height="5" fill="#ce1126"/>
+  <rect y="85" width="500" height="80" fill="#ffffff"/>
+  <rect y="165" width="500" height="5" fill="#ce1126"/>
+  <rect y="170" width="500" height="80" fill="#1eb53a"/>
+  <circle cx="70" cy="40" r="30" fill="#ffffff"/>
+  <circle cx="79" cy="40" r="24" fill="#0099b5"/>
+  <g fill="#ffffff">
+    <path transform="translate(148 22) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(160 22) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(172 22) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(142 34) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(154 34) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(166 34) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(178 34) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(136 46) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(148 46) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(160 46) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(172 46) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+    <path transform="translate(184 46) scale(6)" d="M0,-1 .31,-.31 1,-.31 .38,.12 .62,.95 0,.38 -.62,.95 -.38,.12 -1,-.31 -.31,-.31Z"/>
+  </g>
+</svg>
