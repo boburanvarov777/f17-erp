@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      NG_CLI_ANALYTICS: false
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +32,7 @@ jobs:
         run: npm run build:api
 
       - name: Build web (production)
-        run: npm run build:web
+        run: npm run build:web -- --verbose
 
       - name: Unit tests
         run: npm test --if-present

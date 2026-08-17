@@ -3,7 +3,7 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": "36d04f1d-272c-4da1-b1fc-03b2719c2d11"
+    "analytics": false
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -60,7 +60,7 @@
                 "scripts": true,
                 "styles": {
                   "minify": true,
-                  "inlineCritical": true
+                  "inlineCritical": false
                 },
                 "fonts": {
                   "inline": false
