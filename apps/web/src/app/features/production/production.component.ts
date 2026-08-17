@@ -283,7 +283,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         </div>
         <div footer>
           <button class="btn" type="button" (click)="defectModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-danger" type="button" (click)="saveDefect(s)" [disabled]="busy()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveDefect(s)" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
