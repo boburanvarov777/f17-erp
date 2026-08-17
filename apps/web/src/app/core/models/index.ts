@@ -87,7 +87,7 @@ export interface Order {
   createdBy?: { id: string; firstName: string; lastName: string } | null;
   sizes?: { id?: string; size: string; color?: string; qty: number }[];
   stages?: OrderStage[]; defects?: Defect[]; shipments?: Shipment[]; comments?: OrderComment[];
-  completedQty?: number; remainingQty?: number; progress?: number; defects_?: number; isLate?: boolean;
+  completedQty?: number; remainingQty?: number; progress?: number; defectQty?: number; isLate?: boolean;
   archivedAt?: string | null;
 }
 

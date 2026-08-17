@@ -63,9 +63,10 @@ export class OrdersService {
     const done = loading?.doneQty ?? 0;
     const totalDone = order.stages.reduce((a, s) => a + s.doneQty, 0);
     const progress = order.qty > 0 ? Math.round((totalDone / (order.qty * STAGE_ORDER.length)) * 100) : 0;
-    const defects = order.stages.reduce((a, s) => a + s.defectQty, 0);
+    // Named defectQty so it never shadows the `defects` relation loaded by findOne().
+    const defectQty = order.stages.reduce((a, s) => a + s.defectQty, 0);
     const isLate = order.deadline < new Date() && !['COMPLETED', 'CANCELLED'].includes(order.status);
-    return { ...order, completedQty: done, remainingQty: Math.max(0, order.qty - done), progress, defects, isLate };
+    return { ...order, completedQty: done, remainingQty: Math.max(0, order.qty - done), progress, defectQty, isLate };
   }
 
   async findOne(id: string) {
