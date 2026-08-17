@@ -6,12 +6,13 @@ import { NumPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { ModalComponent } from '../../shared/ui/modal.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 @Component({
   selector: 'app-model-detail',
   standalone: true,
-  imports: [RouterLink, IconComponent, StatusBadgeComponent, EmptyComponent, LoadingComponent, TPipe, NumPipe, ShortDatePipe],
+  imports: [RouterLink, IconComponent, StatusBadgeComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -32,23 +33,36 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         </div>
 
         <div class="grid layout">
-          <div class="card">
-            @if (m.photos?.length) {
-              <div class="photo-gallery">
-                @for (p of m.photos; track p.id) {
-                  <div class="photo"><img [src]="p.url" [alt]="m.name" /></div>
-                }
-              </div>
-            } @else {
-              <div class="photo">
-                @if (m.photo) { <img [src]="m.photo" [alt]="m.name" /> } @else { <ui-icon name="shirt" [size]="52" [stroke]="1.1" /> }
+          <div class="card sidebar-card">
+            <div class="photos-block">
+              @if (photoUrls().length) {
+                <div class="photos-grid" [class.single]="photoUrls().length === 1">
+                  @for (url of photoUrls(); track url) {
+                    <button type="button" class="photo-tile" (click)="openPhoto(url)" [attr.aria-label]="'photo_view' | t">
+                      <img [src]="url" [alt]="m.name" />
+                      <span class="photo-hover"><ui-icon name="eye" [size]="22" /></span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="photo-empty"><ui-icon name="shirt" [size]="52" [stroke]="1.1" /></div>
+              }
+            </div>
+
+            @if (m.color?.trim()) {
+              <div class="main-color">
+                <div class="main-color-label">{{ 'color' | t }}</div>
+                <div class="color-pill">
+                  <i class="swatch lg" [style.background]="mainColorHex()"></i>
+                  <span>{{ m.color }}</span>
+                </div>
               </div>
             }
+
             <div class="card-body">
               <dl class="kv">
                 <dt>{{ 'category' | t }}</dt><dd>{{ m.category || '—' }}</dd>
                 <dt>{{ 'season' | t }}</dt><dd>{{ m.season || '—' }}</dd>
-                <dt>{{ 'color' | t }}</dt><dd>{{ m.color || '—' }}</dd>
                 <dt>{{ 'fabric' | t }}</dt><dd>{{ m.fabric || '—' }}</dd>
                 <dt>{{ 'lining' | t }}</dt><dd>{{ m.lining || '—' }}</dd>
                 <dt>{{ 'cost' | t }}</dt><dd>{{ m.cost ? (m.cost | num) + ' ' + ('currency_uzs' | t) : '—' }}</dd>
@@ -126,25 +140,55 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
             </div>
           </div>
         </div>
+
+        @if (lightboxUrl(); as url) {
+          <ui-modal [title]="model()?.name || ('photo' | t)" size="xl" (closed)="lightboxUrl.set(null)">
+            <img class="lightbox-img" [src]="url" [alt]="model()?.name || 'model'" />
+          </ui-modal>
+        }
       }
     </div>
   `,
   styles: [`
     .grid.layout { grid-template-columns: 330px minmax(0, 1fr); align-items: start; }
     @media (max-width: 960px) { .grid.layout { grid-template-columns: 1fr; } }
-    .photo { height: 300px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); overflow: hidden; }
-    .photo-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 2px; }
-    .photo-gallery .photo { height: 180px; border-radius: 0; }
-    .photo-gallery .photo:first-child { border-radius: var(--r-lg) 0 0 0; }
-    .photo-gallery .photo:last-child:nth-child(odd) { border-radius: 0 var(--r-lg) 0 0; }
-    .photo img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-card { overflow: hidden; }
+    .photos-block { padding: 12px 12px 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .photos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .photos-grid.single { grid-template-columns: 1fr; }
+    .photo-tile {
+      position: relative; border: none; padding: 0; border-radius: var(--r); overflow: hidden;
+      aspect-ratio: 1; background: var(--surface-3); cursor: zoom-in;
+    }
+    .photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
+    .photo-hover {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.45); color: #fff; opacity: 0; transition: opacity .15s ease;
+    }
+    .photo-tile:hover img { transform: scale(1.04); }
+    .photo-tile:hover .photo-hover { opacity: 1; }
+    .photo-empty {
+      height: 220px; display: flex; align-items: center; justify-content: center;
+      color: var(--text-3); background: var(--surface-3); border-radius: var(--r); margin-bottom: 12px;
+    }
+    .main-color {
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .main-color-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
+    .color-pill {
+      display: inline-flex; align-items: center; gap: 10px; padding: 8px 12px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); width: fit-content;
+    }
+    .lightbox-img { display: block; width: 100%; max-height: min(78vh, 900px); object-fit: contain; margin: 0 auto; border-radius: var(--r); }
     dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
     dl.kv dt { color: var(--text-3); } dl.kv dd { margin: 0; }
     .size-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
     .chip { border: 1px solid var(--border); border-radius: var(--r); padding: 9px; text-align: center; background: var(--surface-2); }
     .chip-k { display: block; font-size: 11px; color: var(--text-3); text-transform: uppercase; }
     .chip-v { display: block; font-size: 16px; font-weight: 600; }
-    .swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); display: inline-block; }
+    .swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); display: inline-block; flex-shrink: 0; }
+    .swatch.lg { width: 28px; height: 28px; border-radius: 50%; }
   `],
 })
 export class ModelDetailComponent {
@@ -152,14 +196,28 @@ export class ModelDetailComponent {
   readonly id = input.required<string>();
   readonly model = signal<ProductModel | null>(null);
   readonly loading = signal(false);
+  readonly lightboxUrl = signal<string | null>(null);
   readonly sizeTotal = computed(() => (this.model()?.sizes ?? []).reduce((a, s) => a + s.qty, 0));
+  readonly photoUrls = computed(() => {
+    const m = this.model();
+    if (!m) return [] as string[];
+    if (m.photos?.length) return m.photos.map((p) => p.url);
+    if (m.photo) return [m.photo];
+    return [];
+  });
   readonly displayColors = computed((): ModelColor[] => {
     const m = this.model();
     if (!m) return [];
-    if (m.colors?.length) return m.colors;
-    if (m.color?.trim()) return [{ name: m.color.trim() }];
-    return [];
+    return m.colors ?? [];
   });
+  readonly mainColorHex = computed(() => {
+    const m = this.model();
+    if (!m?.color?.trim()) return '#ccc';
+    const match = m.colors?.find((c) => c.name.toLowerCase() === m.color!.trim().toLowerCase());
+    return match?.hex || '#ccc';
+  });
+
+  openPhoto(url: string): void { this.lightboxUrl.set(url); }
 
   constructor() {
     effect(() => {
