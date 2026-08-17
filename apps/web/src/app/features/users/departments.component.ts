@@ -9,6 +9,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
@@ -16,7 +17,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
 @Component({
   selector: 'app-departments',
   standalone: true,
-  imports: [FormsModule, IconComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe],
+  imports: [FormsModule, IconComponent, EmptyComponent, LoadingComponent, ModalComponent, StatusBadgeComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -43,7 +44,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
                     <td>{{ d.nameUz }}</td>
                     <td class="small">{{ d.nameRu }}</td>
                     <td class="small">{{ d.nameEn }}</td>
-                    <td>@if (d.stage) { <span class="badge badge-info">{{ 'stage_' + d.stage | t }}</span> } @else { <span class="text-3">—</span> }</td>
+                    <td>@if (d.stage) { <ui-status [value]="d.stage" prefix="stage_" /> } @else { <span class="text-3">—</span> }</td>
                     <td class="num">{{ d._count?.users || 0 }}</td>
                     <td class="actions">
                       @if (auth.can('departments.update')) {

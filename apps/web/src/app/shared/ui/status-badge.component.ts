@@ -33,13 +33,18 @@ const STAGE_ICONS: Record<string, string> = {
   LASER: 'zap', PACKING: 'package', LOADING: 'truck',
 };
 
+const STAGE_THEMES: Record<string, string> = {
+  CUTTING: 'cutting', SEWING: 'sewing', WASHING: 'washing',
+  LASER: 'laser', PACKING: 'packing', LOADING: 'loading',
+};
+
 @Component({
   selector: 'ui-status',
   standalone: true,
   imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="badge status-badge" [class.wrap]="wrap()" [class.light]="light()" [class]="'badge-' + tone()">
+    <span class="badge status-badge" [class.wrap]="wrap()" [class.light]="light()" [class]="theme()">
       <ui-icon [name]="icon()" [size]="11" />
       <span>{{ prefix() + value() | t }}</span>
     </span>
@@ -58,6 +63,21 @@ const STAGE_ICONS: Record<string, string> = {
     .status-badge.light.badge-info { color: var(--info); border-color: var(--info-br); }
     .status-badge.light.badge-neutral { color: var(--text-2); border-color: var(--border-strong); }
     .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
+
+    .status-badge.stage {
+      color: var(--st-fg);
+      background: var(--st-bg);
+      border-color: var(--st-br);
+      padding-inline: 10px;
+    }
+    .status-badge.stage.light { background: var(--surface); }
+    .status-badge.stage ui-icon { opacity: 1; }
+    .stage-cutting { --st-fg: var(--stage-cutting); --st-bg: var(--stage-cutting-bg); --st-br: var(--stage-cutting-br); }
+    .stage-sewing  { --st-fg: var(--stage-sewing);  --st-bg: var(--stage-sewing-bg);  --st-br: var(--stage-sewing-br); }
+    .stage-washing { --st-fg: var(--stage-washing); --st-bg: var(--stage-washing-bg); --st-br: var(--stage-washing-br); }
+    .stage-laser   { --st-fg: var(--stage-laser);   --st-bg: var(--stage-laser-bg);   --st-br: var(--stage-laser-br); }
+    .stage-packing { --st-fg: var(--stage-packing); --st-bg: var(--stage-packing-bg); --st-br: var(--stage-packing-br); }
+    .stage-loading { --st-fg: var(--stage-loading); --st-bg: var(--stage-loading-bg); --st-br: var(--stage-loading-br); }
   `],
 })
 export class StatusBadgeComponent {
@@ -65,12 +85,15 @@ export class StatusBadgeComponent {
   readonly prefix = input('st_');
   readonly wrap = input(false);
   readonly light = input(false);
-  readonly tone = computed<Tone>(() => {
-    if (this.prefix() === 'stage_') return 'neutral';
-    return TONES[this.value()] ?? 'neutral';
+  private readonly isStage = computed(() => this.prefix() === 'stage_');
+  readonly tone = computed<Tone>(() => TONES[this.value()] ?? 'neutral');
+  readonly theme = computed(() => {
+    if (!this.isStage()) return `badge-${this.tone()}`;
+    const stage = STAGE_THEMES[this.value()];
+    return stage ? `stage stage-${stage}` : 'badge-neutral';
   });
   readonly icon = computed(() => {
-    if (this.prefix() === 'stage_') return STAGE_ICONS[this.value()] ?? 'circle-dot';
+    if (this.isStage()) return STAGE_ICONS[this.value()] ?? 'circle-dot';
     return ICONS[this.value()] ?? 'circle-dot';
   });
 }

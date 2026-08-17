@@ -36,6 +36,14 @@
   --info:    #14539f; --info-bg:    #eaf2fd; --info-br:    #bcd5f5;
   --neutral-bg: #f0f2f5; --neutral-br: #dfe3e9;
 
+  /* production stages — hues mirror the schedule gantt bars */
+  --stage-cutting: #3f6cba; --stage-cutting-bg: #eaf0fb; --stage-cutting-br: #c5d6f1;
+  --stage-sewing:  #2f8f6d; --stage-sewing-bg:  #e8f6f1; --stage-sewing-br:  #b6e1cf;
+  --stage-washing: #1c85a3; --stage-washing-bg: #e6f4f8; --stage-washing-br: #b2dde8;
+  --stage-laser:   #a8781f; --stage-laser-bg:   #fbf4e4; --stage-laser-br:   #ecd7a4;
+  --stage-packing: #6f4fc0; --stage-packing-bg: #f0ecfb; --stage-packing-br: #d3c7f2;
+  --stage-loading: #b3573b; --stage-loading-bg: #fbeee9; --stage-loading-br: #efc9bb;
+
   /* sidebar */
   --nav-bg: #101828;
   --nav-bg-2: #0b1120;
@@ -79,6 +87,12 @@
   --danger:  #ef6b62; --danger-700: #e05147; --danger-bg:  #2b1412; --danger-br:  #4d2320;
   --info:    #64a1f0; --info-bg:    #10203a; --info-br:    #1e3557;
   --neutral-bg: #1b2233; --neutral-br: #2a3346;
+  --stage-cutting: #7ba3e8; --stage-cutting-bg: #16233c; --stage-cutting-br: #26385c;
+  --stage-sewing:  #56c69b; --stage-sewing-bg:  #10241d; --stage-sewing-br:  #1d4536;
+  --stage-washing: #58bcd6; --stage-washing-bg: #0f2429; --stage-washing-br: #1c4249;
+  --stage-laser:   #dcae5c; --stage-laser-bg:   #251f10; --stage-laser-br:   #443719;
+  --stage-packing: #a68ce6; --stage-packing-bg: #1c1834; --stage-packing-br: #302a52;
+  --stage-loading: #e0917a; --stage-loading-bg: #291612; --stage-loading-br: #48291f;
   --nav-bg: #0a0e17;
   --nav-bg-2: #070a11;
   --sh-1: 0 1px 2px rgba(0,0,0,.4);

@@ -12,6 +12,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
@@ -19,7 +20,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
 @Component({
   selector: 'app-my-tasks',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, DateInputComponent, TPipe, NumPipe, ShortDatePipe],
+  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, DateInputComponent, StatusBadgeComponent, TPipe, NumPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -81,7 +82,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
                   <div class="row gap-2 wrap">
                     <b class="small">{{ t.title }}</b>
                     @if (t.order) { <span class="badge badge-neutral mono">{{ t.order.number }}</span> }
-                    @if (t.stage) { <span class="badge badge-info">{{ 'stage_' + t.stage | t }}</span> }
+                    @if (t.stage) { <ui-status [value]="t.stage" prefix="stage_" /> }
                   </div>
                   @if (t.description) { <div class="tiny text-3">{{ t.description }}</div> }
                   <div class="tiny text-3">{{ t.date | shortDate }}@if (t.finishedAt) { · {{ 'finished_at' | t }}: {{ t.finishedAt | shortDate: true }} }</div>
