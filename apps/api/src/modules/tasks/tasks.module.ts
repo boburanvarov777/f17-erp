@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Module, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { Prisma, StageType, TaskStatus } from '@prisma/client';
 import { IsDateString, IsEnum, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
+import { badRequest, forbidden } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { dateRange } from '../../common/utils/order-by';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -79,7 +80,7 @@ export class TasksService {
   async update(id: string, dto: UpdateTaskDto, actor: JwtUser) {
     const existing = await this.prisma.task.findUniqueOrThrow({ where: { id } });
     if (existing.userId !== actor.sub && !this.canSeeAll(actor)) {
-      throw new ForbiddenException('Bu vazifani o‘zgartirish huquqingiz yo‘q');
+      throw forbidden('err_task_forbidden');
     }
     const task = await this.prisma.task.update({
       where: { id },
@@ -288,7 +289,7 @@ export class TasksService {
     lines?: { orderId: string; targetQty: number }[],
   ) {
     if (period !== 'DAILY' && lines?.length) {
-      throw new BadRequestException('Buyurtma bo‘yicha plan faqat kunlik uchun');
+      throw badRequest('err_plan_order_daily_only');
     }
 
     const { start, end } = this.periodWindow(period);
@@ -300,7 +301,7 @@ export class TasksService {
 
     let total = targetQty;
     if (lines?.length) {
-      if (!stage) throw new BadRequestException('Xodim bo‘limiga ishlab chiqarish bosqichi biriktirilmagan');
+      if (!stage) throw badRequest('err_no_stage_for_dept');
       total = lines.reduce((a, l) => a + Math.max(0, Math.round(l.targetQty)), 0);
     }
 
@@ -397,8 +398,8 @@ export class TasksController {
     @CurrentUser() actor: JwtUser,
   ) {
     const qty = Number(body.targetQty ?? 0);
-    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Plan miqdori noto‘g‘ri');
-    if (!body.lines?.length && qty <= 0) throw new BadRequestException('Kamida bitta buyurtma yoki umumiy norma kiriting');
+    if (!Number.isFinite(qty) || qty < 0) throw badRequest('err_plan_qty_invalid');
+    if (!body.lines?.length && qty <= 0) throw badRequest('err_plan_needs_order_or_norm');
     return this.service.setPlan(body.userId, period.toUpperCase() as 'DAILY' | 'WEEKLY' | 'MONTHLY', qty, actor, body.lines);
   }
 }

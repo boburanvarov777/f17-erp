@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { validationException } from './common/i18n/validation';
 import { PrismaService } from './common/prisma/prisma.service';
 
 // BigInt (telegramId) must survive JSON serialisation.
@@ -34,6 +35,7 @@ async function bootstrap(): Promise<void> {
       transform: true,
       forbidNonWhitelisted: false,
       transformOptions: { enableImplicitConversion: true },
+      exceptionFactory: validationException,
     }),
   );
 

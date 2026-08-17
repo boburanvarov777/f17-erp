@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventsGateway } from '../../realtime/events.gateway';
 
@@ -51,8 +52,8 @@ export class NotificationsService {
 
   async markRead(id: string, userId: string) {
     const n = await this.prisma.notification.findUnique({ where: { id } });
-    if (!n) throw new NotFoundException('Bildirishnoma topilmadi');
-    if (n.userId != null && n.userId !== userId) throw new ForbiddenException('Bu bildirishnomani o‘qish huquqingiz yo‘q');
+    if (!n) throw notFound('err_notification_not_found');
+    if (n.userId != null && n.userId !== userId) throw forbidden('err_notification_forbidden');
     await this.prisma.notification.update({ where: { id }, data: { isRead: true } });
     return { success: true };
   }

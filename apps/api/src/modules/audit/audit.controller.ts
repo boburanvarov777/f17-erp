@@ -1,8 +1,9 @@
-import { Controller, ForbiddenException, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
 import { CurrentUser, JwtUser } from '../../common/decorators';
+import { forbidden } from '../../common/i18n/api-errors';
 import { isSuperProAdmin } from '../../common/permissions';
 import { dateRange } from '../../common/utils/order-by';
 
@@ -22,7 +23,7 @@ export class AuditController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    if (!isSuperProAdmin(user)) throw new ForbiddenException('Audit jurnali faqat Super Pro Admin uchun');
+    if (!isSuperProAdmin(user)) throw forbidden('err_audit_super_only');
     const where: any = {};
     if (action) where.action = action;
     if (entity) where.entity = entity;
@@ -48,7 +49,7 @@ export class AuditController {
 
   @Get('actions')
   actions(@CurrentUser() user: JwtUser) {
-    if (!isSuperProAdmin(user)) throw new ForbiddenException('Audit jurnali faqat Super Pro Admin uchun');
+    if (!isSuperProAdmin(user)) throw forbidden('err_audit_super_only');
     return Object.values(AUDIT_ACTIONS_LIST);
   }
 }

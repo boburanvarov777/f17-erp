@@ -1,5 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { parse, validate, SignatureInvalidError, ExpiredError } from '@telegram-apps/init-data-node';
+import { unauthorized } from '../common/i18n/api-errors';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from '../modules/auth/auth.service';
 
@@ -18,20 +19,20 @@ export class MiniAppService {
   /** Verifies Telegram WebApp initData (hash + auth_date). */
   verifyInitData(initData: string, maxAgeSeconds = 86400): TelegramInitUser {
     const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-    if (!token) throw new UnauthorizedException('Bot sozlanmagan');
-    if (!initData?.trim()) throw new UnauthorizedException('initData yo‘q');
+    if (!token) throw unauthorized('err_bot_not_configured');
+    if (!initData?.trim()) throw unauthorized('err_initdata_missing');
 
     try {
       validate(initData, token, { expiresIn: maxAgeSeconds });
     } catch (e) {
-      if (e instanceof ExpiredError) throw new UnauthorizedException('initData muddati tugagan');
-      if (e instanceof SignatureInvalidError) throw new UnauthorizedException('initData imzosi noto‘g‘ri');
-      throw new UnauthorizedException('initData noto‘g‘ri');
+      if (e instanceof ExpiredError) throw unauthorized('err_initdata_expired');
+      if (e instanceof SignatureInvalidError) throw unauthorized('err_initdata_signature');
+      throw unauthorized('err_initdata_invalid');
     }
 
     const parsed = parse(initData);
     const user = parsed.user;
-    if (!user?.id) throw new UnauthorizedException('initData user yo‘q');
+    if (!user?.id) throw unauthorized('err_initdata_no_user');
     return {
       id: user.id,
       first_name: user.firstName as string | undefined,
@@ -48,8 +49,8 @@ export class MiniAppService {
       where: { telegramId: BigInt(tgUser.id) },
       include: { role: true, department: true },
     });
-    if (!user) throw new UnauthorizedException('Telegram akkaunt tizimga biriktirilmagan');
-    if (user.status !== 'ACTIVE') throw new UnauthorizedException('Foydalanuvchi faol emas');
+    if (!user) throw unauthorized('err_tg_not_linked');
+    if (user.status !== 'ACTIVE') throw unauthorized('err_user_inactive');
 
     const tokens = await this.auth.issueTokens(user.id, ctx);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -70,7 +71,7 @@ export class MiniAppService {
     const linked = await this.prisma.user.findUnique({ where: { id: result.user.id } });
 
     if (linked?.telegramId && linked.telegramId !== tgId) {
-      throw new UnauthorizedException('Bu hisob boshqa Telegram akkauntga biriktirilgan');
+      throw unauthorized('err_account_other_tg');
     }
 
     // Same Telegram device may switch test accounts (login + password each time).

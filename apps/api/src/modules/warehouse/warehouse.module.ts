@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { Prisma, StockOp } from '@prisma/client';
 import { IsEnum, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
+import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy } from '../../common/utils/order-by';
 import { AuditService } from '../audit/audit.service';
@@ -88,7 +89,7 @@ export class WarehouseService {
 
   async update(id: string, dto: UpdateMaterialDto, actor: JwtUser) {
     if ((dto as any).quantity != null) {
-      throw new BadRequestException('Qoldiqni to‘g‘ridan-to‘g‘ri o‘zgartirib bo‘lmaydi — kirim/chiqim operatsiyasidan foydalaning');
+      throw badRequest('err_stock_direct_edit');
     }
     const m = await this.prisma.material.update({
       where: { id },
@@ -114,7 +115,7 @@ export class WarehouseService {
    * stored on the row, so the ledger can always be replayed and audited.
    */
   async operate(dto: StockOpDto, actor: JwtUser) {
-    if (dto.qty <= 0 && dto.op !== 'INVENTORY') throw new BadRequestException('Miqdor musbat bo‘lishi kerak');
+    if (dto.qty <= 0 && dto.op !== 'INVENTORY') throw badRequest('err_qty_positive');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const m = await tx.material.findUniqueOrThrow({ where: { id: dto.materialId } });
@@ -126,10 +127,10 @@ export class WarehouseService {
       switch (dto.op) {
         case 'IN': newStock = stock + dto.qty; break;
         case 'OUT':
-          if (stock - reserved < dto.qty) throw new BadRequestException(`Yetarli qoldiq yo‘q. Mavjud: ${stock - reserved} ${m.unit}`);
+          if (stock - reserved < dto.qty) throw badRequest('err_stock_insufficient', { available: stock - reserved, unit: m.unit });
           newStock = stock - dto.qty; break;
         case 'RESERVE':
-          if (stock - reserved < dto.qty) throw new BadRequestException(`Rezerv uchun qoldiq yetarli emas. Mavjud: ${stock - reserved} ${m.unit}`);
+          if (stock - reserved < dto.qty) throw badRequest('err_reserve_insufficient', { available: stock - reserved, unit: m.unit });
           newReserved = reserved + dto.qty; break;
         case 'RETURN':
           newStock = stock + dto.qty;

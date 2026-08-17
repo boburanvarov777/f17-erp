@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
+import { forbidden, unauthorized } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtUser } from '../../common/decorators';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -41,12 +42,12 @@ export class AuthService {
       where: { login: login.trim().toLowerCase() },
       include: { role: true, department: true },
     });
-    if (!user) throw new UnauthorizedException('Login yoki parol noto‘g‘ri');
-    if (user.status === 'BLOCKED') throw new ForbiddenException('Foydalanuvchi bloklangan');
-    if (user.status === 'ARCHIVED') throw new ForbiddenException('Foydalanuvchi arxivlangan');
+    if (!user) throw unauthorized('err_bad_credentials');
+    if (user.status === 'BLOCKED') throw forbidden('err_user_blocked');
+    if (user.status === 'ARCHIVED') throw forbidden('err_user_archived');
 
     const ok = await argon2.verify(user.passwordHash, password).catch(() => false);
-    if (!ok) throw new UnauthorizedException('Login yoki parol noto‘g‘ri');
+    if (!ok) throw unauthorized('err_bad_credentials');
     return user;
   }
 
@@ -54,7 +55,7 @@ export class AuthService {
     const user = await this.validateUser(dto.login, dto.password);
 
     if (dto.departmentCode && user.department?.code !== dto.departmentCode && !user.role.permissions.includes('*')) {
-      throw new ForbiddenException('Bu bo‘limga kirish huquqingiz yo‘q');
+      throw forbidden('err_dept_forbidden');
     }
 
     const tokens = await this.issueTokens(user.id, ctx);
@@ -127,7 +128,7 @@ export class AuthService {
       where: { tokenHash: this.sha(refreshToken) },
     });
     if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token yaroqsiz');
+      throw unauthorized('err_refresh_invalid');
     }
     // rotation
     await this.prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
@@ -163,7 +164,7 @@ export class AuthService {
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const ok = await argon2.verify(user.passwordHash, currentPassword).catch(() => false);
-    if (!ok) throw new UnauthorizedException('Joriy parol noto‘g‘ri');
+    if (!ok) throw unauthorized('err_current_password');
     await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash: await AuthService.hash(newPassword) },

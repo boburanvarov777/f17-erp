@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OrderStatus, Prisma, StageType } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
 import { paginate } from '../../common/dto/pagination.dto';
+import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { EventsGateway } from '../../realtime/events.gateway';
@@ -101,7 +102,7 @@ export class OrdersService {
   async create(dto: CreateOrderDto, actor: JwtUser) {
     const sizesTotal = (dto.sizes ?? []).reduce((a, s) => a + s.qty, 0);
     if (dto.sizes?.length && sizesTotal !== dto.qty) {
-      throw new BadRequestException(`Razmerlar yig‘indisi (${sizesTotal}) umumiy miqdorga (${dto.qty}) teng emas`);
+      throw badRequest('err_sizes_mismatch', { sizes: sizesTotal, qty: dto.qty });
     }
 
     const order = await this.prisma.$transaction(async (tx) => {

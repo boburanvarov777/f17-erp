@@ -1,8 +1,9 @@
-import { BadRequestException, Body, Controller, Delete, Get, Module, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Module, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { StageType } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, Public, RequirePermissions } from '../../common/decorators';
+import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -64,7 +65,7 @@ export class DepartmentsController {
   @RequirePermissions('departments.delete')
   async remove(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
     const d = await this.prisma.department.findUniqueOrThrow({ where: { id }, include: { _count: { select: { users: true } } } });
-    if (d._count.users > 0) throw new BadRequestException(`Bo‘limda ${d._count.users} ta xodim bor`);
+    if (d._count.users > 0) throw badRequest('err_dept_has_users', { n: d._count.users });
     await this.prisma.department.update({ where: { id }, data: { isActive: false } });
     this.audit.log({ userId: actor.sub, action: 'DEPARTMENT_ARCHIVED', entity: 'Department', entityId: id });
     return { success: true };

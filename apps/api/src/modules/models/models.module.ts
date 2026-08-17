@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { ModelStatus, Prisma } from '@prisma/client';
@@ -6,6 +6,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
+import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy } from '../../common/utils/order-by';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -57,8 +58,8 @@ const SORTABLE = ['code', 'name', 'category', 'season', 'status', 'createdAt'];
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
 function toPhotoDataUrl(file: { mimetype: string; size: number; buffer: Buffer }): string {
-  if (!file.mimetype.startsWith('image/')) throw new BadRequestException('Faqat rasm fayli yuklash mumkin (JPG, PNG, WebP)');
-  if (file.size > MAX_PHOTO_BYTES) throw new BadRequestException('Rasm hajmi 2 MB dan oshmasin');
+  if (!file.mimetype.startsWith('image/')) throw badRequest('err_image_type');
+  if (file.size > MAX_PHOTO_BYTES) throw badRequest('err_image_size');
   return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
 }
 
@@ -92,7 +93,7 @@ export class ModelsService {
   async create(dto: CreateModelDto, actor: JwtUser) {
     const { sizes, colors, accessories, clientId, cost, photo, ...rest } = dto;
     if (photo?.startsWith('data:')) {
-      throw new BadRequestException('Rasmni model yaratgach alohida yuklang: POST /models/:id/photos');
+      throw badRequest('err_photo_after_create');
     }
     const model = await this.prisma.productModel.create({
       data: {
@@ -114,7 +115,7 @@ export class ModelsService {
     const existing = await this.prisma.productModel.findUniqueOrThrow({ where: { id }, include: { sizes: true } });
     const { sizes, colors, accessories, clientId, cost, code, photo, ...rest } = dto;
     if (photo?.startsWith('data:')) {
-      throw new BadRequestException('Rasmni alohida yuklang: POST /models/:id/photos');
+      throw badRequest('err_photo_separate');
     }
 
     const model = await this.prisma.$transaction(async (tx) => {
@@ -226,7 +227,7 @@ export class ModelsController {
   @ApiOperation({ summary: 'Upload model photo (legacy) — prefer POST /models/:id/photos' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
   uploadPhoto(@UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
-    if (!file) throw new BadRequestException('Rasm tanlanmadi');
+    if (!file) throw badRequest('err_no_image');
     return { photo: toPhotoDataUrl(file) };
   }
 
@@ -235,7 +236,7 @@ export class ModelsController {
   @ApiOperation({ summary: 'Attach photo to model (multipart, max 2 MB)' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
   addPhoto(@Param('id') id: string, @UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
-    if (!file) throw new BadRequestException('Rasm tanlanmadi');
+    if (!file) throw badRequest('err_no_image');
     return this.service.addPhoto(id, file);
   }
 
@@ -259,7 +260,7 @@ export class ModelsController {
 
   @Post(':id/files') @RequirePermissions('models.update')
   addFile(@Param('id') id: string, @Body() body: { name: string; url: string; mime?: string; size?: number }) {
-    if (!body?.url) throw new BadRequestException('url majburiy');
+    if (!body?.url) throw badRequest('err_url_required');
     return this.service.addFile(id, body);
   }
 

@@ -1,7 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma, StageStatus, StageType } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
 import { paginate } from '../../common/dto/pagination.dto';
+import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { STAGE_PERMISSION_PREFIX } from '../../common/permissions';
@@ -34,7 +35,7 @@ export class ProductionService {
 
   resolveStage(slug: string): StageType {
     const stage = STAGE_SLUGS[slug.toLowerCase()];
-    if (!stage) throw new NotFoundException(`Noma'lum bosqich: ${slug}`);
+    if (!stage) throw notFound('err_unknown_stage', { slug });
     return stage;
   }
 
@@ -43,7 +44,7 @@ export class ProductionService {
     if (actor.permissions.includes('*')) return;
     const prefix = STAGE_PERMISSION_PREFIX[stage];
     if (!actor.permissions.includes(`${prefix}.${action}`)) {
-      throw new ForbiddenException(`Bu bosqich uchun huquqingiz yo‘q: ${prefix}.${action}`);
+      throw forbidden('err_stage_forbidden', { permission: `${prefix}.${action}` });
     }
   }
 
@@ -123,14 +124,14 @@ export class ProductionService {
    */
   async addEntry(stage: StageType, dto: CreateEntryDto, actor: JwtUser, source: 'WEB' | 'TELEGRAM' | 'MINIAPP' = 'WEB') {
     this.assertStageAccess(stage, actor, 'create');
-    if (dto.qty === 0 && !dto.defectQty) throw new BadRequestException('Miqdor 0 bo‘lishi mumkin emas');
+    if (dto.qty === 0 && !dto.defectQty) throw badRequest('err_qty_zero');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const current = await tx.orderStage.findFirst({
         where: { stage, orderId: dto.orderId },
         include: { order: { select: { id: true, number: true, qty: true, status: true } } },
       });
-      if (!current) throw new NotFoundException('Bu zakaz uchun bosqich topilmadi');
+      if (!current) throw notFound('err_stage_not_found');
 
       // Material-flow rule: a stage can never overtake the stage feeding it.
       const idx = STAGE_SEQUENCE.indexOf(stage);
@@ -138,14 +139,16 @@ export class ProductionService {
         const prev = await tx.orderStage.findFirst({ where: { orderId: dto.orderId, stage: STAGE_SEQUENCE[idx - 1] } });
         const available = prev?.doneQty ?? 0;
         if (current.doneQty + dto.qty > available) {
-          throw new BadRequestException(
-            `${STAGE_SEQUENCE[idx - 1]} bosqichidan faqat ${available} dona kelgan. ` +
-              `Hozir ${current.doneQty} dona qayd etilgan, ${dto.qty} dona qo‘shib bo‘lmaydi.`,
-          );
+          throw badRequest('err_stage_flow', {
+            stage: `stage_${STAGE_SEQUENCE[idx - 1]}`,
+            available,
+            done: current.doneQty,
+            qty: dto.qty,
+          });
         }
       }
       if (current.doneQty + dto.qty > current.planQty) {
-        throw new BadRequestException(`Rejadan oshib ketdi: plan ${current.planQty}, mavjud ${current.doneQty}, qo‘shilmoqchi ${dto.qty}`);
+        throw badRequest('err_over_plan', { plan: current.planQty, done: current.doneQty, qty: dto.qty });
       }
 
       const entry = await tx.stageEntry.create({
@@ -228,7 +231,7 @@ export class ProductionService {
     const entry = await this.prisma.stageEntry.findUniqueOrThrow({
       where: { id: entryId }, include: { orderStage: true },
     });
-    if (entry.cancelled) throw new BadRequestException('Bu operatsiya allaqachon bekor qilingan');
+    if (entry.cancelled) throw badRequest('err_entry_cancelled');
     this.assertStageAccess(entry.orderStage.stage, actor, 'update');
 
     const updated = await this.prisma.$transaction(async (tx) => {

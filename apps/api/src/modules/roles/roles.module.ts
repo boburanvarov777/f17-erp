@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
+import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PERMISSIONS } from '../../common/permissions';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -65,7 +66,7 @@ export class RolesController {
   @RequirePermissions('roles.update')
   async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() actor: JwtUser) {
     const existing = await this.prisma.role.findUniqueOrThrow({ where: { id } });
-    if (existing.isSystem && dto.permissions) throw new BadRequestException('Tizim rolining huquqlarini o‘zgartirib bo‘lmaydi');
+    if (existing.isSystem && dto.permissions) throw badRequest('err_system_role_perms');
     if (dto.permissions) this.assertPermissions(dto.permissions, actor);
     const role = await this.prisma.role.update({
       where: { id },
@@ -79,8 +80,8 @@ export class RolesController {
   @RequirePermissions('roles.delete')
   async remove(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
     const role = await this.prisma.role.findUniqueOrThrow({ where: { id }, include: { _count: { select: { users: true } } } });
-    if (role.isSystem) throw new BadRequestException('Tizim rolini o‘chirib bo‘lmaydi');
-    if (role._count.users > 0) throw new BadRequestException(`Bu rolda ${role._count.users} ta foydalanuvchi bor — avval ularni boshqa rolga o‘tkazing`);
+    if (role.isSystem) throw badRequest('err_system_role_delete');
+    if (role._count.users > 0) throw badRequest('err_role_has_users', { n: role._count.users });
     await this.prisma.role.delete({ where: { id } });
     this.audit.log({ userId: actor.sub, action: 'ROLE_DELETED', entity: 'Role', entityId: id, oldValue: role });
     return { success: true };
@@ -88,10 +89,10 @@ export class RolesController {
 
   private assertPermissions(perms: string[], actor: JwtUser) {
     if (perms.includes('*') && !actor.permissions.includes('*')) {
-      throw new BadRequestException('To‘liq huquqni faqat Super Pro Admin bera oladi');
+      throw badRequest('err_full_perms_super_only');
     }
     const invalid = perms.filter((p) => p !== '*' && !(PERMISSIONS as readonly string[]).includes(p));
-    if (invalid.length) throw new BadRequestException(`Noma'lum permission: ${invalid.join(', ')}`);
+    if (invalid.length) throw badRequest('err_unknown_permissions', { items: invalid.join(', ') });
   }
 }
 

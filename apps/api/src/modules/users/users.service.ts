@@ -1,7 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
 import { paginate } from '../../common/dto/pagination.dto';
+import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy } from '../../common/utils/order-by';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -61,15 +62,15 @@ export class UsersService {
 
   async findOne(id: string, actor: JwtUser) {
     const user = await this.prisma.user.findFirst({ where: this.scope(actor, { id }), select: SELECT });
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+    if (!user) throw notFound('err_user_not_found');
     return this.serialize(user);
   }
 
   async create(dto: CreateUserDto, actor: JwtUser) {
     const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
-    if (!role) throw new BadRequestException('Role topilmadi');
+    if (!role) throw badRequest('err_role_not_found');
     if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
-      throw new ForbiddenException('Super Pro Admin roli faqat Super Pro Admin tomonidan beriladi');
+      throw forbidden('err_super_role_only');
     }
 
     const user = await this.prisma.user.create({
@@ -97,13 +98,13 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto, actor: JwtUser) {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
-    if (!existing) throw new NotFoundException('Foydalanuvchi topilmadi');
+    if (!existing) throw notFound('err_user_not_found');
 
     if (dto.roleId && dto.roleId !== existing.roleId) {
       const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
-      if (!role) throw new BadRequestException('Role topilmadi');
+      if (!role) throw badRequest('err_role_not_found');
       if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
-        throw new ForbiddenException('Super Pro Admin roli faqat Super Pro Admin tomonidan beriladi');
+        throw forbidden('err_super_role_only');
       }
       this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.ROLE_CHANGED, entity: 'User', entityId: id, oldValue: { roleId: existing.roleId }, newValue: { roleId: dto.roleId } });
     }
@@ -130,7 +131,7 @@ export class UsersService {
   }
 
   async setStatus(id: string, status: 'ACTIVE' | 'BLOCKED' | 'ARCHIVED', actor: JwtUser) {
-    if (id === actor.sub && status !== 'ACTIVE') throw new BadRequestException('O‘zingizni bloklay olmaysiz');
+    if (id === actor.sub && status !== 'ACTIVE') throw badRequest('err_cannot_block_self');
     const user = await this.prisma.user.update({
       where: { id },
       data: { status, archivedAt: status === 'ARCHIVED' ? new Date() : null },

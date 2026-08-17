@@ -1,6 +1,7 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY, PERMISSIONS_KEY, JwtUser } from '../decorators';
+import { forbidden } from '../i18n/api-errors';
 import { ALL_PERMISSIONS } from '../permissions';
 
 /**
@@ -24,13 +25,13 @@ export class PermissionsGuard implements CanActivate {
     if (!required || required.length === 0) return true;
 
     const user: JwtUser | undefined = context.switchToHttp().getRequest().user;
-    if (!user) throw new ForbiddenException('Not authenticated');
+    if (!user) throw forbidden('err_not_authenticated');
 
     const perms = user.permissions ?? [];
     if (perms.includes(ALL_PERMISSIONS)) return true;
 
     const ok = required.some((p) => perms.includes(p));
-    if (!ok) throw new ForbiddenException(`Missing permission: ${required.join(' | ')}`);
+    if (!ok) throw forbidden('err_missing_permission', { permissions: required.join(' | ') });
     return true;
   }
 }
