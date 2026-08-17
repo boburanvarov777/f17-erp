@@ -36,7 +36,7 @@ jobs:
         run: npm run build:api
 
       - name: Build web
-        timeout-minutes: 5
+        timeout-minutes: 3
         run: npm run build:web
 
       - name: Unit tests

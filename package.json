@@ -12,7 +12,7 @@
     "dev:web": "npm --workspace apps/web run start",
     "build": "npm run build:web && npm run build:api",
     "build:api": "npm --workspace apps/api run build",
-    "build:web": "npm --workspace apps/web run build",
+    "build:web": "bash scripts/build-web.sh",
     "start": "npm --workspace apps/api run start:prod",
     "prisma:generate": "npm --workspace apps/api run prisma:generate",
     "prisma:migrate": "npm --workspace apps/api run prisma:migrate",
