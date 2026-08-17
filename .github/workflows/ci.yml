@@ -6,10 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       CI: true
       NG_CLI_ANALYTICS: false
@@ -21,7 +25,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -32,19 +35,13 @@ jobs:
       - name: Type-check & build API
         run: npm run build:api
 
-      - name: Build web (production)
-        working-directory: apps/web
-        timeout-minutes: 10
-        run: |
-          echo "Node $(node -v)"
-          npx ng version
-          npx ng build --configuration=ci --progress=false
+      - name: Build web
+        timeout-minutes: 5
+        run: npm run build:web
 
       - name: Unit tests
         run: npm test --if-present
 
-  # Railway watches the main branch and redeploys on every push,
-  # so a green build here is the gate before the new version goes live.
   notify:
     needs: build
     runs-on: ubuntu-latest

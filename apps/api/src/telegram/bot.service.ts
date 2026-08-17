@@ -21,11 +21,20 @@ export class BotService implements OnModuleInit {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — Telegram bot disabled');
       return;
     }
+    // Never block HTTP startup on Telegram network calls.
+    void this.bootstrapBot(token);
+  }
+
+  private async bootstrapBot(token: string): Promise<void> {
     this.bot = new Bot(token);
     this.register();
 
     try {
-      await this.bot.init();
+      const init = this.bot.init();
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Telegram init timeout (10s)')), 10_000),
+      );
+      await Promise.race([init, timeout]);
       this.logger.log(`Telegram bot @${this.bot.botInfo.username} initialised`);
     } catch (e) {
       this.logger.error(`Telegram init failed: ${(e as Error).message}`);
@@ -38,7 +47,7 @@ export class BotService implements OnModuleInit {
       void this.bot.start({ drop_pending_updates: true, onStart: () => this.logger.log('Bot polling started') });
     } else {
       const url = `${appUrl.replace(/\/$/, '')}/api/telegram/webhook`;
-      await this.bot.api
+      void this.bot.api
         .setWebhook(url, { secret_token: process.env.TELEGRAM_WEBHOOK_SECRET || undefined, drop_pending_updates: true })
         .then(() => this.logger.log(`Webhook set: ${url}`))
         .catch((e) => this.logger.error(`setWebhook failed: ${e.message}`));
