@@ -153,7 +153,7 @@ export class ProductionService {
           orderStageId: current.id,
           qty: dto.qty,
           defectQty: dto.defectQty ?? 0,
-          date: dto.date ? new Date(dto.date) : new Date(),
+          date: new Date(dto.date),
           userId: actor.sub,
           note: dto.note,
           source,

@@ -209,10 +209,10 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             <label class="label">{{ 'defect_qty' | t }}</label>
             <input class="input" type="number" min="0" [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
-          <div class="field">
-            <label class="label">{{ 'date' | t }}</label>
-            <input class="input" type="date" [(ngModel)]="entry.date" />
-            <div class="tiny text-3 mt-2">{{ 'date_empty_hint' | t }}</div>
+          <div class="field" [class.field-invalid]="entryFe.has('date')">
+            <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
+            <input class="input" type="date" [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
+            @if (entryFe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
           <!-- stage-specific fields -->
@@ -488,10 +488,16 @@ export class ProductionComponent {
     this.entryFe.reset();
     this.entry = {
       orderId: s?.order?.id ?? '', qty: null, defectQty: null,
-      date: '', note: '', meta: {},
+      date: this.todayLocal(), note: '', meta: {},
     };
     this.entryError.set('');
     this.entryModal.set(s ?? {});
+  }
+
+  private todayLocal(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   saveEntry(): void {
@@ -499,6 +505,7 @@ export class ProductionComponent {
     if (!this.entryFe.apply(runValidation([
       { key: 'orderId', label: t('order'), value: this.entry.orderId, required: true },
       { key: 'qty', label: t('operation_qty'), value: this.entry.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('operation_qty') }) : null },
+      { key: 'date', label: t('date'), value: this.entry.date, required: true },
     ], t))) return;
 
     this.busy.set(true);
@@ -509,7 +516,7 @@ export class ProductionComponent {
         orderId: this.entry.orderId,
         qty: +this.entry.qty!,
         defectQty: +(this.entry.defectQty || 0),
-        date: this.entry.date ? new Date(this.entry.date).toISOString() : new Date().toISOString(),
+        date: new Date(this.entry.date).toISOString(),
         note: this.entry.note || undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })

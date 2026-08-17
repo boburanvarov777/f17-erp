@@ -157,6 +157,7 @@ export class MaReportComponent {
         orderId: s.order?.id ?? s.orderId,
         qty: +this.qty!,
         defectQty: +(this.defectQty || 0),
+        date: new Date().toISOString(),
         note: this.note || this.i18n.t('ma_source_miniapp'),
       })
       .subscribe({

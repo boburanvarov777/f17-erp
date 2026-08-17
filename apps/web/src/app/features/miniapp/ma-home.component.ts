@@ -262,6 +262,7 @@ export class MaHomeComponent {
       orderId: this.entryOrderId,
       qty: +this.entryQty!,
       defectQty: +(this.entryDefect || 0),
+      date: new Date().toISOString(),
       note: this.entryNote || this.i18n.t('ma_source_dashboard'),
     }).subscribe({
       next: () => {

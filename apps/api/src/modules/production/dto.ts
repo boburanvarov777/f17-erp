@@ -15,7 +15,7 @@ export class CreateEntryDto {
   @ApiProperty({ description: 'Order id' }) @IsString() orderId!: string;
   @ApiProperty({ example: 120 }) @IsInt() @Min(0) qty!: number;
   @ApiPropertyOptional({ example: 3 }) @IsOptional() @IsInt() @Min(0) defectQty?: number;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() date?: string;
+  @ApiProperty({ description: 'Operation date (ISO date string)' }) @IsDateString() date!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
   @ApiPropertyOptional({
     description:
