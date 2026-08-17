@@ -13,6 +13,7 @@ jobs:
     env:
       CI: true
       NG_CLI_ANALYTICS: false
+      NG_BUILD_CACHE: false
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +33,8 @@ jobs:
         run: npm run build:api
 
       - name: Build web (production)
-        run: npm run build:web -- --verbose
+        timeout-minutes: 10
+        run: npm --workspace apps/web exec ng build --configuration=ci --progress=false
 
       - name: Unit tests
         run: npm test --if-present
