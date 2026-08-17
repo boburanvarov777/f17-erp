@@ -54,9 +54,14 @@ function positionTip(target: HTMLElement, tip: HTMLDivElement): void {
   tip.style.visibility = 'visible';
 }
 
+/** Tooltips are a hover affordance — on touch they only ever get stuck. */
+function hoverCapable(): boolean {
+  return window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true;
+}
+
 function showTip(target: HTMLElement): void {
   const text = target.getAttribute('data-tip');
-  if (!text) return;
+  if (!text || !hoverCapable()) return;
   active = target;
   positionTip(target, ensureTip());
 }
@@ -96,7 +101,11 @@ export function startTooltipSync(): void {
 
   syncDataTips();
 
-  const obs = new MutationObserver(() => syncDataTips());
+  const obs = new MutationObserver(() => {
+    // A trigger removed while shown (modal close button) never fires blur.
+    if (active && !active.isConnected) hideTip();
+    syncDataTips();
+  });
   obs.observe(document.body, {
     childList: true,
     subtree: true,
@@ -104,6 +113,7 @@ export function startTooltipSync(): void {
     attributeFilter: ['data-tip'],
   });
 
+  window.addEventListener('pointerdown', hideTip, true);
   window.addEventListener('scroll', () => { if (active) positionTip(active, ensureTip()); }, true);
   window.addEventListener('resize', () => { if (active) positionTip(active, ensureTip()); });
 }
