@@ -33,8 +33,12 @@ jobs:
         run: npm run build:api
 
       - name: Build web (production)
+        working-directory: apps/web
         timeout-minutes: 10
-        run: npm --workspace apps/web exec ng build --configuration=ci --progress=false
+        run: |
+          echo "Node $(node -v)"
+          npx ng version
+          npx ng build --configuration=ci --progress=false
 
       - name: Unit tests
         run: npm test --if-present
