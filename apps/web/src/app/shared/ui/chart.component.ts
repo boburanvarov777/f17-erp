@@ -41,7 +41,7 @@ const AXIS_TICKS = 4;
             >
               <span class="bc-stack">
                 @if (p.extra) { <i class="bc-bar defect" [style.height.%]="pct(p.extra)"></i> }
-                <i class="bc-bar" [style.height.%]="pct(p.value)" [style.background]="p.color || null"></i>
+                @if (p.value) { <i class="bc-bar" [style.height.%]="pct(p.value)" [style.background]="p.color || null"></i> }
               </span>
             </button>
           }
@@ -65,9 +65,10 @@ const AXIS_TICKS = 4;
       flex: 1; min-width: 0; height: 100%; padding: 0; border: none; background: none; cursor: pointer;
       display: flex; align-items: flex-end;
     }
-    .bc-stack { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+    /* Height must be definite here, otherwise the bars' percentage heights collapse. */
+    .bc-stack { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
     .bc-bar {
-      display: block; width: 100%; min-height: 2px;
+      display: block; flex: 0 0 auto; width: 100%; min-height: 2px;
       background: var(--primary-500); border-radius: 0 0 2px 2px;
       transition: height .3s ease, opacity .15s ease, filter .15s ease;
     }
