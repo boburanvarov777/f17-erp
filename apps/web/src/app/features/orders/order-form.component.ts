@@ -165,7 +165,7 @@ interface SizeRow { size: string; qty: number | null; }
     </ui-modal>
 
     @if (showClientForm()) {
-      <ui-modal [title]="'new_client' | t" (closed)="showClientForm.set(false)">
+      <ui-modal size="lg" [title]="'new_client' | t" (closed)="showClientForm.set(false)">
         <div class="form-grid">
           <div class="field" [class.field-invalid]="clientFe.has('code')">
             <label class="label">{{ 'client_code' | t }} <span class="req">*</span></label>

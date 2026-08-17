@@ -189,7 +189,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
     <!-- ─── update operation ─── -->
     @if (entryModal()) {
-      <ui-modal [title]="'update_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
+      <ui-modal size="lg" [title]="'update_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
         <div class="form-grid">
           <div class="field full" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
@@ -267,7 +267,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
     <!-- ─── add defect ─── -->
     @if (defectModal(); as s) {
-      <ui-modal [title]="'add_defect' | t" [subtitle]="s.order?.number || ''" (closed)="defectModal.set(null)">
+      <ui-modal size="lg" [title]="'add_defect' | t" [subtitle]="s.order?.number || ''" (closed)="defectModal.set(null)">
         <div class="form-grid">
           <div class="field" [class.field-invalid]="defectFe.has('type')">
             <label class="label">{{ 'defect_type' | t }} <span class="req">*</span></label>
@@ -354,7 +354,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
     <!-- ─── shipment ─── -->
     @if (shipmentModal(); as sh) {
-      <ui-modal [title]="'new_shipment' | t" (closed)="shipmentModal.set(null)">
+      <ui-modal size="lg" [title]="'new_shipment' | t" (closed)="shipmentModal.set(null)">
         <div class="form-grid">
           <div class="field full" [class.field-invalid]="shipmentFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>

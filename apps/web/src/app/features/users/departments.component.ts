@@ -60,7 +60,7 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
     </div>
 
     @if (editing(); as d) {
-      <ui-modal [title]="d.id ? ('edit' | t) : ('new_department' | t)" (closed)="editing.set(null)">
+      <ui-modal size="lg" [title]="d.id ? ('edit' | t) : ('new_department' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
           <div class="field" [class.field-invalid]="fe.has('code')">
             <label class="label">{{ 'code' | t }} <span class="req">*</span></label>

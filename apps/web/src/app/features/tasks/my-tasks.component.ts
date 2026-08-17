@@ -98,7 +98,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
     </div>
 
     @if (editing(); as t) {
-      <ui-modal [title]="t.id ? ('edit' | t) : ('new_task' | t)" (closed)="editing.set(null)">
+      <ui-modal size="lg" [title]="t.id ? ('edit' | t) : ('new_task' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
           <div class="field full" [class.field-invalid]="fe.has('title')">
             <label class="label">{{ 'task_title' | t }} <span class="req">*</span></label>

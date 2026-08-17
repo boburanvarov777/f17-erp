@@ -131,7 +131,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
     </div>
 
     @if (opModal(); as m) {
-      <ui-modal [title]="'stock_op' | t" [subtitle]="m.name" (closed)="opModal.set(null)">
+      <ui-modal size="lg" [title]="'stock_op' | t" [subtitle]="m.name" (closed)="opModal.set(null)">
         <div class="ops mb-4">
           @for (o of ops; track o) {
             <button class="op" type="button" [class.on]="op.op === o" (click)="op.op = o">{{ 'op_' + o | t }}</button>
@@ -157,7 +157,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
     }
 
     @if (materialModal(); as m) {
-      <ui-modal [title]="m.id ? ('edit' | t) : ('new_material' | t)" (closed)="materialModal.set(null)">
+      <ui-modal size="lg" [title]="m.id ? ('edit' | t) : ('new_material' | t)" (closed)="materialModal.set(null)">
         <div class="form-grid">
           <div class="field" [class.field-invalid]="materialFe.has('code')">
             <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
