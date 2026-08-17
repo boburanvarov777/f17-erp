@@ -148,8 +148,8 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
                 </tbody>
               </table>
             </div>
-            <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
-                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
+            <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
           } @else {
             <ui-empty icon="clipboard-list" [title]="'no_orders' | t" [message]="'orders_empty_hint' | t">
               @if (auth.can('orders.create')) {
@@ -198,7 +198,7 @@ export class OrdersListComponent {
   to = '';
 
   readonly page = signal(1);
-  readonly limit = signal(20);
+  readonly limit = signal(10);
   readonly sortBy = signal('deadline');
   readonly sortOrder = signal<'asc' | 'desc'>('asc');
 
@@ -239,7 +239,12 @@ export class OrdersListComponent {
         from: this.from, to: this.to, sortBy: this.sortBy(), sortOrder: this.sortOrder(),
       })
       .subscribe({
-        next: (d) => { this.data.set(d); this.loading.set(false); },
+        next: (d) => {
+          this.data.set(d);
+          this.page.set(d.page);
+          this.limit.set(d.limit);
+          this.loading.set(false);
+        },
         error: () => this.loading.set(false),
       });
   }

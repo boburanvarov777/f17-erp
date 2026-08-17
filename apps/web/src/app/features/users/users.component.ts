@@ -103,8 +103,8 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                 </tbody>
               </table>
             </div>
-            <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
-                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
+            <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
           } @else { <ui-empty icon="users" [title]="'no_data' | t" /> }
         }
       </div>
@@ -214,7 +214,7 @@ export class UsersComponent {
 
   search = ''; departmentId = ''; roleId = ''; status = ''; newPassword = '';
   readonly page = signal(1);
-  readonly limit = signal(20);
+  readonly limit = signal(10);
   readonly data = signal<Paginated<User> | null>(null);
   readonly roles = signal<Role[]>([]);
   readonly departments = signal<Department[]>([]);
@@ -249,7 +249,7 @@ export class UsersComponent {
       page: this.page(), limit: this.limit(), search: this.search,
       departmentId: this.departmentId, roleId: this.roleId, status: this.status,
     }).subscribe({
-      next: (d) => { this.data.set(d); this.loading.set(false); },
+      next: (d) => { this.data.set(d); this.page.set(d.page); this.limit.set(d.limit); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }

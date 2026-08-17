@@ -63,6 +63,8 @@ const uz = {
   disconnected: 'Jonli ulanish yo‘q',
   prev_page: 'Oldingi sahifa',
   next_page: 'Keyingi sahifa',
+  first_page: 'Birinchi sahifa',
+  last_page: 'Oxirgi sahifa',
   page: 'Sahifa',
 
   // common
@@ -606,6 +608,8 @@ const ru: typeof uz = {
   disconnected: 'Офлайн',
   prev_page: 'Предыдущая страница',
   next_page: 'Следующая страница',
+  first_page: 'Первая страница',
+  last_page: 'Последняя страница',
   page: 'Страница',
 
   search: 'Поиск',
@@ -1134,6 +1138,8 @@ const en: typeof uz = {
   disconnected: 'Offline',
   prev_page: 'Previous page',
   next_page: 'Next page',
+  first_page: 'First page',
+  last_page: 'Last page',
   page: 'Page',
 
   search: 'Search',

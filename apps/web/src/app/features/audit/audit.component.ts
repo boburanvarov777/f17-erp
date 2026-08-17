@@ -70,8 +70,8 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
                 </tbody>
               </table>
             </div>
-            <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
-                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
+            <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
           } @else { <ui-empty icon="scroll-text" [title]="'no_data' | t" /> }
         }
       </div>
@@ -105,7 +105,7 @@ export class AuditComponent {
   readonly i18n = inject(I18nService);
   search = ''; action = ''; from = ''; to = '';
   readonly page = signal(1);
-  readonly limit = signal(20);
+  readonly limit = signal(10);
   readonly data = signal<Paginated<AuditLog> | null>(null);
   readonly actions = signal<string[]>([]);
   readonly loading = signal(false);
@@ -125,7 +125,7 @@ export class AuditComponent {
     this.api.get<Paginated<AuditLog>>('/audit', {
       page: this.page(), limit: this.limit(), search: this.search, action: this.action, from: this.from, to: this.to,
     }).subscribe({
-      next: (d) => { this.data.set(d); this.loading.set(false); },
+      next: (d) => { this.data.set(d); this.page.set(d.page); this.limit.set(d.limit); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }

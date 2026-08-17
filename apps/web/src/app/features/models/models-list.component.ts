@@ -119,8 +119,8 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
               </table>
             </div>
           }
-          <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
-                         (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
+          <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                         (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
         }
       </div>
     </div>
@@ -330,7 +330,7 @@ export class ModelsListComponent {
   search = ''; clientId = ''; status = '';
   readonly view = signal<'grid' | 'table'>((localStorage.getItem('f17_models_view') as 'grid' | 'table') || 'grid');
   readonly page = signal(1);
-  readonly limit = signal(20);
+  readonly limit = signal(10);
   readonly data = signal<Paginated<ProductModel> | null>(null);
   readonly clients = signal<Client[]>([]);
   readonly loading = signal(false);
@@ -364,7 +364,7 @@ export class ModelsListComponent {
     this.api.get<Paginated<ProductModel>>('/models', {
       page: this.page(), limit: this.limit(), search: this.search, clientId: this.clientId, status: this.status,
     }, { noCache: true }).subscribe({
-      next: (d) => { this.data.set(d); this.loading.set(false); },
+      next: (d) => { this.data.set(d); this.page.set(d.page); this.limit.set(d.limit); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }

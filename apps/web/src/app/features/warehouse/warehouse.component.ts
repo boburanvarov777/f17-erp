@@ -101,8 +101,8 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
                   </tbody>
                 </table>
               </div>
-              <ui-pagination [page]="d.page" [limit]="d.limit" [total]="d.total" [totalPages]="d.pages"
-                             (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); reload()" />
+              <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                             (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
             } @else { <ui-empty icon="boxes" [title]="'no_data' | t" /> }
           }
         } @else {
@@ -201,7 +201,7 @@ export class WarehouseComponent {
   search = ''; category = ''; status = '';
   readonly tab = signal<'stock' | 'tx'>('stock');
   readonly page = signal(1);
-  readonly limit = signal(20);
+  readonly limit = signal(10);
   readonly data = signal<Paginated<Material> | null>(null);
   readonly transactions = signal<StockTransaction[]>([]);
   readonly loading = signal(false);
@@ -236,7 +236,7 @@ export class WarehouseComponent {
     this.api.get<Paginated<Material>>('/warehouse', {
       page: this.page(), limit: this.limit(), search: this.search, category: this.category, status: this.status,
     }).subscribe({
-      next: (d) => { this.data.set(d); this.loading.set(false); },
+      next: (d) => { this.data.set(d); this.page.set(d.page); this.limit.set(d.limit); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
   }
