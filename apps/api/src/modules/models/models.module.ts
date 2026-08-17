@@ -82,7 +82,7 @@ export class ModelsService {
       this.prisma.productModel.findMany({
         where, skip: dto.skip, take: dto.limit,
         orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
-        include: { client: { select: { id: true, name: true, code: true } }, sizes: true, _count: { select: { orders: true } } },
+        include: { client: { select: { id: true, name: true, code: true } }, sizes: true, photos: { orderBy: { sortOrder: 'asc' }, take: 1 }, _count: { select: { orders: true } } },
       }),
       this.prisma.productModel.count({ where }),
     ]);

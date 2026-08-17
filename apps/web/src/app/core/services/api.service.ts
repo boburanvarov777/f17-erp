@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -20,8 +20,13 @@ export class ApiService {
     return p;
   }
 
-  get<T>(path: string, params?: Params): Observable<T> {
-    return this.http.get<T>(`${this.base}${path}`, { params: this.toParams(params) });
+  get<T>(path: string, params?: Params, opts?: { noCache?: boolean }): Observable<T> {
+    let p = this.toParams(params);
+    if (opts?.noCache) p = p.set('_', Date.now().toString());
+    return this.http.get<T>(`${this.base}${path}`, {
+      params: p,
+      ...(opts?.noCache ? { headers: new HttpHeaders({ 'Cache-Control': 'no-cache', Pragma: 'no-cache' }) } : {}),
+    });
   }
 
   post<T>(path: string, body?: unknown): Observable<T> {

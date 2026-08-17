@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin, of, switchMap } from 'rxjs';
-import type { Client, ModelPhoto, ModelSize, Paginated, ProductModel } from '../../core/models';
+import { forkJoin, of, switchMap, catchError, map } from 'rxjs';
+import type { Accessory, Client, ModelColor, ModelPhoto, ModelSize, Paginated, ProductModel } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -64,23 +64,30 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           } @else if (view() === 'grid') {
             <div class="mgrid">
               @for (m of d.items; track m.id) {
-                <a class="mcard" [routerLink]="['/models', m.id]">
-                  <div class="mphoto">
-                    @if (m.photo) { <img [src]="m.photo" [alt]="m.name" /> } @else { <ui-icon name="shirt" [size]="34" [stroke]="1.2" /> }
-                  </div>
-                  <div class="mbody">
-                    <div class="row-between gap-2">
-                      <b class="mono">{{ m.code }}</b>
-                      <ui-status [value]="m.status" />
+                <div class="mcard">
+                  <a class="mcard-link" [routerLink]="['/models', m.id]">
+                    <div class="mphoto">
+                      @if (coverPhoto(m); as src) { <img [src]="src" [alt]="m.name" /> } @else { <ui-icon name="shirt" [size]="34" [stroke]="1.2" /> }
                     </div>
-                    <div class="small truncate">{{ m.name }}</div>
-                    <div class="tiny text-3 truncate">{{ m.client?.name || '—' }} · {{ m.category || '—' }}</div>
-                    <div class="row-between tiny text-3 mt-2">
-                      <span>{{ 'model_sizes_short' | t: { n: m.sizes?.length || 0 } }}</span>
-                      <span>{{ 'model_orders_short' | t: { n: m._count?.orders || 0 } }}</span>
+                    <div class="mbody">
+                      <div class="row-between gap-2">
+                        <b class="mono">{{ m.code }}</b>
+                        <ui-status [value]="m.status" />
+                      </div>
+                      <div class="small truncate">{{ m.name }}</div>
+                      <div class="tiny text-3 truncate">{{ m.client?.name || '—' }} · {{ m.category || '—' }}</div>
+                      <div class="row-between tiny text-3 mt-2">
+                        <span>{{ 'model_sizes_short' | t: { n: m.sizes?.length || 0 } }}</span>
+                        <span>{{ 'model_orders_short' | t: { n: m._count?.orders || 0 } }}</span>
+                      </div>
                     </div>
-                  </div>
-                </a>
+                  </a>
+                  @if (auth.can('models.update')) {
+                    <button class="mcard-edit" type="button" (click)="open(m)" [attr.data-tip]="'edit' | t">
+                      <ui-icon name="pencil" [size]="14" />
+                    </button>
+                  }
+                </div>
               }
             </div>
           } @else {
@@ -200,6 +207,45 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
             </div>
           }
         </div>
+        @if (!sizes().length) { <div class="tiny text-3 mt-2">{{ 'model_sizes_hint' | t }}</div> }
+
+        <div class="divider"></div>
+        <div class="row-between mb-3">
+          <b style="font-size:13.5px">{{ 'colors' | t }}</b>
+          <button class="btn btn-sm" type="button" (click)="addColor()"><ui-icon name="plus" [size]="14" /></button>
+        </div>
+        <div class="color-grid">
+          @for (c of colors(); track $index) {
+            <div class="row gap-2">
+              <input class="input btn-sm" style="width:28px;height:32px;padding:2px" type="color" [(ngModel)]="c.hex" />
+              <input class="input btn-sm" style="flex:1;height:32px" [(ngModel)]="c.name" [placeholder]="'color' | t" />
+              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeColor($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
+            </div>
+          }
+        </div>
+        @if (!colors().length) { <div class="tiny text-3 mt-2">{{ 'model_colors_hint' | t }}</div> }
+
+        <div class="divider"></div>
+        <div class="row-between mb-3">
+          <b style="font-size:13.5px">{{ 'accessories' | t }}</b>
+          <button class="btn btn-sm" type="button" (click)="addAccessory()"><ui-icon name="plus" [size]="14" /></button>
+        </div>
+        @if (accessories().length) {
+          <div class="acc-grid">
+            @for (a of accessories(); track $index) {
+              <div class="acc-row">
+                <input class="input btn-sm" [(ngModel)]="a.name" [placeholder]="'material' | t" />
+                <input class="input btn-sm" [(ngModel)]="a.color" [placeholder]="'color' | t" />
+                <input class="input btn-sm" style="width:64px" [(ngModel)]="a.size" [placeholder]="'size_label' | t" />
+                <input class="input btn-sm mono" [(ngModel)]="a.code" [placeholder]="'code' | t" />
+                <input class="input btn-sm" style="width:72px" type="number" min="0" [(ngModel)]="a.qty" [placeholder]="'quantity' | t" />
+                <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeAccessory($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="tiny text-3">{{ 'model_accessories_hint' | t }}</div>
+        }
 
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
@@ -219,12 +265,26 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .seg button { border: none; background: var(--surface); padding: 7px 11px; cursor: pointer; color: var(--text-3); }
     .seg button.on { background: var(--primary); color: #fff; }
     .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; padding: 16px; }
-    .mcard { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; text-decoration: none; color: inherit; background: var(--surface); transition: box-shadow .15s ease, transform .15s ease; }
-    .mcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); text-decoration: none; }
+    .mcard { position: relative; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); transition: box-shadow .15s ease, transform .15s ease; }
+    .mcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+    .mcard-link { display: block; text-decoration: none; color: inherit; }
+    .mcard-link:hover { text-decoration: none; }
+    .mcard-edit {
+      position: absolute; top: 8px; right: 8px; z-index: 2;
+      width: 32px; height: 32px; border: none; border-radius: 50%;
+      background: var(--surface); color: var(--text-2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18); transition: background .12s ease, color .12s ease, transform .12s ease;
+    }
+    .mcard-edit:hover { background: var(--primary); color: #fff; transform: scale(1.05); }
     .mphoto { height: 148px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); }
     .mphoto img { width: 100%; height: 100%; object-fit: cover; }
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .acc-grid { display: flex; flex-direction: column; gap: 8px; }
+    .acc-row { display: grid; grid-template-columns: 1.2fr 1fr 64px 1fr 72px 32px; gap: 6px; align-items: center; }
+    @media (max-width: 720px) { .acc-row { grid-template-columns: 1fr 1fr; } }
     .photo-count { margin-left: 6px; font-weight: 500; color: var(--text-3); font-size: 12px; }
     .photo-zone { display: flex; flex-direction: column; gap: 8px; }
     .photo-grid {
@@ -278,6 +338,8 @@ export class ModelsListComponent {
   readonly editing = signal<Partial<ProductModel> | null>(null);
   readonly archiving = signal<ProductModel | null>(null);
   readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
+  readonly colors = signal<{ name: string; hex: string }[]>([]);
+  readonly accessories = signal<{ name: string; color: string; size: string; code: string; qty: number | null }[]>([]);
   readonly existingPhotos = signal<ModelPhoto[]>([]);
   readonly pendingPreviews = signal<{ key: string; url: string; file: File; uploading?: boolean }[]>([]);
   readonly removedPhotoIds = signal<string[]>([]);
@@ -301,10 +363,14 @@ export class ModelsListComponent {
     this.loading.set(true);
     this.api.get<Paginated<ProductModel>>('/models', {
       page: this.page(), limit: this.limit(), search: this.search, clientId: this.clientId, status: this.status,
-    }).subscribe({
+    }, { noCache: true }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
+  }
+
+  coverPhoto(m: ProductModel): string | null {
+    return m.photo || m.photos?.[0]?.url || null;
   }
 
   open(m: Partial<ProductModel>): void {
@@ -317,12 +383,24 @@ export class ModelsListComponent {
     this.revokePendingPreviews();
     this.removedPhotoIds.set([]);
     this.photoUploading.set(false);
-    this.sizes.set((m.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
+    this.sizes.set([]);
+    this.colors.set([]);
+    this.accessories.set([]);
     this.editing.set(m);
     if (m.id) {
       this.api.get<ProductModel>(`/models/${m.id}`).subscribe({
-        next: (full) => this.existingPhotos.set(full.photos ?? []),
-        error: () => this.existingPhotos.set([]),
+        next: (full) => {
+          this.existingPhotos.set(full.photos ?? []);
+          this.sizes.set((full.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
+          this.colors.set((full.colors ?? []).map((c) => ({ name: c.name, hex: c.hex || '#cccccc' })));
+          this.accessories.set((full.accessories ?? []).map((a) => ({
+            name: a.name, color: a.color ?? '', size: a.size ?? '', code: a.code ?? '', qty: a.qty ?? null,
+          })));
+        },
+        error: () => {
+          this.existingPhotos.set([]);
+          this.sizes.set((m.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
+        },
       });
     } else {
       this.existingPhotos.set([]);
@@ -406,6 +484,10 @@ export class ModelsListComponent {
 
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); }
+  addColor(): void { this.colors.update((c) => [...c, { name: '', hex: '#cccccc' }]); }
+  removeColor(i: number): void { this.colors.update((c) => c.filter((_, idx) => idx !== i)); }
+  addAccessory(): void { this.accessories.update((a) => [...a, { name: '', color: '', size: '', code: '', qty: null }]); }
+  removeAccessory(i: number): void { this.accessories.update((a) => a.filter((_, idx) => idx !== i)); }
 
   save(): void {
     const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
@@ -418,8 +500,21 @@ export class ModelsListComponent {
     const body: Record<string, unknown> = { ...this.form };
     if (!body['clientId']) delete body['clientId'];
     if (body['cost'] == null) delete body['cost'];
-    const sizes = this.sizes().filter((s) => s.size);
-    if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) }));
+    const sizes = this.sizes().filter((s) => s.size.trim());
+    if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size.trim(), qty: +(s.qty ?? 0) }));
+
+    const colorRows = this.colors().filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), hex: c.hex && c.hex !== '#cccccc' ? c.hex : undefined }));
+    if (colorRows.length) body['colors'] = colorRows;
+    else if (body['color']) body['colors'] = [{ name: String(body['color']).trim() }];
+
+    const accRows = this.accessories().filter((a) => a.name.trim()).map((a) => ({
+      name: a.name.trim(),
+      color: a.color.trim() || undefined,
+      size: a.size.trim() || undefined,
+      code: a.code.trim() || undefined,
+      qty: a.qty != null ? +a.qty : undefined,
+    }));
+    if (accRows.length) body['accessories'] = accRows;
 
     const id = this.editing()?.id;
     const pending = this.pendingPreviews().filter((p) => !p.uploading).map((p) => p.file);
@@ -428,19 +523,21 @@ export class ModelsListComponent {
     req.pipe(
       switchMap((model) => {
         const modelId = id || model.id;
-        const ops = [
-          ...(id ? [] : removed.map((pid) => this.api.delete(`/models/photos/${pid}`))),
-          ...pending.map((f) => this.api.upload(`/models/${modelId}/photos`, f)),
-        ];
-        return ops.length ? forkJoin(ops) : of(null);
+        const uploads = pending.map((f) =>
+          this.api.upload<ModelPhoto>(`/models/${modelId}/photos`, f).pipe(catchError(() => of(null))),
+        );
+        return uploads.length ? forkJoin(uploads).pipe(map(() => model)) : of(model);
       }),
     ).subscribe({
-      next: () => {
+      next: (model) => {
         this.busy.set(false);
         this.revokePendingPreviews();
         this.editing.set(null);
         this.toast.success(this.i18n.t('saved'));
-        this.reload(false);
+        if (!id && model) {
+          this.data.update((d) => d ? { ...d, items: [model, ...d.items.filter((x) => x.id !== model.id)], total: d.total + 1 } : d);
+        }
+        this.reload(!id);
       },
       error: (err) => {
         this.busy.set(false);

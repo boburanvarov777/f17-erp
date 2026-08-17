@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { ProductModel } from '../../core/models';
+import type { ModelColor, ProductModel } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { NumPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
@@ -74,9 +74,9 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
             <div class="card">
               <div class="card-head"><h3>{{ 'colors' | t }}</h3></div>
               <div class="card-body">
-                @if (m.colors?.length) {
+                @if (displayColors().length) {
                   <div class="row gap-3 wrap">
-                    @for (c of m.colors; track c.name) {
+                    @for (c of displayColors(); track c.name) {
                       <div class="row gap-2">
                         <i class="swatch" [style.background]="c.hex || '#ccc'"></i>
                         <span class="small">{{ c.name }}</span>
@@ -153,6 +153,13 @@ export class ModelDetailComponent {
   readonly model = signal<ProductModel | null>(null);
   readonly loading = signal(false);
   readonly sizeTotal = computed(() => (this.model()?.sizes ?? []).reduce((a, s) => a + s.qty, 0));
+  readonly displayColors = computed((): ModelColor[] => {
+    const m = this.model();
+    if (!m) return [];
+    if (m.colors?.length) return m.colors;
+    if (m.color?.trim()) return [{ name: m.color.trim() }];
+    return [];
+  });
 
   constructor() {
     effect(() => {
