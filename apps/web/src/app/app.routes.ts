@@ -73,6 +73,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/tasks/monitoring.component').then((m) => m.MonitoringComponent),
       },
       {
+        path: 'analytics',
+        canActivate: [permissionGuard],
+        data: { permissions: ['reports.read'] },
+        loadComponent: () => import('./features/analytics/analytics.component').then((m) => m.AnalyticsComponent),
+      },
+      {
         path: 'reports',
         canActivate: [permissionGuard],
         data: { permissions: ['reports.read'] },

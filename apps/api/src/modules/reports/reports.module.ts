@@ -1,7 +1,7 @@
 import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { StageType } from '@prisma/client';
-import { RequirePermissions } from '../../common/decorators';
+import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { dateRange } from '../../common/utils/order-by';
 import { STAGE_SEQUENCE } from '../production/production.service';
@@ -99,16 +99,16 @@ export class ReportsService {
   /**
    * One production day broken down per department: which orders and models were
    * worked on, how much was produced and where each stage stands.
+   * `stage` narrows the result to a single department.
    */
-  async daily(date?: string) {
-    const key = (date || dayKey(new Date())).slice(0, 10);
+  private async dayBuckets(key: string, stage?: StageType) {
     const start = new Date(`${key}T00:00:00.000Z`);
     const end = new Date(`${key}T23:59:59.999Z`);
     const range = { gte: start, lte: end };
 
     const [entries, defects] = await Promise.all([
       this.prisma.stageEntry.findMany({
-        where: { cancelled: false, date: range },
+        where: { cancelled: false, date: range, ...(stage ? { orderStage: { stage } } : {}) },
         orderBy: { date: 'asc' },
         include: {
           orderStage: {
@@ -127,7 +127,7 @@ export class ReportsService {
         },
       }),
       this.prisma.defect.findMany({
-        where: { date: range },
+        where: { date: range, ...(stage ? { stage } : {}) },
         select: {
           stage: true, qty: true, type: true,
           order: {
@@ -192,24 +192,91 @@ export class ReportsService {
       row.defect += d.qty;
     }
 
-    const byStage = STAGE_SEQUENCE.filter((s) => buckets.has(s)).map((stage) => {
-      const b = buckets.get(stage)!;
+    return STAGE_SEQUENCE.filter((s) => buckets.has(s)).map((s) => {
+      const b = buckets.get(s)!;
       const orders = [...b.orders.values()].sort((a, x) => x.qty - a.qty);
-      return { stage, qty: b.qty, defect: b.defect, operations: b.operations, orders };
+      return { stage: s, qty: b.qty, defect: b.defect, operations: b.operations, orders };
     });
+  }
 
+  private dayTotals(byStage: { qty: number; defect: number; operations: number; orders: DailyOrderRow[] }[]) {
     const orderIds = new Set<string>();
     for (const s of byStage) for (const o of s.orders) orderIds.add(o.orderId);
+    return {
+      qty: byStage.reduce((a, s) => a + s.qty, 0),
+      defect: byStage.reduce((a, s) => a + s.defect, 0),
+      operations: byStage.reduce((a, s) => a + s.operations, 0),
+      orders: orderIds.size,
+    };
+  }
+
+  async daily(date?: string) {
+    const key = (date || dayKey(new Date())).slice(0, 10);
+    const byStage = await this.dayBuckets(key);
+    return { date: key, totals: this.dayTotals(byStage), byStage };
+  }
+
+  /** Day of a single stage, as a trend series ending on `key`. */
+  private async stageTrend(stage: StageType, key: string, days: number) {
+    const end = new Date(`${key}T23:59:59.999Z`);
+    const start = new Date(`${key}T00:00:00.000Z`);
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+
+    const entries = await this.prisma.stageEntry.findMany({
+      where: { cancelled: false, date: { gte: start, lte: end }, orderStage: { stage } },
+      select: { date: true, qty: true, defectQty: true },
+    });
+
+    const byDay: Record<string, { date: string; qty: number; defect: number; operations: number }> = {};
+    for (const e of entries) {
+      const d = dayKey(e.date);
+      (byDay[d] ??= { date: d, qty: 0, defect: 0, operations: 0 });
+      byDay[d].qty += e.qty; byDay[d].defect += e.defectQty; byDay[d].operations++;
+    }
+    return this.fillDays(byDay, dayKey(start), key);
+  }
+
+  /**
+   * The caller's own department for one day — shop-floor accounts get their
+   * numbers without the factory-wide `reports.read` permission.
+   */
+  async myDepartment(actor: JwtUser, date?: string, days = 7) {
+    const key = (date || dayKey(new Date())).slice(0, 10);
+    const department = actor.departmentId
+      ? await this.prisma.department.findUnique({
+          where: { id: actor.departmentId },
+          select: { code: true, nameUz: true, nameRu: true, nameEn: true, stage: true },
+        })
+      : null;
+    const stage = department?.stage ?? null;
+
+    if (!stage) {
+      return {
+        date: key, stage: null, department,
+        totals: { qty: 0, defect: 0, operations: 0, orders: 0 },
+        orders: [] as DailyOrderRow[], byModel: [], trend: [],
+      };
+    }
+
+    const [byStage, trend] = await Promise.all([
+      this.dayBuckets(key, stage),
+      this.stageTrend(stage, key, days),
+    ]);
+    const orders = byStage[0]?.orders ?? [];
+
+    const byModel: Record<string, { model: string; qty: number; defect: number; operations: number }> = {};
+    for (const o of orders) {
+      const m = o.model ?? '—';
+      (byModel[m] ??= { model: m, qty: 0, defect: 0, operations: 0 });
+      byModel[m].qty += o.qty; byModel[m].defect += o.defect; byModel[m].operations += o.operations;
+    }
 
     return {
-      date: key,
-      totals: {
-        qty: byStage.reduce((a, s) => a + s.qty, 0),
-        defect: byStage.reduce((a, s) => a + s.defect, 0),
-        operations: byStage.reduce((a, s) => a + s.operations, 0),
-        orders: orderIds.size,
-      },
-      byStage,
+      date: key, stage, department,
+      totals: this.dayTotals(byStage),
+      orders,
+      byModel: Object.values(byModel).sort((a, b) => b.qty - a.qty),
+      trend,
     };
   }
 
@@ -260,6 +327,13 @@ export class ReportsController {
   @RequirePermissions('reports.read')
   @ApiOperation({ summary: 'One day per department: orders, models, output and stage status' })
   daily(@Query('date') date?: string) { return this.service.daily(date); }
+
+  @Get('my-department')
+  @ApiOperation({ summary: "The caller's own department for one day, plus a short trend" })
+  myDepartment(@CurrentUser() actor: JwtUser, @Query('date') date?: string, @Query('days') days?: string) {
+    const window = Math.min(31, Math.max(1, parseInt(days || '7', 10) || 7));
+    return this.service.myDepartment(actor, date, window);
+  }
 
   @Get('orders') @RequirePermissions('reports.read')
   orders(@Query('from') from?: string, @Query('to') to?: string) { return this.service.orders(from, to); }

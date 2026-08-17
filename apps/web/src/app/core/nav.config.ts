@@ -37,6 +37,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
     items: [
       { label: 'nav_my_tasks', icon: 'list-checks', path: 'my-tasks' },
       { label: 'nav_monitoring', icon: 'chart-column', path: 'monitoring', perms: ['users.read'] },
+      { label: 'nav_analytics', icon: 'chart-pie', path: 'analytics', perms: ['reports.read'] },
       { label: 'nav_reports', icon: 'trending-up', path: 'reports', perms: ['reports.read'] },
     ],
   },

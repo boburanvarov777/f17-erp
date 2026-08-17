@@ -1,16 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { NumPipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
+import { PALETTE, STAGE_COLOR, STATUS_COLOR } from '../../shared/ui/chart-colors';
 import { BarChartComponent, ChartPoint, DonutChartComponent, RankChartComponent } from '../../shared/ui/chart.component';
 import { DateInputComponent } from '../../shared/ui/date-input.component';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
-import { ProgressComponent } from '../../shared/ui/progress.component';
-import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 interface Series { qty: number; defect: number; operations: number }
 
@@ -22,38 +21,6 @@ interface ProductionReport {
   daily: (Series & { date: string })[];
 }
 
-interface DailyOrderRow {
-  orderId: string; number: string;
-  model: string | null; modelName: string | null; client: string | null;
-  orderStatus: string; stageStatus: string;
-  planQty: number; doneQty: number;
-  qty: number; defect: number; operations: number;
-  users: string[];
-}
-
-interface DailyReport {
-  date: string;
-  totals: Series & { orders: number };
-  byStage: (Series & { stage: string; orders: DailyOrderRow[] })[];
-}
-
-const STAGE_COLOR: Record<string, string> = {
-  CUTTING: 'var(--stage-cutting)', SEWING: 'var(--stage-sewing)', WASHING: 'var(--stage-washing)',
-  LASER: 'var(--stage-laser)', PACKING: 'var(--stage-packing)', LOADING: 'var(--stage-loading)',
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  NEW: 'var(--primary-500)', CONFIRMED: 'var(--info)', IN_PRODUCTION: 'var(--warning)',
-  READY: 'var(--success)', LOADING: 'var(--stage-loading)', COMPLETED: 'var(--stage-sewing)',
-  CANCELLED: 'var(--text-3)', DELAYED: 'var(--danger)',
-  OK: 'var(--success)', LOW: 'var(--warning)', OUT: 'var(--danger)',
-};
-
-const PALETTE = [
-  'var(--stage-cutting)', 'var(--stage-sewing)', 'var(--stage-washing)',
-  'var(--stage-laser)', 'var(--stage-packing)', 'var(--stage-loading)',
-];
-
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -61,8 +28,7 @@ const iso = (d: Date) =>
   selector: 'app-reports',
   standalone: true,
   imports: [
-    FormsModule, RouterLink, IconComponent, StatusBadgeComponent, ProgressComponent,
-    EmptyComponent, LoadingComponent, DateInputComponent,
+    FormsModule, IconComponent, EmptyComponent, LoadingComponent, DateInputComponent,
     BarChartComponent, RankChartComponent, DonutChartComponent, TPipe, NumPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -128,7 +94,7 @@ const iso = (d: Date) =>
                 </div>
                 <div class="card-body">
                   @if (p.totals.operations) {
-                    <ui-bar-chart [points]="trendPoints()" [height]="220" [active]="day" (pick)="openDay($event)" />
+                    <ui-bar-chart [points]="trendPoints()" [height]="220" (pick)="openDay($event)" />
                     <div class="legend mt-4">
                       <span><i style="background:var(--primary-500)"></i>{{ 'produced' | t }}</span>
                       <span><i style="background:var(--danger)"></i>{{ 'defect_label' | t }}</span>
@@ -161,69 +127,6 @@ const iso = (d: Date) =>
                   @else { <ui-empty icon="info" [title]="'no_data' | t" /> }
                 </div>
               </div>
-            }
-          }
-
-          @case ('daily') {
-            <div class="card mb-6">
-              <div class="day-bar">
-                <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(-1)" [attr.data-tip]="'rep_prev_day' | t"><ui-icon name="chevron-left" [size]="16" /></button>
-                <ui-date-input style="width:170px" [(ngModel)]="day" (ngModelChange)="loadDaily()" />
-                <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(1)" [attr.data-tip]="'rep_next_day' | t"><ui-icon name="chevron-right" [size]="16" /></button>
-                <button class="btn btn-sm" type="button" (click)="today()">{{ 'today' | t }}</button>
-                <div class="grow"></div>
-                @if (daily(); as d) {
-                  <div class="day-totals">
-                    <span><b>{{ d.totals.qty | num }}</b> {{ 'produced' | t }}</span>
-                    <span [class.danger]="d.totals.defect"><b>{{ d.totals.defect | num }}</b> {{ 'defect_label' | t }}</span>
-                    <span><b>{{ d.totals.operations | num }}</b> {{ 'operations' | t }}</span>
-                    <span><b>{{ d.totals.orders | num }}</b> {{ 'rep_orders' | t }}</span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            @if (daily(); as d) {
-              @if (d.byStage.length) {
-                <div class="dept-grid">
-                  @for (s of d.byStage; track s.stage) {
-                    <div class="card dept">
-                      <div class="card-head">
-                        <ui-status [value]="s.stage" prefix="stage_" />
-                        <span class="dept-sum">
-                          <b>{{ s.qty | num }}</b> {{ 'pieces' | t }}
-                          @if (s.defect) { <em>· {{ 'defect_label' | t }} {{ s.defect | num }}</em> }
-                          <span class="text-3">· {{ i18n.t('rep_ops_count', { n: s.operations }) }}</span>
-                        </span>
-                      </div>
-                      <div class="ord-list">
-                        @for (o of s.orders; track o.orderId) {
-                          <a class="ord" [routerLink]="['/orders', o.orderId]">
-                            <span class="ord-main">
-                              <span class="ord-top">
-                                <b class="mono">{{ o.number }}</b>
-                                @if (o.model) { <span class="badge badge-neutral">{{ o.model }}</span> }
-                                <ui-status [value]="o.stageStatus" />
-                              </span>
-                              <span class="ord-sub">{{ o.modelName || o.client || '—' }}@if (o.users.length) { · {{ o.users.join(', ') }} }</span>
-                            </span>
-                            <span class="ord-qty">
-                              <b>+{{ o.qty | num }}</b>
-                              @if (o.defect) { <em>{{ 'defect_label' | t }} {{ o.defect | num }}</em> }
-                            </span>
-                            <span class="ord-prog">
-                              <ui-progress [value]="o.doneQty" [max]="o.planQty" [showLabel]="false" />
-                              <span class="tiny text-3">{{ o.doneQty | num }} / {{ o.planQty | num }}</span>
-                            </span>
-                          </a>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <div class="card"><ui-empty icon="history" [title]="'rep_no_ops_day' | t" /></div>
-              }
             }
           }
 
@@ -309,47 +212,15 @@ const iso = (d: Date) =>
     .legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--text-3); }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend i { width: 9px; height: 9px; border-radius: 3px; }
-
-    .day-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; flex-wrap: wrap; }
-    .day-totals { display: flex; gap: 16px; font-size: 12.5px; color: var(--text-3); flex-wrap: wrap; }
-    .day-totals b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
-    .day-totals .danger b { color: var(--danger); }
-
-    .dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
-    .dept .card-head { gap: 10px; flex-wrap: wrap; }
-    .dept-sum { font-size: 12px; color: var(--text-3); }
-    .dept-sum b { color: var(--text); font-size: 13px; }
-    .dept-sum em { color: var(--danger); font-style: normal; font-weight: 600; }
-
-    .ord-list { display: flex; flex-direction: column; }
-    .ord {
-      display: grid; grid-template-columns: 1fr auto 118px; align-items: center; gap: 14px;
-      padding: 11px 18px; border-bottom: 1px solid var(--border);
-      text-decoration: none; color: inherit;
-    }
-    .ord:last-child { border-bottom: none; }
-    .ord:hover { background: var(--surface-2); text-decoration: none; }
-    .ord-main { min-width: 0; }
-    .ord-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-    .ord-sub { display: block; font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ord-qty { text-align: right; white-space: nowrap; }
-    .ord-qty b { font-size: 14px; font-variant-numeric: tabular-nums; }
-    .ord-qty em { display: block; font-size: 11px; color: var(--danger); font-style: normal; }
-    .ord-prog { display: flex; flex-direction: column; gap: 3px; }
-
-    @media (max-width: 620px) {
-      .ord { grid-template-columns: 1fr auto; }
-      .ord-prog { grid-column: 1 / -1; }
-    }
   `],
 })
 export class ReportsComponent {
   private api = inject(ApiService);
+  private router = inject(Router);
   readonly i18n = inject(I18nService);
 
   readonly tabs = [
     { key: 'production', label: 'rep_production' },
-    { key: 'daily', label: 'rep_daily' },
     { key: 'orders', label: 'rep_orders' },
     { key: 'defects', label: 'rep_defects' },
     { key: 'warehouse', label: 'rep_warehouse' },
@@ -365,7 +236,6 @@ export class ReportsComponent {
   readonly tab = signal('production');
   readonly loading = signal(false);
   readonly production = signal<ProductionReport | null>(null);
-  readonly daily = signal<DailyReport | null>(null);
   readonly orders = signal<{ status: string; orders: number; qty: number }[]>([]);
   readonly defects = signal<{ stage: string; type: string; qty: number; count: number }[]>([]);
   readonly warehouse = signal<any[]>([]);
@@ -373,7 +243,6 @@ export class ReportsComponent {
 
   from = '';
   to = '';
-  day = '';
 
   readonly warehouseValue = computed(() => this.warehouse().reduce((a, r) => a + (r.value ?? 0), 0));
 
@@ -501,7 +370,6 @@ export class ReportsComponent {
   );
 
   constructor() {
-    this.day = iso(new Date());
     this.applyPreset(30);
   }
 
@@ -527,21 +395,7 @@ export class ReportsComponent {
 
   /** Jumping from a trend bar into that day's departmental breakdown. */
   openDay(date: string): void {
-    this.day = date;
-    this.tab.set('daily');
-    this.loadDaily();
-  }
-
-  shiftDay(delta: number): void {
-    const d = new Date(this.day || iso(new Date()));
-    d.setDate(d.getDate() + delta);
-    this.day = iso(d);
-    this.loadDaily();
-  }
-
-  today(): void {
-    this.day = iso(new Date());
-    this.loadDaily();
+    this.router.navigate(['/analytics'], { queryParams: { date } });
   }
 
   defectRate(t: Series): number {
@@ -558,9 +412,6 @@ export class ReportsComponent {
       case 'production':
         this.api.get<ProductionReport>('/reports/production', params).subscribe({ next: (r) => { this.production.set(r); done(); }, error: done });
         break;
-      case 'daily':
-        this.loadDaily();
-        break;
       case 'orders':
         this.api.get<any[]>('/reports/orders', params).subscribe({ next: (r) => { this.orders.set(r); done(); }, error: done });
         break;
@@ -571,14 +422,6 @@ export class ReportsComponent {
         this.api.get<any[]>('/reports/warehouse').subscribe({ next: (r) => { this.warehouse.set(r); done(); }, error: done });
         break;
     }
-  }
-
-  loadDaily(): void {
-    this.loading.set(true);
-    this.api.get<DailyReport>('/reports/daily', { date: this.day }).subscribe({
-      next: (r) => { this.daily.set(r); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
   }
 
   print(): void { window.print(); }

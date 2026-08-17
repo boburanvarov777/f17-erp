@@ -140,6 +140,7 @@ export class MiniAppShellComponent {
     }
     if (this.ma.hasStage()) {
       tabs.push({ link: '/miniapp/report', icon: 'scissors', label: 'ma_orders' });
+      tabs.push({ link: '/miniapp/analytics', icon: 'chart-pie', label: 'nav_analytics' });
     }
     tabs.push({ link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_tasks' });
     tabs.push({ link: '/miniapp/profile', icon: 'user', label: 'ma_profile' });
