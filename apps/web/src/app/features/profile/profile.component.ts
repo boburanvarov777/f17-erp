@@ -9,6 +9,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-profile',
@@ -71,11 +72,19 @@ import type { Lang } from '../../core/models';
         <div class="card card-pad">
           <h3 class="mb-4">{{ 'change_password' | t }}</h3>
           <div class="form-grid">
-            <div class="field"><label class="label">{{ 'current_password' | t }}</label><input class="input" type="password" [(ngModel)]="currentPassword" /></div>
-            <div class="field"><label class="label">{{ 'new_password' | t }}</label><input class="input" type="password" [(ngModel)]="newPassword" /></div>
+            <div class="field" [class.field-invalid]="fe.has('currentPassword')">
+              <label class="label">{{ 'current_password' | t }}</label>
+              <input class="input" type="password" [(ngModel)]="currentPassword" (ngModelChange)="fe.clear('currentPassword')" />
+              @if (fe.get('currentPassword'); as msg) { <div class="field-error">{{ msg }}</div> }
+            </div>
+            <div class="field" [class.field-invalid]="fe.has('newPassword')">
+              <label class="label">{{ 'new_password' | t }}</label>
+              <input class="input" type="password" [(ngModel)]="newPassword" (ngModelChange)="fe.clear('newPassword')" />
+              @if (fe.get('newPassword'); as msg) { <div class="field-error">{{ msg }}</div> }
+            </div>
           </div>
           @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
-          <button class="btn btn-primary mt-4" type="button" (click)="changePassword()" [disabled]="busy() || !currentPassword || newPassword.length < 6">
+          <button class="btn btn-primary mt-4" type="button" (click)="changePassword()" [disabled]="busy()">
             {{ 'save' | t }}
           </button>
         </div>
@@ -94,11 +103,18 @@ export class ProfileComponent {
   newPassword = '';
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly fe = new FieldErrorsState();
   readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 
   changePassword(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'currentPassword', label: t('current_password'), value: this.currentPassword, required: true },
+      { key: 'newPassword', label: t('new_password'), value: this.newPassword, required: true, minLength: 6 },
+    ], t))) return;
+
     this.busy.set(true);
     this.error.set('');
     this.auth.changePassword(this.currentPassword, this.newPassword).subscribe({

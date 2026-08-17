@@ -11,6 +11,7 @@ import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.componen
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
 
@@ -98,9 +99,17 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
     @if (editing(); as t) {
       <ui-modal [title]="t.id ? ('edit' | t) : ('new_task' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
-          <div class="field full"><label class="label">{{ 'task_title' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.title" /></div>
+          <div class="field full" [class.field-invalid]="fe.has('title')">
+            <label class="label">{{ 'task_title' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.title" (ngModelChange)="fe.clear('title')" />
+            @if (fe.get('title'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
-          <div class="field"><label class="label">{{ 'date' | t }} <span class="req">*</span></label><input class="input" type="date" [(ngModel)]="form.date" /></div>
+          <div class="field" [class.field-invalid]="fe.has('date')">
+            <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
+            <input class="input" type="date" [(ngModel)]="form.date" (ngModelChange)="fe.clear('date')" />
+            @if (fe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
             <select class="select" [(ngModel)]="form.status">@for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }</select>
@@ -111,7 +120,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
         </div>
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !form.title || !form.date">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -132,7 +141,7 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
 export class MyTasksComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
 
   readonly statuses = STATUSES;
@@ -154,6 +163,7 @@ export class MyTasksComponent {
   readonly busy = signal(false);
   readonly filter = signal('all');
   readonly editing = signal<Partial<Task> | null>(null);
+  readonly fe = new FieldErrorsState();
   form: Record<string, any> = {};
 
   readonly visible = computed(() => {
@@ -191,6 +201,7 @@ export class MyTasksComponent {
   }
 
   open(t: Partial<Task>): void {
+    this.fe.reset();
     this.form = {
       title: t.title ?? '', description: t.description ?? '',
       date: (t.date ?? new Date().toISOString()).slice(0, 10),
@@ -203,6 +214,12 @@ export class MyTasksComponent {
   }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'title', label: t('task_title'), value: this.form['title'], required: true },
+      { key: 'date', label: t('date'), value: this.form['date'], required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body: Record<string, unknown> = {
       title: this.form['title'], description: this.form['description'] || undefined,

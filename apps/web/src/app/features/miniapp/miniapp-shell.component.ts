@@ -10,6 +10,7 @@ import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-miniapp-shell',
@@ -47,28 +48,31 @@ import { haptic } from './telegram';
             </div>
 
             <div class="col gap-3 mt-5" style="width:100%;max-width:320px">
-              <div class="field">
+              <div class="field" [class.field-invalid]="fe.has('departmentCode')">
                 <label class="label">{{ 'department' | t }}</label>
-                <select class="select" [(ngModel)]="departmentCode">
+                <select class="select" [(ngModel)]="departmentCode" (ngModelChange)="fe.clear('departmentCode')">
                   <option value="" disabled hidden>{{ 'select_department' | t }}</option>
                   @for (d of ma.departments(); track d.id) { <option [value]="d.code">{{ deptName(d) }}</option> }
                 </select>
+                @if (fe.get('departmentCode'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
-              <div class="field">
+              <div class="field" [class.field-invalid]="fe.has('login')">
                 <label class="label">{{ 'login' | t }}</label>
-                <input class="input" [(ngModel)]="login" autocomplete="username" />
+                <input class="input" [(ngModel)]="login" autocomplete="username" (ngModelChange)="fe.clear('login')" />
+                @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
-              <div class="field">
+              <div class="field" [class.field-invalid]="fe.has('password')">
                 <label class="label">{{ 'password' | t }}</label>
                 <div class="pass-wrap">
-                  <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" />
+                  <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" (ngModelChange)="fe.clear('password')" />
                   <button type="button" class="peek" (click)="toggleShow()" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
                     <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
                   </button>
                 </div>
+                @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
               </div>
               @if (error()) { <div class="err-text">{{ error() }}</div> }
-              <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy() || !departmentCode || !login || !password">
+              <button class="btn btn-primary btn-lg btn-block" type="button" (click)="submit()" [disabled]="busy()">
                 @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'sign_in' | t }} }
               </button>
             </div>
@@ -122,6 +126,7 @@ export class MiniAppShellComponent {
   readonly show = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly fe = new FieldErrorsState();
   readonly langs = LANG_OPTIONS;
 
   readonly tabs = computed(() => {
@@ -150,6 +155,13 @@ export class MiniAppShellComponent {
   tap(): void { haptic('success'); }
 
   submit(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'departmentCode', label: t('department'), value: this.departmentCode, required: true },
+      { key: 'login', label: t('login'), value: this.login, required: true },
+      { key: 'password', label: t('password'), value: this.password, required: true },
+    ], t))) return;
+
     this.busy.set(true);
     this.error.set('');
     this.ma.login(this.login.trim(), this.password, this.departmentCode || undefined).subscribe({

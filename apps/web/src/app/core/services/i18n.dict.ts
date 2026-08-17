@@ -136,6 +136,9 @@ const uz = {
   mark_all_read: 'Barchasini o‘qilgan deb belgilash',
   refresh: 'Yangilash',
   optional: 'ixtiyoriy',
+  field_required: '«{field}» to‘ldirilishi shart',
+  field_min: '«{field}» kamida {n} bo‘lishi kerak',
+  field_min_length: '«{field}» kamida {n} belgidan iborat bo‘lishi kerak',
 
   // dashboard
   dash_title: 'Boshqaruv paneli',
@@ -651,6 +654,9 @@ const ru: typeof uz = {
   mark_all_read: 'Отметить все прочитанными',
   refresh: 'Обновить',
   optional: 'необязательно',
+  field_required: 'Поле «{field}» обязательно',
+  field_min: '«{field}» должно быть не меньше {n}',
+  field_min_length: '«{field}» должно содержать минимум {n} символов',
 
   dash_title: 'Панель управления',
   dash_subtitle: 'Общее состояние фабрики',
@@ -1152,6 +1158,9 @@ const en: typeof uz = {
   mark_all_read: 'Mark all as read',
   refresh: 'Refresh',
   optional: 'optional',
+  field_required: '«{field}» is required',
+  field_min: '«{field}» must be at least {n}',
+  field_min_length: '«{field}» must be at least {n} characters',
 
   dash_title: 'Dashboard',
   dash_subtitle: 'Factory overview',

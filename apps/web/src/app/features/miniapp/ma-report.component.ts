@@ -8,6 +8,7 @@ import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.componen
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
 import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
+import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -51,9 +52,10 @@ import { haptic } from './telegram';
 
         <ui-progress [value]="selected()!.doneQty" [max]="selected()!.planQty" />
 
-        <div class="field mt-4">
+        <div class="field mt-4" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'ma_enter_qty' | t }}</label>
-          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" />
+          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" (ngModelChange)="fe.clear('qty')" />
+          @if (fe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
         <div class="quick mt-2">
@@ -73,7 +75,7 @@ import { haptic } from './telegram';
         @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
         @if (ok()) { <div class="badge badge-success mt-3" style="width:100%;justify-content:center;padding:10px;border-radius:var(--r)"><ui-icon name="check-circle" [size]="15" /> {{ 'saved' | t }}</div> }
 
-        <button class="btn btn-primary btn-lg btn-block mt-4" type="button" (click)="submit()" [disabled]="busy() || !qty">
+        <button class="btn btn-primary btn-lg btn-block mt-4" type="button" (click)="submit()" [disabled]="busy()">
           @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { <ui-icon name="send" [size]="16" /> {{ 'ma_send' | t }} }
         </button>
       </div>
@@ -89,8 +91,10 @@ import { haptic } from './telegram';
 })
 export class MaReportComponent {
   private api = inject(ApiService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly ma = inject(MiniAppService);
+
+  readonly fe = new FieldErrorsState();
 
   readonly quick = [10, 25, 50, 100, 250];
   readonly items = signal<OrderStage[]>([]);
@@ -125,6 +129,7 @@ export class MaReportComponent {
   }
 
   select(s: OrderStage): void {
+    this.fe.reset();
     this.selected.set(s);
     this.qty = null;
     this.defectQty = 0;
@@ -134,15 +139,23 @@ export class MaReportComponent {
   }
 
   submit(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
     const s = this.selected();
-    if (!s || !this.qty) return;
+    if (!s) return;
+    if (!this.fe.apply(runValidation([
+      { key: 'qty', label: t('ma_enter_qty'), value: this.qty, custom: (v) => isMissingQty(v) ? t('ma_enter_qty') : null },
+    ], t))) {
+      haptic('error');
+      return;
+    }
+
     this.busy.set(true);
     this.error.set('');
 
     this.api
       .post(`/production/${this.stageSlug()}/entries`, {
         orderId: s.order?.id ?? s.orderId,
-        qty: +this.qty,
+        qty: +this.qty!,
         defectQty: +this.defectQty || 0,
         note: this.note || this.i18n.t('ma_source_miniapp'),
       })

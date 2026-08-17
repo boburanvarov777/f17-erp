@@ -8,6 +8,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { LANG_OPTIONS } from '../../core/lang-options';
 import type { Lang } from '../../core/models';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-login',
@@ -59,21 +60,23 @@ import type { Lang } from '../../core/models';
           <h2>{{ 'login_title' | t }}</h2>
           <p class="text-3 small mb-6">{{ 'login_subtitle' | t }}</p>
 
-          <div class="field mb-4">
+          <div class="field mb-4" [class.field-invalid]="fe.has('login')">
             <label class="label" for="login">{{ 'login' | t }}</label>
             <input id="login" class="input" name="login" [(ngModel)]="login" autocomplete="username"
-                   required autofocus [disabled]="busy()" />
+                   autofocus [disabled]="busy()" (ngModelChange)="fe.clear('login')" />
+            @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
-          <div class="field mb-4">
+          <div class="field mb-4" [class.field-invalid]="fe.has('password')">
             <label class="label" for="password">{{ 'password' | t }}</label>
             <div class="pass-wrap">
               <input id="password" class="input" name="password" [type]="show() ? 'text' : 'password'"
-                     [(ngModel)]="password" autocomplete="current-password" required [disabled]="busy()" />
+                     [(ngModel)]="password" autocomplete="current-password" [disabled]="busy()" (ngModelChange)="fe.clear('password')" />
               <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
                 <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
               </button>
             </div>
+            @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
           @if (error()) {
@@ -82,7 +85,7 @@ import type { Lang } from '../../core/models';
             </div>
           }
 
-          <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy() || !login || !password">
+          <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy()">
             @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'sign_in' | t }} }
           </button>
 
@@ -152,13 +155,19 @@ export class LoginComponent {
   readonly show = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly fe = new FieldErrorsState();
   readonly year = new Date().getFullYear();
   readonly langs = LANG_OPTIONS;
 
   setLang(l: Lang): void { this.i18n.set(l); }
 
   submit(): void {
-    if (!this.login || !this.password || this.busy()) return;
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'login', label: t('login'), value: this.login, required: true },
+      { key: 'password', label: t('password'), value: this.password, required: true },
+    ], t)) || this.busy()) return;
+
     this.busy.set(true);
     this.error.set('');
 

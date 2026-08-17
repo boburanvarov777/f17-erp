@@ -8,6 +8,7 @@ import { DigitsOnlyDirective } from '../directives/digits-only.directive';
 import { NumPipe } from '../pipes/format.pipe';
 import { TPipe } from '../pipes/t.pipe';
 import { LoadingComponent } from '../ui/empty.component';
+import { FieldErrorsState, runValidation } from '../utils/form-validate';
 
 interface LineDraft {
   orderId: string;
@@ -60,6 +61,7 @@ interface StageCandidate {
         <div class="tiny text-3">{{ 'plan_no_orders' | t }}</div>
       }
       @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
+      @if (fe.get('lines'); as msg) { <div class="field-error mt-3">{{ msg }}</div> }
     }
   `,
   styles: [`
@@ -76,7 +78,9 @@ interface StageCandidate {
 export class PlanLinesFormComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
+
+  readonly fe = new FieldErrorsState();
 
   readonly userId = input.required<string>();
   readonly saved = output<void>();
@@ -103,16 +107,19 @@ export class PlanLinesFormComponent {
     if (!on) r.targetQty = 0;
     else if (!r.targetQty) r.targetQty = 50;
     this.rows.update((list) => [...list]);
+    this.fe.clear('lines');
   }
 
   onQtyChange(r: LineDraft): void {
     r._active = (+r.targetQty || 0) > 0;
     this.rows.update((list) => [...list]);
+    this.fe.clear('lines');
   }
 
   load(userId: string): void {
     this.loading.set(true);
     this.error.set('');
+    this.fe.reset();
     this.api.get<PlanView>('/plans/DAILY', { userId }).subscribe({
       next: (plan) => {
         this.api.get<StageCandidate[]>('/plans/DAILY/candidates', { userId }).subscribe({
@@ -157,13 +164,19 @@ export class PlanLinesFormComponent {
   }
 
   submit(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
     const lines = this.rows()
       .filter((r) => (+r.targetQty || 0) > 0)
       .map((r) => ({ orderId: r.orderId, targetQty: +r.targetQty }));
-    if (!lines.length) {
-      this.error.set(this.i18n.t('plan_pick_order'));
-      return;
-    }
+    if (!this.fe.apply(runValidation([
+      {
+        key: 'lines',
+        label: t('plan_lines_hint'),
+        value: lines.length,
+        custom: () => lines.length ? null : t('plan_pick_order'),
+      },
+    ], t))) return;
+
     this.busy.emit(true);
     this.error.set('');
     this.api.post<PlanView>('/plans/DAILY', { userId: this.userId(), targetQty: this.total(), lines }).subscribe({

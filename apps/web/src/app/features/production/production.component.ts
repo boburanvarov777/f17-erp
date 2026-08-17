@@ -16,6 +16,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 
 const SLUG_TO_STAGE: Record<string, StageType> = {
   cutting: 'CUTTING', sewing: 'SEWING', washing: 'WASHING',
@@ -56,7 +57,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             </button>
           }
           @if (isLoading()) {
-            <button class="btn btn-sm" type="button" (click)="shipmentModal.set({})" [attr.data-tip]="'new_shipment' | t">
+            <button class="btn btn-sm" type="button" (click)="openShipmentModal()" [attr.data-tip]="'new_shipment' | t">
               <ui-icon name="truck" [size]="15" /> {{ 'new_shipment' | t }}
             </button>
           }
@@ -171,7 +172,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                     <td><ui-status [value]="s.status" /></td>
                     <td class="actions">
                       @if (canWrite()) {
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="shipmentModal.set(s)" [attr.data-tip]="'edit' | t">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openShipmentModal(s)" [attr.data-tip]="'edit' | t">
                           <ui-icon name="pencil" [size]="15" />
                         </button>
                       }
@@ -189,18 +190,20 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
     @if (entryModal()) {
       <ui-modal [title]="'add_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
         <div class="form-grid">
-          <div class="field full">
+          <div class="field full" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
-            <select class="select" [(ngModel)]="entry.orderId">
+            <select class="select" [(ngModel)]="entry.orderId" (ngModelChange)="entryFe.clear('orderId')">
               <option value="" disabled hidden>{{ 'select_order' | t }}</option>
               @for (s of openStages(); track s.id) {
                 <option [value]="s.order?.id">{{ s.order?.number }} · {{ s.order?.model?.code }} — {{ s.doneQty }}/{{ s.planQty }}</option>
               }
             </select>
+            @if (entryFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
-          <div class="field">
+          <div class="field" [class.field-invalid]="entryFe.has('qty')">
             <label class="label">{{ 'operation_qty' | t }} <span class="req">*</span></label>
-            <input class="input" type="number" min="1" [(ngModel)]="entry.qty" />
+            <input class="input" type="number" min="1" [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" />
+            @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'defect_qty' | t }}</label>
@@ -253,7 +256,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
         <div footer>
           <button class="btn" type="button" (click)="entryModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="busy() || !entry.orderId || !entry.qty">
+          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="busy()">
             @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
           </button>
         </div>
@@ -264,14 +267,22 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
     @if (defectModal(); as s) {
       <ui-modal [title]="'add_defect' | t" [subtitle]="s.order?.number || ''" (closed)="defectModal.set(null)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'defect_type' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="defect.type" /></div>
-          <div class="field"><label class="label">{{ 'quantity' | t }} <span class="req">*</span></label><input class="input" type="number" min="1" [(ngModel)]="defect.qty" /></div>
+          <div class="field" [class.field-invalid]="defectFe.has('type')">
+            <label class="label">{{ 'defect_type' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="defect.type" (ngModelChange)="defectFe.clear('type')" />
+            @if (defectFe.get('type'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="defectFe.has('qty')">
+            <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
+            <input class="input" type="number" min="1" [(ngModel)]="defect.qty" (ngModelChange)="defectFe.clear('qty')" />
+            @if (defectFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field full"><label class="label">{{ 'defect_reason' | t }}</label><input class="input" [(ngModel)]="defect.reason" /></div>
           <div class="field full"><label class="label">{{ 'comment' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="defect.comment"></textarea></div>
         </div>
         <div footer>
           <button class="btn" type="button" (click)="defectModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-danger" type="button" (click)="saveDefect(s)" [disabled]="busy() || !defect.type || !defect.qty">{{ 'save' | t }}</button>
+          <button class="btn btn-danger" type="button" (click)="saveDefect(s)" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -288,12 +299,13 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
 
         @if (canWrite()) {
           <div class="row gap-2 mb-4 wrap">
-            <select class="select" style="width:auto;min-width:170px" [(ngModel)]="assignId">
+            <select class="select" style="width:auto;min-width:170px" [(ngModel)]="assignId" (ngModelChange)="assignFe.clear('assignId')" [class.field-invalid]="assignFe.has('assignId')">
               <option value="">{{ 'responsible' | t }}…</option>
               @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
             </select>
-            <button class="btn btn-sm" type="button" (click)="assign(s)" [disabled]="!assignId">{{ 'save' | t }}</button>
+            <button class="btn btn-sm" type="button" (click)="assign(s)">{{ 'save' | t }}</button>
           </div>
+          @if (assignFe.get('assignId'); as msg) { <div class="field-error mb-4">{{ msg }}</div> }
         }
 
         <b class="small">{{ 'entries' | t }}</b>
@@ -342,12 +354,13 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
     @if (shipmentModal(); as sh) {
       <ui-modal [title]="'new_shipment' | t" (closed)="shipmentModal.set(null)">
         <div class="form-grid">
-          <div class="field full">
+          <div class="field full" [class.field-invalid]="shipmentFe.has('orderId')">
             <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
-            <select class="select" [(ngModel)]="shipment.orderId" [disabled]="!!sh.id">
+            <select class="select" [(ngModel)]="shipment.orderId" [disabled]="!!sh.id" (ngModelChange)="shipmentFe.clear('orderId')">
               <option value="" disabled hidden>{{ 'select_order' | t }}</option>
               @for (s of data()?.items || []; track s.id) { <option [value]="s.order?.id">{{ s.order?.number }}</option> }
             </select>
+            @if (shipmentFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field"><label class="label">{{ 'vehicle' | t }}</label><input class="input" [(ngModel)]="shipment.vehicle" /></div>
           <div class="field"><label class="label">{{ 'driver' | t }}</label><input class="input" [(ngModel)]="shipment.driver" /></div>
@@ -365,7 +378,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         </div>
         <div footer>
           <button class="btn" type="button" (click)="shipmentModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveShipment(sh)" [disabled]="busy() || !shipment.orderId">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveShipment(sh)" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -404,6 +417,11 @@ export class ProductionComponent {
   readonly cancelling = signal<StageEntry | null>(null);
   readonly shipmentModal = signal<Partial<Shipment> | null>(null);
   readonly entryError = signal('');
+
+  readonly entryFe = new FieldErrorsState();
+  readonly defectFe = new FieldErrorsState();
+  readonly shipmentFe = new FieldErrorsState();
+  readonly assignFe = new FieldErrorsState();
 
   entry = { orderId: '', qty: null as number | null, defectQty: 0, date: new Date().toISOString().slice(0, 10), note: '', meta: {} as Record<string, unknown> };
   defect = { type: '', qty: null as number | null, reason: '', comment: '' };
@@ -465,6 +483,7 @@ export class ProductionComponent {
   }
 
   openEntry(s?: OrderStage): void {
+    this.entryFe.reset();
     this.entry = {
       orderId: s?.order?.id ?? '', qty: null, defectQty: 0,
       date: new Date().toISOString().slice(0, 10), note: '', meta: {},
@@ -474,6 +493,12 @@ export class ProductionComponent {
   }
 
   saveEntry(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.entryFe.apply(runValidation([
+      { key: 'orderId', label: t('order'), value: this.entry.orderId, required: true },
+      { key: 'qty', label: t('operation_qty'), value: this.entry.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('operation_qty') }) : null },
+    ], t))) return;
+
     this.busy.set(true);
     this.entryError.set('');
     const meta = Object.fromEntries(Object.entries(this.entry.meta).filter(([, v]) => v !== '' && v != null));
@@ -502,11 +527,18 @@ export class ProductionComponent {
   }
 
   openDefect(s: OrderStage): void {
+    this.defectFe.reset();
     this.defect = { type: '', qty: null, reason: '', comment: '' };
     this.defectModal.set(s);
   }
 
   saveDefect(s: OrderStage): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.defectFe.apply(runValidation([
+      { key: 'type', label: t('defect_type'), value: this.defect.type, required: true },
+      { key: 'qty', label: t('quantity'), value: this.defect.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('quantity') }) : null },
+    ], t))) return;
+
     this.busy.set(true);
     this.api
       .post('/production/defects', {
@@ -529,6 +561,7 @@ export class ProductionComponent {
   }
 
   openDetail(s: OrderStage): void {
+    this.assignFe.reset();
     this.assignId = s.responsible?.id ?? '';
     this.detail.set({ ...s, entries: s.entries ?? [] });
     this.api.get<OrderStage & { entries?: StageEntry[] }>(`/production/${this.stage().toLowerCase()}/${s.order?.id ?? s.orderId}`).subscribe({
@@ -544,6 +577,11 @@ export class ProductionComponent {
   }
 
   assign(s: OrderStage): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.assignFe.apply(runValidation([
+      { key: 'assignId', label: t('responsible'), value: this.assignId, required: true },
+    ], t))) return;
+
     this.api.patch(`/production/stages/${s.id}`, { responsibleId: this.assignId }).subscribe({
       next: () => { this.toast.success(this.i18n.t('saved')); this.reload(false); },
       error: () => void 0,
@@ -562,7 +600,28 @@ export class ProductionComponent {
     });
   }
 
+  openShipmentModal(sh: Partial<Shipment> = {}): void {
+    this.shipmentFe.reset();
+    this.shipment = {
+      orderId: sh.order?.id ?? sh.orderId ?? '',
+      vehicle: sh.vehicle ?? '',
+      driver: sh.driver ?? '',
+      driverPhone: sh.driverPhone ?? '',
+      qty: sh.qty ?? undefined,
+      boxCount: sh.boxCount ?? undefined,
+      loadingDate: sh.loadingDate ? sh.loadingDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      trackNo: sh.trackNo ?? '',
+      status: sh.status ?? 'READY',
+    };
+    this.shipmentModal.set(sh);
+  }
+
   saveShipment(sh: Partial<Shipment>): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.shipmentFe.apply(runValidation([
+      { key: 'orderId', label: t('order'), value: this.shipment.orderId, required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body = {
       ...this.shipment,

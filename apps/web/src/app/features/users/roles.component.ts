@@ -9,6 +9,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-roles',
@@ -71,8 +72,16 @@ import { ModalComponent } from '../../shared/ui/modal.component';
     @if (editing(); as r) {
       <ui-modal size="lg" [title]="r.id ? r.name || '' : ('new_role' | t)" [subtitle]="'permissions' | t" (closed)="editing.set(null)">
         <div class="form-grid mb-4">
-          <div class="field"><label class="label">{{ 'code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" [disabled]="!!r.id" /></div>
-          <div class="field"><label class="label">{{ 'role_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.name" /></div>
+          <div class="field" [class.field-invalid]="fe.has('code')">
+            <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.code" [disabled]="!!r.id" (ngModelChange)="fe.clear('code')" />
+            @if (fe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('name')">
+            <label class="label">{{ 'role_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.name" (ngModelChange)="fe.clear('name')" />
+            @if (fe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field full"><label class="label">{{ 'description' | t }}</label><input class="input" [(ngModel)]="form.description" /></div>
         </div>
 
@@ -105,7 +114,7 @@ import { ModalComponent } from '../../shared/ui/modal.component';
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'close' | t }}</button>
           @if (!r.isSystem && auth.can('roles.update', 'roles.create')) {
-            <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !form.code || !form.name">{{ 'save' | t }}</button>
+            <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
           }
         </div>
       </ui-modal>
@@ -131,6 +140,7 @@ export class RolesComponent {
   readonly busy = signal(false);
   readonly editing = signal<Partial<Role> | null>(null);
   readonly selected = signal<Set<string>>(new Set());
+  readonly fe = new FieldErrorsState();
   form: Record<string, any> = {};
 
   readonly permissionGroups = computed(() =>
@@ -162,6 +172,7 @@ export class RolesComponent {
   }
 
   open(r: Partial<Role>): void {
+    this.fe.reset();
     this.form = { code: r.code ?? '', name: r.name ?? '', description: r.description ?? '' };
     this.selected.set(new Set(r.permissions ?? []));
     this.editing.set(r);
@@ -186,6 +197,12 @@ export class RolesComponent {
   }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'code', label: t('code'), value: this.form['code'], required: true },
+      { key: 'name', label: t('role_name'), value: this.form['name'], required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body = { ...this.form, permissions: [...this.selected()] };
     const id = this.editing()?.id;

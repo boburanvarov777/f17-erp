@@ -13,6 +13,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-models-list',
@@ -119,8 +120,16 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     @if (editing(); as m) {
       <ui-modal size="lg" [title]="m.id ? ('edit' | t) : ('new_model' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'model_code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" /></div>
-          <div class="field"><label class="label">{{ 'model_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.name" /></div>
+          <div class="field" [class.field-invalid]="fe.has('code')">
+            <label class="label">{{ 'model_code' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.code" (ngModelChange)="fe.clear('code')" />
+            @if (fe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('name')">
+            <label class="label">{{ 'model_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.name" (ngModelChange)="fe.clear('name')" />
+            @if (fe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
           <div class="field"><label class="label">{{ 'season' | t }}</label><input class="input" [(ngModel)]="form.season" [placeholder]="'season_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'color' | t }}</label><input class="input" [(ngModel)]="form.color" /></div>
@@ -179,7 +188,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !form.code || !form.name">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -229,6 +238,7 @@ export class ModelsListComponent {
   readonly sizes = signal<ModelSize[]>([]);
   readonly photoPreview = signal<string | null>(null);
   readonly photoUploading = signal(false);
+  readonly fe = new FieldErrorsState();
 
   form: Record<string, any> = {};
   private timer?: ReturnType<typeof setTimeout>;
@@ -253,6 +263,7 @@ export class ModelsListComponent {
   }
 
   open(m: Partial<ProductModel>): void {
+    this.fe.reset();
     this.form = {
       code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', season: m.season ?? '',
       color: m.color ?? '', clientId: m.client?.id ?? '', fabric: m.fabric ?? '', lining: m.lining ?? '',
@@ -301,6 +312,12 @@ export class ModelsListComponent {
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'code', label: t('model_code'), value: this.form['code'], required: true },
+      { key: 'name', label: t('model_name'), value: this.form['name'], required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body: Record<string, unknown> = { ...this.form };
     if (!body['clientId']) delete body['clientId'];

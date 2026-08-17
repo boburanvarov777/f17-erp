@@ -11,6 +11,7 @@ import { LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -75,17 +76,19 @@ import { haptic } from './telegram';
     @if (entryModal()) {
       <ui-modal [title]="'ma_add_result' | t" (closed)="closeEntry()">
         @if (entryOrders().length) {
-          <div class="field">
+          <div class="field" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'ma_select_order' | t }}</label>
-            <select class="select" [(ngModel)]="entryOrderId">
+            <select class="select" [(ngModel)]="entryOrderId" (ngModelChange)="entryFe.clear('orderId')">
               @for (o of entryOrders(); track o.orderId) {
                 <option [value]="o.orderId">{{ orderLabel(o) }}</option>
               }
             </select>
+            @if (entryFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
-          <div class="field mt-3">
+          <div class="field mt-3" [class.field-invalid]="entryFe.has('qty')">
             <label class="label">{{ 'quantity' | t }}</label>
-            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryQty" />
+            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryQty" (ngModelChange)="entryFe.clear('qty')" />
+            @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="quick mt-2">
             @for (n of quick; track n) {
@@ -106,7 +109,7 @@ import { haptic } from './telegram';
         @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
         <div footer class="ma-modal-foot">
           <button class="btn" type="button" (click)="closeEntry()">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="entryBusy() || !entryOrders().length">
+          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="entryBusy()">
             @if (entryBusy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
           </button>
         </div>
@@ -129,8 +132,10 @@ import { haptic } from './telegram';
 export class MaHomeComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly ma = inject(MiniAppService);
+
+  readonly entryFe = new FieldErrorsState();
 
   readonly periods = [
     { key: 'DAILY', label: 'daily_plan' },
@@ -196,6 +201,7 @@ export class MaHomeComponent {
   }
 
   openEntry(): void {
+    this.entryFe.reset();
     this.entryOrderId = this.entryOrders()[0]?.orderId ?? '';
     this.entryQty = null;
     this.entryDefect = 0;
@@ -234,17 +240,29 @@ export class MaHomeComponent {
   }
 
   saveEntry(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
     const slug = this.ma.user()?.department?.stage?.toLowerCase();
-    if (!slug || !this.entryOrderId || !this.entryQty) {
-      this.toast.error(this.i18n.t('ma_enter_qty'));
+    if (!slug) {
+      this.toast.error(this.i18n.t('ma_no_active_orders_msg'));
       haptic('error');
       return;
     }
+    if (!this.entryFe.apply(runValidation([
+      { key: 'orderId', label: t('ma_select_order'), value: this.entryOrderId, required: true, when: () => this.entryOrders().length > 0 },
+      { key: 'qty', label: t('quantity'), value: this.entryQty, custom: (v) => isMissingQty(v) ? t('ma_enter_qty') : null },
+    ], t))) {
+      if (!this.entryOrders().length) {
+        this.toast.error(this.i18n.t('ma_no_active_orders_msg'));
+      }
+      haptic('error');
+      return;
+    }
+
     this.entryBusy.set(true);
     this.entryError.set('');
     this.api.post(`/production/${slug}/entries`, {
       orderId: this.entryOrderId,
-      qty: +this.entryQty,
+      qty: +this.entryQty!,
       defectQty: +this.entryDefect || 0,
       note: this.entryNote || this.i18n.t('ma_source_dashboard'),
     }).subscribe({

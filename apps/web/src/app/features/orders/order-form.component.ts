@@ -7,6 +7,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 
 interface SizeRow { size: string; qty: number; }
 
@@ -18,9 +19,10 @@ interface SizeRow { size: string; qty: number; }
   template: `
     <ui-modal [title]="isNew() ? ('new_order' | t) : ('edit_order' | t)" [subtitle]="form.number" size="lg" (closed)="closed.emit()">
       <div class="form-grid">
-        <div class="field">
+        <div class="field" [class.field-invalid]="fe.has('number')">
           <label class="label">{{ 'order_no' | t }} <span class="req">*</span></label>
-          <input class="input mono" [(ngModel)]="form.number" [placeholder]="'order_no_placeholder' | t" />
+          <input class="input mono" [(ngModel)]="form.number" [placeholder]="'order_no_placeholder' | t" (ngModelChange)="fe.clear('number')" />
+          @if (fe.get('number'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
         <div class="field">
@@ -31,7 +33,7 @@ interface SizeRow { size: string; qty: number; }
               @for (c of clientOptions(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
             </select>
             @if (canAddClient()) {
-              <button class="btn btn-sm" type="button" (click)="showClientForm.set(true)" [attr.data-tip]="'add_client' | t">
+              <button class="btn btn-sm" type="button" (click)="openClientForm()" [attr.data-tip]="'add_client' | t">
                 <ui-icon name="plus" [size]="14" />
               </button>
             }
@@ -46,9 +48,10 @@ interface SizeRow { size: string; qty: number; }
           </select>
         </div>
 
-        <div class="field">
+        <div class="field" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
-          <input class="input" type="number" min="1" [(ngModel)]="form.qty" />
+          <input class="input" type="number" min="1" [(ngModel)]="form.qty" (ngModelChange)="fe.clear('qty')" />
+          @if (fe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
         <div class="field">
@@ -58,14 +61,16 @@ interface SizeRow { size: string; qty: number; }
           </select>
         </div>
 
-        <div class="field">
+        <div class="field" [class.field-invalid]="fe.has('orderDate')">
           <label class="label">{{ 'order_date' | t }} <span class="req">*</span></label>
-          <input class="input" type="date" [(ngModel)]="form.orderDate" />
+          <input class="input" type="date" [(ngModel)]="form.orderDate" (ngModelChange)="fe.clear('orderDate')" />
+          @if (fe.get('orderDate'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
-        <div class="field">
+        <div class="field" [class.field-invalid]="fe.has('deadline')">
           <label class="label">{{ 'deadline' | t }} <span class="req">*</span></label>
-          <input class="input" type="date" [(ngModel)]="form.deadline" />
+          <input class="input" type="date" [(ngModel)]="form.deadline" (ngModelChange)="fe.clear('deadline')" />
+          @if (fe.get('deadline'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
         <div class="field">
@@ -106,14 +111,16 @@ interface SizeRow { size: string; qty: number; }
           @for (s of sizes(); track $index) {
             <div class="size-row">
               <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
-              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch()" />
+              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch(); fe.clear('sizes')" />
               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
                 <ui-icon name="x" [size]="14" />
               </button>
             </div>
           }
         </div>
-        @if (sizeTotal() !== form.qty && sizeTotal() > 0) {
+        @if (fe.get('sizes'); as msg) {
+          <div class="field-error mt-2">{{ msg }}</div>
+        } @else if (sizeTotal() !== form.qty && sizeTotal() > 0) {
           <div class="err-text mt-2">{{ 'sizes_mismatch' | t }}</div>
         }
       } @else {
@@ -124,7 +131,7 @@ interface SizeRow { size: string; qty: number; }
 
       <div footer>
         <button class="btn" type="button" (click)="closed.emit()">{{ 'cancel' | t }}</button>
-        <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !valid()">
+        <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">
           @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
         </button>
       </div>
@@ -133,15 +140,23 @@ interface SizeRow { size: string; qty: number; }
     @if (showClientForm()) {
       <ui-modal [title]="'new_client' | t" (closed)="showClientForm.set(false)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'client_code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="clientForm.code" /></div>
-          <div class="field"><label class="label">{{ 'client' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="clientForm.name" /></div>
+          <div class="field" [class.field-invalid]="clientFe.has('code')">
+            <label class="label">{{ 'client_code' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="clientForm.code" (ngModelChange)="clientFe.clear('code')" />
+            @if (clientFe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="clientFe.has('name')">
+            <label class="label">{{ 'client' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="clientForm.name" (ngModelChange)="clientFe.clear('name')" />
+            @if (clientFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field"><label class="label">{{ 'phone' | t }}</label><input class="input mono" [(ngModel)]="clientForm.phone" /></div>
           <div class="field"><label class="label">{{ 'contact' | t }}</label><input class="input" [(ngModel)]="clientForm.contact" /></div>
         </div>
         @if (clientError()) { <div class="err-text mt-3">{{ clientError() }}</div> }
         <div footer>
           <button class="btn" type="button" (click)="showClientForm.set(false)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveClient()" [disabled]="clientBusy() || !clientForm.code.trim() || !clientForm.name.trim()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveClient()" [disabled]="clientBusy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -154,8 +169,11 @@ interface SizeRow { size: string; qty: number; }
 })
 export class OrderFormComponent {
   private api = inject(ApiService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+
+  readonly fe = new FieldErrorsState();
+  readonly clientFe = new FieldErrorsState();
 
   readonly order = input.required<Partial<Order>>();
   readonly clients = input<Client[]>([]);
@@ -194,12 +212,9 @@ export class OrderFormComponent {
   });
   readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
   readonly sizeTotal = computed(() => { this.version(); return this.sizes().reduce((a, s) => a + (+s.qty || 0), 0); });
-  readonly valid = computed(() => {
-    this.version();
-    return !!(this.form.number && this.form.qty > 0 && this.form.orderDate && this.form.deadline);
-  });
 
   constructor() {
+    this.fe.reset();
     queueMicrotask(() => {
       const o = this.order();
       if (o?.id) {
@@ -239,10 +254,22 @@ export class OrderFormComponent {
     this.touch();
   }
 
-  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); this.touch(); }
-  removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); this.touch(); }
+  addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: 0 }]); this.touch(); this.fe.clear('sizes'); }
+  removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); this.touch(); this.fe.clear('sizes'); }
+
+  openClientForm(): void {
+    this.clientFe.reset();
+    this.clientError.set('');
+    this.showClientForm.set(true);
+  }
 
   saveClient(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.clientFe.apply(runValidation([
+      { key: 'code', label: t('client_code'), value: this.clientForm.code, required: true },
+      { key: 'name', label: t('client'), value: this.clientForm.name, required: true },
+    ], t))) return;
+
     this.clientBusy.set(true);
     this.clientError.set('');
     this.api.post<Client>('/clients', {
@@ -268,6 +295,22 @@ export class OrderFormComponent {
   }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    const sizeTotal = this.sizeTotal();
+    if (!this.fe.apply(runValidation([
+      { key: 'number', label: t('order_no'), value: this.form.number, required: true },
+      { key: 'qty', label: t('quantity'), value: this.form.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('quantity') }) : null },
+      { key: 'orderDate', label: t('order_date'), value: this.form.orderDate, required: true },
+      { key: 'deadline', label: t('deadline'), value: this.form.deadline, required: true },
+      {
+        key: 'sizes',
+        label: t('size_breakdown'),
+        value: sizeTotal,
+        when: () => this.sizes().length > 0,
+        custom: () => sizeTotal === +this.form.qty ? null : t('sizes_mismatch'),
+      },
+    ], t))) return;
+
     this.busy.set(true);
     this.error.set('');
 

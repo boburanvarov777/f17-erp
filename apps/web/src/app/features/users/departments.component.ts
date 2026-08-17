@@ -9,6 +9,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
 
@@ -61,18 +62,26 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
     @if (editing(); as d) {
       <ui-modal [title]="d.id ? ('edit' | t) : ('new_department' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" [disabled]="!!d.id" /></div>
+          <div class="field" [class.field-invalid]="fe.has('code')">
+            <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.code" [disabled]="!!d.id" (ngModelChange)="fe.clear('code')" />
+            @if (fe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field">
             <label class="label">{{ 'linked_stage' | t }}</label>
             <select class="select" [(ngModel)]="form.stage"><option value="" disabled hidden>{{ 'select_stage' | t }}</option>@for (s of stages; track s) { <option [value]="s">{{ 'stage_' + s | t }}</option> }</select>
           </div>
-          <div class="field full"><label class="label">{{ 'dept_name_uz' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameUz" /></div>
+          <div class="field full" [class.field-invalid]="fe.has('nameUz')">
+            <label class="label">{{ 'dept_name_uz' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.nameUz" (ngModelChange)="fe.clear('nameUz')" />
+            @if (fe.get('nameUz'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field full"><label class="label">{{ 'dept_name_ru' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameRu" /></div>
           <div class="field full"><label class="label">{{ 'dept_name_en' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameEn" /></div>
         </div>
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !form.code || !form.nameUz">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -89,6 +98,7 @@ export class DepartmentsComponent {
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly editing = signal<Partial<Department> | null>(null);
+  readonly fe = new FieldErrorsState();
   form: Record<string, any> = {};
 
   constructor() { this.load(); }
@@ -102,11 +112,18 @@ export class DepartmentsComponent {
   }
 
   open(d: Partial<Department>): void {
+    this.fe.reset();
     this.form = { code: d.code ?? '', nameUz: d.nameUz ?? '', nameRu: d.nameRu ?? '', nameEn: d.nameEn ?? '', stage: d.stage ?? '' };
     this.editing.set(d);
   }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.fe.apply(runValidation([
+      { key: 'code', label: t('code'), value: this.form['code'], required: true },
+      { key: 'nameUz', label: t('dept_name_uz'), value: this.form['nameUz'], required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body = { ...this.form };
     if (!body['stage']) delete body['stage'];

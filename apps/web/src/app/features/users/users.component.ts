@@ -14,6 +14,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
 @Component({
   selector: 'app-users',
@@ -112,23 +113,41 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     @if (editing(); as u) {
       <ui-modal size="lg" [title]="u.id ? ('edit_user' | t) : ('new_user' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'last_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.lastName" /></div>
-          <div class="field"><label class="label">{{ 'first_name' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.firstName" /></div>
-          <div class="field"><label class="label">{{ 'phone' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" /></div>
+          <div class="field" [class.field-invalid]="fe.has('lastName')">
+            <label class="label">{{ 'last_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.lastName" (ngModelChange)="fe.clear('lastName')" />
+            @if (fe.get('lastName'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('firstName')">
+            <label class="label">{{ 'first_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.firstName" (ngModelChange)="fe.clear('firstName')" />
+            @if (fe.get('firstName'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('phone')">
+            <label class="label">{{ 'phone' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" (ngModelChange)="fe.clear('phone')" />
+            @if (fe.get('phone'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field"><label class="label">{{ 'email' | t }}</label><input class="input" type="email" [(ngModel)]="form.email" /></div>
-          <div class="field"><label class="label">{{ 'login' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.login" /></div>
-          <div class="field">
+          <div class="field" [class.field-invalid]="fe.has('login')">
+            <label class="label">{{ 'login' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.login" (ngModelChange)="fe.clear('login')" />
+            @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('password')">
             <label class="label">{{ 'password' | t }} @if (!u.id) { <span class="req">*</span> } @else { <span class="text-3">({{ 'optional' | t }})</span> }</label>
-            <input class="input" type="text" [(ngModel)]="form.password" />
+            <input class="input" type="text" [(ngModel)]="form.password" (ngModelChange)="fe.clear('password')" />
+            @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'department' | t }}</label>
             <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled hidden>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
           </div>
           <div class="field"><label class="label">{{ 'position' | t }}</label><input class="input" [(ngModel)]="form.position" /></div>
-          <div class="field">
+          <div class="field" [class.field-invalid]="fe.has('roleId')">
             <label class="label">{{ 'role' | t }} <span class="req">*</span></label>
-            <select class="select" [(ngModel)]="form.roleId"><option value="" disabled hidden>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.roleId" (ngModelChange)="fe.clear('roleId')"><option value="" disabled hidden>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
+            @if (fe.get('roleId'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'status' | t }}</label>
@@ -151,18 +170,22 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy() || !valid()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
 
     @if (passwordFor(); as u) {
       <ui-modal [title]="'reset_password' | t" [subtitle]="u.lastName + ' ' + u.firstName" (closed)="passwordFor.set(null)">
-        <div class="field"><label class="label">{{ 'new_password' | t }}</label><input class="input" [(ngModel)]="newPassword" /></div>
+        <div class="field" [class.field-invalid]="pwdFe.has('newPassword')">
+          <label class="label">{{ 'new_password' | t }} <span class="req">*</span></label>
+          <input class="input" [(ngModel)]="newPassword" (ngModelChange)="pwdFe.clear('newPassword')" />
+          @if (pwdFe.get('newPassword'); as msg) { <div class="field-error">{{ msg }}</div> }
+        </div>
         <div class="small text-3 mt-3">{{ 'password_sessions_note' | t }}</div>
         <div footer>
           <button class="btn" type="button" (click)="passwordFor.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="resetPassword(u)" [disabled]="newPassword.length < 6">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="resetPassword(u)">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -192,6 +215,8 @@ export class UsersComponent {
   readonly editing = signal<Partial<User> | null>(null);
   readonly archiving = signal<User | null>(null);
   readonly passwordFor = signal<User | null>(null);
+  readonly fe = new FieldErrorsState();
+  readonly pwdFe = new FieldErrorsState();
 
   form: Record<string, any> = {};
   private timer?: ReturnType<typeof setTimeout>;
@@ -205,10 +230,6 @@ export class UsersComponent {
   }
 
   deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
-
-  valid(): boolean {
-    return !!(this.form['firstName'] && this.form['lastName'] && this.form['phone'] && this.form['login'] && this.form['roleId'] && (this.editing()?.id || this.form['password']));
-  }
 
   onSearch(): void { clearTimeout(this.timer); this.timer = setTimeout(() => this.reload(), 320); }
 
@@ -226,6 +247,7 @@ export class UsersComponent {
 
   open(u: Partial<User>): void {
     this.error.set('');
+    this.fe.reset();
     this.form = {
       firstName: u.firstName ?? '', lastName: u.lastName ?? '', phone: u.phone ?? '',
       email: u.email ?? '', login: u.login ?? '', password: '',
@@ -237,6 +259,17 @@ export class UsersComponent {
   }
 
   save(): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    const isNew = !this.editing()?.id;
+    if (!this.fe.apply(runValidation([
+      { key: 'lastName', label: t('last_name'), value: this.form['lastName'], required: true },
+      { key: 'firstName', label: t('first_name'), value: this.form['firstName'], required: true },
+      { key: 'phone', label: t('phone'), value: this.form['phone'], required: true },
+      { key: 'login', label: t('login'), value: this.form['login'], required: true },
+      { key: 'roleId', label: t('role'), value: this.form['roleId'], required: true },
+      { key: 'password', label: t('password'), value: this.form['password'], required: isNew },
+    ], t))) return;
+
     this.busy.set(true);
     this.error.set('');
     const body: Record<string, unknown> = { ...this.form };
@@ -263,9 +296,14 @@ export class UsersComponent {
     });
   }
 
-  openPassword(u: User): void { this.newPassword = ''; this.passwordFor.set(u); }
+  openPassword(u: User): void { this.newPassword = ''; this.pwdFe.reset(); this.passwordFor.set(u); }
 
   resetPassword(u: User): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.pwdFe.apply(runValidation([
+      { key: 'newPassword', label: t('new_password'), value: this.newPassword, required: true, minLength: 6 },
+    ], t))) return;
+
     this.api.post(`/users/${u.id}/reset-password`, { newPassword: this.newPassword }).subscribe({
       next: () => { this.passwordFor.set(null); this.toast.success(this.i18n.t('saved')); },
       error: () => void 0,

@@ -10,6 +10,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
+import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
@@ -137,9 +138,10 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           }
         </div>
         <div class="form-grid">
-          <div class="field">
+          <div class="field" [class.field-invalid]="opFe.has('qty')">
             <label class="label">{{ 'quantity' | t }} ({{ m.unit }}) <span class="req">*</span></label>
-            <input class="input" type="number" min="0" step="0.001" [(ngModel)]="op.qty" />
+            <input class="input" type="number" min="0" step="0.001" [(ngModel)]="op.qty" (ngModelChange)="opFe.clear('qty')" />
+            @if (opFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'current_stock' | t }}</label>
@@ -149,7 +151,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
         </div>
         <div footer>
           <button class="btn" type="button" (click)="opModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveOp(m)" [disabled]="busy() || !op.qty">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveOp(m)" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -157,8 +159,16 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
     @if (materialModal(); as m) {
       <ui-modal [title]="m.id ? ('edit' | t) : ('new_material' | t)" (closed)="materialModal.set(null)">
         <div class="form-grid">
-          <div class="field"><label class="label">{{ 'code' | t }} <span class="req">*</span></label><input class="input mono" [(ngModel)]="form.code" /></div>
-          <div class="field"><label class="label">{{ 'material' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.name" /></div>
+          <div class="field" [class.field-invalid]="materialFe.has('code')">
+            <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.code" (ngModelChange)="materialFe.clear('code')" />
+            @if (materialFe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="materialFe.has('name')">
+            <label class="label">{{ 'material' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.name" (ngModelChange)="materialFe.clear('name')" />
+            @if (materialFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
           <div class="field"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" [placeholder]="'unit_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'min_stock' | t }}</label><input class="input" type="number" [(ngModel)]="form.minStock" /></div>
@@ -170,7 +180,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
         </div>
         <div footer>
           <button class="btn" type="button" (click)="materialModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveMaterial(m)" [disabled]="busy() || !form.code || !form.name">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveMaterial(m)" [disabled]="busy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -198,6 +208,9 @@ export class WarehouseComponent {
   readonly busy = signal(false);
   readonly opModal = signal<Material | null>(null);
   readonly materialModal = signal<Partial<Material> | null>(null);
+
+  readonly opFe = new FieldErrorsState();
+  readonly materialFe = new FieldErrorsState();
 
   op: { op: StockOp; qty: number | null; note: string } = { op: 'IN', qty: null, note: '' };
   form: Record<string, any> = {};
@@ -236,9 +249,14 @@ export class WarehouseComponent {
 
   showTx(m: Material): void { this.loadTx(m.id); this.tab.set('tx'); }
 
-  openOp(m: Material): void { this.op = { op: 'IN', qty: null, note: '' }; this.opModal.set(m); }
+  openOp(m: Material): void { this.opFe.reset(); this.op = { op: 'IN', qty: null, note: '' }; this.opModal.set(m); }
 
   saveOp(m: Material): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.opFe.apply(runValidation([
+      { key: 'qty', label: t('quantity'), value: this.op.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('quantity') }) : null },
+    ], t))) return;
+
     this.busy.set(true);
     this.api.post('/warehouse/operations', { materialId: m.id, op: this.op.op, qty: +this.op.qty!, note: this.op.note || undefined }).subscribe({
       next: () => {
@@ -251,6 +269,7 @@ export class WarehouseComponent {
   }
 
   openMaterial(m: Partial<Material>): void {
+    this.materialFe.reset();
     this.form = {
       code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', unit: m.unit ?? 'm',
       minStock: m.minStock ?? 0, price: m.price ?? null, supplier: m.supplier ?? '', quantity: 0,
@@ -259,6 +278,12 @@ export class WarehouseComponent {
   }
 
   saveMaterial(m: Partial<Material>): void {
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    if (!this.materialFe.apply(runValidation([
+      { key: 'code', label: t('code'), value: this.form['code'], required: true },
+      { key: 'name', label: t('material'), value: this.form['name'], required: true },
+    ], t))) return;
+
     this.busy.set(true);
     const body = { ...this.form };
     if (m.id) delete body['quantity'];
