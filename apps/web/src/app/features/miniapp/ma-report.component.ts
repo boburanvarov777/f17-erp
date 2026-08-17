@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { OrderStage, Paginated } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
@@ -18,7 +18,7 @@ import { haptic } from './telegram';
   imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, TPipe, DigitsOnlyDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h2 class="mb-3" style="font-size:17px">{{ 'ma_report' | t }}</h2>
+    <h2 class="mb-3" style="font-size:17px">{{ 'ma_orders' | t }}</h2>
 
     @if (!stageSlug()) {
       <ui-empty icon="alert-circle" [title]="'ma_no_dept' | t" [message]="'ma_no_dept_msg' | t" />
@@ -107,7 +107,12 @@ export class MaReportComponent {
   readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
   readonly stageSlug = computed(() => this.stageType()?.toLowerCase() ?? '');
 
-  constructor() { this.load(); }
+  constructor() {
+    this.load();
+    effect(() => {
+      if (this.ma.productionTick() > 0) this.load();
+    });
+  }
 
   load(): void {
     const slug = this.stageSlug();
@@ -146,6 +151,7 @@ export class MaReportComponent {
           this.busy.set(false);
           this.ok.set(true);
           haptic('success');
+          this.ma.notifyProduction();
           setTimeout(() => { this.selected.set(null); this.load(); }, 1100);
         },
         error: (e) => {

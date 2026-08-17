@@ -183,6 +183,20 @@ export class UsersService {
       where: { userId: { in: users.map((u) => u.id) }, period: 'DAILY', dateFrom: startOfDay },
       select: { userId: true, targetQty: true, doneQty: true },
     });
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(startOfDay.getDate() + 1);
+    const producedToday = await this.prisma.stageEntry.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: users.map((u) => u.id) },
+        date: { gte: startOfDay, lt: endOfDay },
+        cancelled: false,
+      },
+      _sum: { qty: true },
+    });
+    const producedByUser = Object.fromEntries(
+      producedToday.map((p) => [p.userId, p._sum.qty ?? 0]),
+    );
     const planByUser = Object.fromEntries(dailyPlans.map((p) => [p.userId, p]));
     const tasks = await this.prisma.task.findMany({
       where: { userId: { in: users.map((u) => u.id) }, date: { gte: startOfMonth } },
@@ -204,7 +218,10 @@ export class UsersService {
         ...u,
         today, week, month, overdue,
         progress: month.total ? Math.round((month.done / month.total) * 100) : 0,
-        dailyPlan: { targetQty: daily?.targetQty ?? 0, doneQty: daily?.doneQty ?? 0 },
+        dailyPlan: {
+          targetQty: daily?.targetQty ?? 0,
+          doneQty: producedByUser[u.id] ?? daily?.doneQty ?? 0,
+        },
         _grouped: grouped.filter((g) => g.userId === u.id).length,
       };
     });

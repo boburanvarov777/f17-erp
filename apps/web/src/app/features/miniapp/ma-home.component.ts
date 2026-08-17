@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { PlanView } from '../../core/models';
+import type { OrderStage, Paginated, PlanModelBreakdown, PlanView } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -11,7 +11,6 @@ import { LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
-import { planQtySuggestions } from '../../shared/utils/plan-suggestions';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -43,36 +42,26 @@ import { haptic } from './telegram';
             <div
               class="card card-pad"
               [class.clickable]="p.key === 'DAILY'"
-              (click)="p.key === 'DAILY' && openDailyProgress()"
+              (click)="p.key === 'DAILY' && openEntry()"
             >
               <div class="row-between mb-3">
                 <b class="small">{{ p.label | t }}</b>
-                @if (p.key === 'DAILY') {
-                  <span class="badge badge-neutral">{{ plans()[p.key]?.producedQty || 0 | num }} / {{ plans()[p.key]?.targetQty || 0 | num }}</span>
-                } @else {
-                  <span class="badge badge-neutral">{{ plans()[p.key]?.done || 0 }} / {{ plans()[p.key]?.total || 0 }}</span>
-                }
+                <span class="badge badge-neutral">{{ plans()[p.key]?.producedQty || 0 | num }} / {{ plans()[p.key]?.targetQty || 0 | num }}</span>
               </div>
-              @if (p.key === 'DAILY') {
-                <ui-progress [value]="plans()[p.key]?.producedQty || 0" [max]="plans()[p.key]?.targetQty || 1" [showLabel]="false" />
-              } @else {
-                <ui-progress [value]="plans()[p.key]?.done || 0" [max]="plans()[p.key]?.total || 1" [showLabel]="false" />
-              }
+              <ui-progress [value]="plans()[p.key]?.producedQty || 0" [max]="plans()[p.key]?.targetQty || 1" [showLabel]="false" />
               <div class="row-between mt-3 tiny text-3">
                 <span>{{ 'produced' | t }}: <b class="text-2">{{ plans()[p.key]?.producedQty || 0 | num }}</b> {{ 'pieces' | t }}</span>
                 @if (p.key === 'DAILY') {
-                  <span class="edit-hint"><ui-icon name="pencil" [size]="12" /> {{ 'tap_to_update_progress' | t }}</span>
-                } @else if ((plans()[p.key]?.overdue || 0) > 0) {
-                  <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plans()[p.key]?.overdue }}</span>
+                  <span class="edit-hint"><ui-icon name="plus" [size]="12" /> {{ 'ma_add_result' | t }}</span>
                 }
               </div>
-              @if (p.key === 'DAILY' && plans()['DAILY']?.byModel?.length) {
+              @if (p.key === 'DAILY' && dailyLines().length) {
                 <div class="model-breakdown mt-3">
                   <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
-                  @for (m of plans()['DAILY']!.byModel!; track m.orderId + m.stage) {
+                  @for (m of dailyLines(); track m.orderId + m.stage) {
                     <div class="model-row row-between">
                       <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }}</span>
-                      <span class="tiny bold">{{ m.qty | num }}</span>
+                      <span class="tiny bold">{{ formatLine(m) }}</span>
                     </div>
                   }
                 </div>
@@ -83,36 +72,43 @@ import { haptic } from './telegram';
       }
     }
 
-    @if (planModal()) {
-      <ui-modal [title]="'update_daily_progress' | t" (closed)="planModal.set(false)">
-        <div class="field">
-          <label class="label">{{ 'plan_done_qty' | t }}</label>
-          <input
-            class="input"
-            type="tel"
-            inputmode="numeric"
-            digitsOnly
-            [(ngModel)]="planDone"
-            [placeholder]="'plan_done_placeholder' | t"
-          />
-          <div class="tiny text-3 mt-2">{{ 'plan_done_hint' | t }}</div>
-          <div class="tiny text-3 mt-1">{{ 'plan_assigned' | t }}: <b>{{ plans()['DAILY']?.targetQty || 0 | num }}</b> {{ 'pieces' | t }}</div>
-          @if (dailySuggestions().length) {
-            <div class="qty-badges">
-              @for (n of dailySuggestions(); track n) {
-                <button
-                  type="button"
-                  class="badge badge-neutral badge-pick"
-                  [class.active]="+planDone === n"
-                  (click)="pickQty(n)"
-                >{{ n | num }}</button>
+    @if (entryModal()) {
+      <ui-modal [title]="'ma_add_result' | t" (closed)="closeEntry()">
+        @if (entryOrders().length) {
+          <div class="field">
+            <label class="label">{{ 'ma_select_order' | t }}</label>
+            <select class="select" [(ngModel)]="entryOrderId">
+              @for (o of entryOrders(); track o.orderId) {
+                <option [value]="o.orderId">{{ orderLabel(o) }}</option>
               }
-            </div>
-          }
-        </div>
+            </select>
+          </div>
+          <div class="field mt-3">
+            <label class="label">{{ 'quantity' | t }}</label>
+            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryQty" />
+          </div>
+          <div class="quick mt-2">
+            @for (n of quick; track n) {
+              <button type="button" (click)="entryQty = n">{{ n }}</button>
+            }
+          </div>
+          <div class="field mt-3">
+            <label class="label">{{ 'defect_qty' | t }}</label>
+            <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="entryDefect" />
+          </div>
+          <div class="field mt-3">
+            <label class="label">{{ 'note' | t }}</label>
+            <input class="input" [(ngModel)]="entryNote" [placeholder]="'note_optional' | t" />
+          </div>
+        } @else {
+          <div class="tiny text-3">{{ 'ma_no_active_orders_msg' | t }}</div>
+        }
+        @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
         <div footer class="ma-modal-foot">
-          <button class="btn" type="button" (click)="planModal.set(false)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="saveDailyProgress()" [disabled]="planBusy()">{{ 'save' | t }}</button>
+          <button class="btn" type="button" (click)="closeEntry()">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="entryBusy() || !entryOrders().length">
+            @if (entryBusy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
+          </button>
         </div>
       </ui-modal>
     }
@@ -126,6 +122,8 @@ import { haptic } from './telegram';
     .tiny-badge { font-size: 10px; padding: 2px 7px; }
     .model-breakdown { border-top: 1px solid var(--border); padding-top: 10px; }
     .model-row { padding: 4px 0; }
+    .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quick button { flex: 1; min-width: 48px; padding: 8px 0; border: 1px solid var(--border-strong); border-radius: var(--r); background: var(--surface); cursor: pointer; font-size: 13px; }
   `],
 })
 export class MaHomeComponent {
@@ -139,14 +137,48 @@ export class MaHomeComponent {
     { key: 'WEEKLY', label: 'weekly_plan' },
     { key: 'MONTHLY', label: 'monthly_plan' },
   ];
+  readonly quick = [10, 25, 50, 100];
   readonly plans = signal<Record<string, PlanView>>({});
   readonly loading = signal(true);
-  readonly planModal = signal(false);
-  readonly planBusy = signal(false);
-  planDone = '';
+  readonly entryModal = signal(false);
+  readonly entryBusy = signal(false);
+  readonly entryError = signal('');
+  readonly fallbackOrders = signal<PlanModelBreakdown[]>([]);
+
+  entryOrderId = '';
+  entryQty: number | null = null;
+  entryDefect = 0;
+  entryNote = '';
 
   constructor() {
     this.reloadPlans();
+    effect(() => {
+      this.ma.productionTick();
+      if (this.ma.productionTick() > 0) this.reloadPlans();
+    });
+  }
+
+  entryOrders(): PlanModelBreakdown[] {
+    const assigned = this.dailyLines().filter((l) => l.targetQty && l.targetQty > 0);
+    if (assigned.length) return assigned;
+    if (this.dailyLines().length) return this.dailyLines();
+    return this.fallbackOrders();
+  }
+
+  dailyLines(): PlanModelBreakdown[] {
+    const daily = this.plans()['DAILY'];
+    if (!daily) return [];
+    if (daily.lines?.length) return daily.lines;
+    return daily.byModel ?? [];
+  }
+
+  orderLabel(o: PlanModelBreakdown): string {
+    const base = `${o.orderNumber} · ${o.modelCode}`;
+    return o.targetQty ? `${base} — ${o.targetQty}` : base;
+  }
+
+  formatLine(m: PlanModelBreakdown): string {
+    return m.targetQty ? `${m.qty} / ${m.targetQty}` : String(m.qty);
   }
 
   reloadPlans(): void {
@@ -163,42 +195,72 @@ export class MaHomeComponent {
     }
   }
 
-  dailySuggestions(): number[] {
-    return planQtySuggestions(this.plans()['DAILY']?.targetQty ?? 0);
-  }
-
-  openDailyProgress(): void {
-    this.planDone = '';
-    this.planModal.set(true);
+  openEntry(): void {
+    this.entryOrderId = this.entryOrders()[0]?.orderId ?? '';
+    this.entryQty = null;
+    this.entryDefect = 0;
+    this.entryNote = '';
+    this.entryError.set('');
+    this.entryModal.set(true);
     haptic('success');
+    this.loadFallbackOrders();
   }
 
-  pickQty(n: number): void {
-    this.planDone = String(n);
-    haptic('success');
+  closeEntry(): void {
+    this.entryModal.set(false);
   }
 
-  saveDailyProgress(): void {
-    const qty = +this.planDone;
-    if (!this.planDone.trim() || !Number.isFinite(qty) || qty < 0) {
+  loadFallbackOrders(): void {
+    const slug = this.ma.user()?.department?.stage?.toLowerCase();
+    if (!slug || this.entryOrders().length) return;
+    this.api.get<Paginated<OrderStage>>(`/production/${slug}`, { limit: 50 }).subscribe({
+      next: (d) => {
+        this.fallbackOrders.set(
+          d.items.filter((s) => s.status !== 'COMPLETED').map((s) => ({
+            orderId: s.orderId ?? s.order?.id ?? '',
+            orderNumber: s.order?.number ?? '—',
+            modelCode: s.order?.model?.code ?? '—',
+            stage: s.stage,
+            qty: 0,
+            defectQty: 0,
+            targetQty: 0,
+          })),
+        );
+        if (!this.entryOrderId && this.fallbackOrders()[0]) {
+          this.entryOrderId = this.fallbackOrders()[0].orderId;
+        }
+      },
+    });
+  }
+
+  saveEntry(): void {
+    const slug = this.ma.user()?.department?.stage?.toLowerCase();
+    if (!slug || !this.entryOrderId || !this.entryQty) {
       this.toast.error(this.i18n.t('ma_enter_qty'));
       haptic('error');
       return;
     }
-    this.planBusy.set(true);
-    this.api.post('/plans/DAILY/my', { doneQty: qty }).subscribe({
+    this.entryBusy.set(true);
+    this.entryError.set('');
+    this.api.post(`/production/${slug}/entries`, {
+      orderId: this.entryOrderId,
+      qty: +this.entryQty,
+      defectQty: +this.entryDefect || 0,
+      note: this.entryNote || this.i18n.t('ma_source_dashboard'),
+    }).subscribe({
       next: () => {
-        this.planBusy.set(false);
-        this.planModal.set(false);
+        this.entryBusy.set(false);
+        this.entryModal.set(false);
         this.toast.success(this.i18n.t('saved'));
         haptic('success');
+        this.ma.notifyProduction();
         this.reloadPlans();
       },
       error: (e) => {
-        this.planBusy.set(false);
+        this.entryBusy.set(false);
         haptic('error');
         const m = e?.error?.message;
-        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+        this.entryError.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
   }

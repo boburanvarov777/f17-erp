@@ -16,6 +16,8 @@ export class MiniAppService {
   readonly state = signal<'loading' | 'ready' | 'login' | 'error'>('loading');
   readonly message = signal('');
   readonly departments = signal<Department[]>([]);
+  /** Bumped after production entry — home + report reload. */
+  readonly productionTick = signal(0);
 
   can(...perms: string[]): boolean {
     const mine = this.user()?.permissions ?? [];
@@ -51,7 +53,7 @@ export class MiniAppService {
       this.auth.logout(false);
       this.user.set(null);
       this.state.set('login');
-      this.message.set(this.i18n.t('ma_login_prompt'));
+      this.message.set('');
       return;
     }
 
@@ -78,5 +80,9 @@ export class MiniAppService {
     this.auth.store(res);
     this.user.set(res.user);
     this.state.set('ready');
+  }
+
+  notifyProduction(): void {
+    this.productionTick.update((n) => n + 1);
   }
 }

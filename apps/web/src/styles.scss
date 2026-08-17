@@ -245,6 +245,62 @@ table.data td.actions .btn-icon {
 .lang-en { background: linear-gradient(135deg, #1e40af, #b91c1c); }
 .lang-trigger { gap: 6px; }
 
+.lang-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.lang-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .13s ease, background .13s ease, color .13s ease, box-shadow .13s ease;
+}
+.lang-picker-item:hover { background: var(--surface-3); color: var(--text); }
+.lang-picker-item.active {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+  color: var(--primary-700);
+  box-shadow: inset 0 0 0 1px var(--primary-500);
+}
+.lang-picker-code { font-size: 13px; font-weight: 700; letter-spacing: .04em; line-height: 1; }
+.lang-picker-label { font-size: 10px; font-weight: 500; line-height: 1.2; opacity: .85; }
+
+.pass-wrap { position: relative; }
+.pass-wrap .input { padding-right: 42px; }
+.pass-wrap .peek {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  z-index: 2;
+}
+.pass-wrap .peek:hover { color: var(--text); background: var(--surface-3); }
+.pass-wrap .peek ui-icon, .pass-wrap .peek svg { pointer-events: none; }
+.pass-wrap .input::-ms-reveal,
+.pass-wrap .input::-ms-clear { display: none; }
+
 /* ─────────── form ─────────── */
 .field { display: flex; flex-direction: column; gap: 8px; }
 .label { font-size: 12.5px; font-weight: 500; color: var(--text-2); margin-bottom: 1px; }

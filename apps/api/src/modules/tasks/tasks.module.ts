@@ -107,8 +107,8 @@ export class TasksService {
     return { success: true };
   }
 
-  /** Daily / weekly / monthly plan roll-up for one employee. */
-  async plan(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY') {
+  /** Period window (local calendar day/week/month). */
+  private periodWindow(period: 'DAILY' | 'WEEKLY' | 'MONTHLY') {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     if (period === 'WEEKLY') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
@@ -117,14 +117,47 @@ export class TasksService {
     if (period === 'DAILY') end.setDate(start.getDate() + 1);
     if (period === 'WEEKLY') end.setDate(start.getDate() + 7);
     if (period === 'MONTHLY') end.setMonth(start.getMonth() + 1);
+    return { start, end, now };
+  }
 
-    const [tasks, stored, entries] = await Promise.all([
+  private entryTotals(entries: { qty: number; defectQty: number; orderStage: { stage: StageType; order: { id: string } } | null }[], orderId: string, stage: StageType) {
+    let qty = 0;
+    let defectQty = 0;
+    for (const e of entries) {
+      if (e.orderStage?.order.id === orderId && e.orderStage.stage === stage) {
+        qty += e.qty;
+        defectQty += e.defectQty ?? 0;
+      }
+    }
+    return { qty, defectQty };
+  }
+
+  /** Daily / weekly / monthly plan roll-up for one employee. */
+  async plan(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY') {
+    const { start, end, now } = this.periodWindow(period);
+
+    const [tasks, planRecord, entries, dailyPlansInRange] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, date: { gte: start, lt: end } },
         orderBy: { date: 'asc' },
         include: { order: { select: { number: true } } },
       }),
-      this.prisma.plan.findFirst({ where: { userId, period, dateFrom: start } }),
+      this.prisma.plan.findFirst({
+        where: { userId, period, dateFrom: start },
+        include: {
+          lines: {
+            include: {
+              order: {
+                select: {
+                  id: true, number: true,
+                  model: { select: { code: true, name: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      }),
       this.prisma.stageEntry.findMany({
         where: { userId, date: { gte: start, lt: end }, cancelled: false },
         include: {
@@ -140,23 +173,46 @@ export class TasksService {
             },
           },
         },
-        orderBy: { date: 'desc' }, take: 100,
+        orderBy: { date: 'desc' }, take: 200,
       }),
+      period === 'DAILY'
+        ? Promise.resolve([] as { targetQty: number }[])
+        : this.prisma.plan.findMany({
+            where: { userId, period: 'DAILY', dateFrom: { gte: start, lt: end } },
+            select: { targetQty: true },
+          }),
     ]);
 
     const done = tasks.filter((t) => t.status === 'DONE').length;
     const entriesQty = entries.reduce((a, e) => a + e.qty, 0);
-    const reportedQty = stored?.doneQty ?? 0;
+    const planLines = planRecord?.lines ?? [];
 
     const byModelMap = new Map<string, {
       orderId: string; orderNumber: string; modelCode: string; modelName?: string | null;
-      stage: string; qty: number; defectQty: number;
+      stage: string; qty: number; defectQty: number; targetQty: number;
     }>();
+
+    for (const line of planLines) {
+      const totals = this.entryTotals(entries, line.orderId, line.stage);
+      byModelMap.set(`${line.orderId}:${line.stage}`, {
+        orderId: line.orderId,
+        orderNumber: line.order.number,
+        modelCode: line.order.model?.code ?? '—',
+        modelName: line.order.model?.name ?? null,
+        stage: line.stage,
+        qty: totals.qty,
+        defectQty: totals.defectQty,
+        targetQty: line.targetQty,
+      });
+    }
+
+    const assignedKeys = new Set(planLines.map((l) => `${l.orderId}:${l.stage}`));
     for (const e of entries) {
       const order = e.orderStage?.order;
       if (!order) continue;
       const stage = e.orderStage!.stage;
       const key = `${order.id}:${stage}`;
+      if (assignedKeys.has(key)) continue;
       const row = byModelMap.get(key) ?? {
         orderId: order.id,
         orderNumber: order.number,
@@ -165,63 +221,122 @@ export class TasksService {
         stage,
         qty: 0,
         defectQty: 0,
+        targetQty: 0,
       };
       row.qty += e.qty;
       row.defectQty += e.defectQty ?? 0;
       byModelMap.set(key, row);
     }
+
     const byModel = [...byModelMap.values()].sort((a, b) => b.qty - a.qty);
+
+    let targetQty = 0;
+    if (period === 'DAILY') {
+      targetQty = planLines.length
+        ? planLines.reduce((a, l) => a + l.targetQty, 0)
+        : planRecord?.targetQty ?? 0;
+    } else {
+      targetQty = dailyPlansInRange.reduce((a, p) => a + p.targetQty, 0);
+    }
 
     return {
       period, dateFrom: start, dateTo: end,
       tasks, total: tasks.length, done, overdue: tasks.filter((t) => t.status !== 'DONE' && t.date < now).length,
-      progress: tasks.length ? Math.round((done / tasks.length) * 100) : 0,
-      targetQty: stored?.targetQty ?? 0,
-      producedQty: reportedQty > 0 ? reportedQty : entriesQty,
+      progress: targetQty > 0 ? Math.min(100, Math.round((entriesQty / targetQty) * 100)) : (tasks.length ? Math.round((done / tasks.length) * 100) : 0),
+      targetQty,
+      producedQty: entriesQty,
       entries,
       byModel,
+      lines: byModel.filter((m) => m.targetQty > 0),
     };
   }
 
-  /** Manager sets the daily norm on web. */
-  async setPlan(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY', targetQty: number, actor: JwtUser) {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (period === 'WEEKLY') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    if (period === 'MONTHLY') start.setDate(1);
-    const end = new Date(start);
-    if (period === 'DAILY') end.setDate(start.getDate() + 1);
-    if (period === 'WEEKLY') end.setDate(start.getDate() + 7);
-    if (period === 'MONTHLY') end.setMonth(start.getMonth() + 1);
-
-    const plan = await this.prisma.plan.upsert({
-      where: { userId_period_dateFrom: { userId, period, dateFrom: start } },
-      create: { userId, period, dateFrom: start, dateTo: end, targetQty },
-      update: { targetQty, dateTo: end },
+  /** Orders available for daily norm assignment at the employee's production stage. */
+  async planCandidates(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { department: { select: { stage: true } } },
     });
-    this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PLAN_UPDATED, entity: 'Plan', entityId: plan.id, newValue: { userId, period, targetQty } });
-    return plan;
+    const stage = user?.department?.stage;
+    if (!stage) return [];
+
+    return this.prisma.orderStage.findMany({
+      where: {
+        stage,
+        status: { not: 'COMPLETED' },
+        order: { archivedAt: null },
+      },
+      include: {
+        order: {
+          select: {
+            id: true, number: true,
+            model: { select: { code: true, name: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 60,
+    });
   }
 
-  /** Employee reports how much of the assigned plan they completed today. */
-  async setMyProgress(userId: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY', doneQty: number, actor: JwtUser) {
-    if (userId !== actor.sub) throw new BadRequestException('Faqat o‘z planingizni yangilashingiz mumkin');
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (period === 'WEEKLY') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    if (period === 'MONTHLY') start.setDate(1);
-    const end = new Date(start);
-    if (period === 'DAILY') end.setDate(start.getDate() + 1);
-    if (period === 'WEEKLY') end.setDate(start.getDate() + 7);
-    if (period === 'MONTHLY') end.setMonth(start.getMonth() + 1);
+  /** Manager sets daily norm — per order lines and/or legacy total. */
+  async setPlan(
+    userId: string,
+    period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    targetQty: number,
+    actor: JwtUser,
+    lines?: { orderId: string; targetQty: number }[],
+  ) {
+    if (period !== 'DAILY' && lines?.length) {
+      throw new BadRequestException('Buyurtma bo‘yicha plan faqat kunlik uchun');
+    }
+
+    const { start, end } = this.periodWindow(period);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { department: { select: { stage: true } } },
+    });
+    const stage = user?.department?.stage;
+
+    let total = targetQty;
+    if (lines?.length) {
+      if (!stage) throw new BadRequestException('Xodim bo‘limiga ishlab chiqarish bosqichi biriktirilmagan');
+      total = lines.reduce((a, l) => a + Math.max(0, Math.round(l.targetQty)), 0);
+    }
 
     const plan = await this.prisma.plan.upsert({
       where: { userId_period_dateFrom: { userId, period, dateFrom: start } },
-      create: { userId, period, dateFrom: start, dateTo: end, targetQty: 0, doneQty },
-      update: { doneQty, dateTo: end },
+      create: { userId, period, dateFrom: start, dateTo: end, targetQty: total },
+      update: { targetQty: total, dateTo: end },
     });
-    this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PLAN_UPDATED, entity: 'Plan', entityId: plan.id, newValue: { userId, period, doneQty } });
-    return plan;
+
+    if (lines && period === 'DAILY' && stage) {
+      const keep = lines.filter((l) => Math.round(l.targetQty) > 0).map((l) => l.orderId);
+      await this.prisma.planLine.deleteMany({
+        where: { planId: plan.id, ...(keep.length ? { orderId: { notIn: keep } } : {}) },
+      });
+      if (!keep.length) await this.prisma.planLine.deleteMany({ where: { planId: plan.id } });
+      for (const line of lines) {
+        const qty = Math.max(0, Math.round(line.targetQty));
+        if (qty <= 0) continue;
+        await this.prisma.planLine.upsert({
+          where: { planId_orderId_stage: { planId: plan.id, orderId: line.orderId, stage } },
+          create: { planId: plan.id, orderId: line.orderId, stage, targetQty: qty },
+          update: { targetQty: qty },
+        });
+      }
+    } else if (period === 'DAILY') {
+      await this.prisma.planLine.deleteMany({ where: { planId: plan.id } });
+    }
+
+    this.audit.log({
+      userId: actor.sub,
+      action: AUDIT_ACTIONS.PLAN_UPDATED,
+      entity: 'Plan',
+      entityId: plan.id,
+      newValue: { userId, period, targetQty: total, lines: lines?.length ?? 0 },
+    });
+    return this.plan(userId, period);
   }
 }
 
@@ -255,36 +370,36 @@ export class TasksController {
   @RequirePermissions('tasks.delete')
   remove(@Param('id') id: string, @CurrentUser() actor: JwtUser) { return this.service.remove(id, actor); }
 
+  @Get('plans/:period/candidates')
+  @ApiOperation({ summary: 'Active orders for daily norm assignment (?userId= required for managers)' })
+  candidates(
+    @Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    @CurrentUser() actor: JwtUser,
+    @Query('userId') userId?: string,
+  ) {
+    if (period.toUpperCase() !== 'DAILY') return [];
+    const target = userId && (actor.permissions.includes('*') || actor.permissions.includes('users.read')) ? userId : actor.sub;
+    return this.service.planCandidates(target);
+  }
+
   @Get('plans/:period')
   @ApiOperation({ summary: 'DAILY | WEEKLY | MONTHLY plan for the caller (or ?userId= for managers)' })
   plan(@Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY', @CurrentUser() actor: JwtUser, @Query('userId') userId?: string) {
     const target = userId && (actor.permissions.includes('*') || actor.permissions.includes('users.read')) ? userId : actor.sub;
-    return this.service.plan(target, period.toUpperCase() as any);
-  }
-
-  @Post('plans/:period/my')
-  @ApiOperation({ summary: 'Report own daily plan progress (done qty)' })
-  setMyPlan(
-    @Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
-    @Body() body: { doneQty: number },
-    @CurrentUser() actor: JwtUser,
-  ) {
-    const qty = Number(body.doneQty);
-    if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Bajarilgan miqdor noto‘g‘ri');
-    if (period.toUpperCase() !== 'DAILY') throw new BadRequestException('Faqat kunlik progress yangilanadi');
-    return this.service.setMyProgress(actor.sub, period.toUpperCase() as any, qty, actor);
+    return this.service.plan(target, period.toUpperCase() as 'DAILY' | 'WEEKLY' | 'MONTHLY');
   }
 
   @Post('plans/:period')
   @RequirePermissions('plans.update')
   setPlan(
     @Param('period') period: 'DAILY' | 'WEEKLY' | 'MONTHLY',
-    @Body() body: { userId: string; targetQty: number },
+    @Body() body: { userId: string; targetQty?: number; lines?: { orderId: string; targetQty: number }[] },
     @CurrentUser() actor: JwtUser,
   ) {
-    const qty = Number(body.targetQty);
+    const qty = Number(body.targetQty ?? 0);
     if (!Number.isFinite(qty) || qty < 0) throw new BadRequestException('Plan miqdori noto‘g‘ri');
-    return this.service.setPlan(body.userId, period.toUpperCase() as any, qty, actor);
+    if (!body.lines?.length && qty <= 0) throw new BadRequestException('Kamida bitta buyurtma yoki umumiy norma kiriting');
+    return this.service.setPlan(body.userId, period.toUpperCase() as 'DAILY' | 'WEEKLY' | 'MONTHLY', qty, actor, body.lines);
   }
 }
 

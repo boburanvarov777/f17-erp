@@ -6,6 +6,8 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { deptLabel } from '../../core/dept-label';
 import type { Department } from '../../core/models';
 import { I18nService } from '../../core/services/i18n.service';
+import { LANG_OPTIONS } from '../../core/lang-options';
+import type { Lang } from '../../core/models';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -29,10 +31,22 @@ import { haptic } from './telegram';
           <div class="ma-center" style="padding:24px">
             <div class="mark">F17</div>
             <h2 class="mt-4">{{ 'ma_title' | t }}</h2>
-            <p class="small text-3 mt-2" style="text-align:center;max-width:320px">{{ 'ma_login_prompt' | t }}</p>
-            @if (ma.message()) { <div class="small text-3 mt-2" style="text-align:center">{{ ma.message() }}</div> }
+            <p class="small text-3 mt-2" style="text-align:center;max-width:320px">{{ ma.message() || ('ma_login_prompt' | t) }}</p>
 
-            <div class="col gap-3 mt-6" style="width:100%;max-width:320px">
+            <div class="lang-picker mt-4" role="group" [attr.aria-label]="'language' | t">
+              @for (l of langs; track l.code) {
+                <button
+                  type="button"
+                  class="lang-picker-item"
+                  [class.active]="i18n.lang() === l.code"
+                  (click)="setLang(l.code)"
+                >
+                  {{ l.short }}
+                </button>
+              }
+            </div>
+
+            <div class="col gap-3 mt-5" style="width:100%;max-width:320px">
               <div class="field">
                 <label class="label">{{ 'department' | t }}</label>
                 <select class="select" [(ngModel)]="departmentCode">
@@ -48,8 +62,8 @@ import { haptic } from './telegram';
                 <label class="label">{{ 'password' | t }}</label>
                 <div class="pass-wrap">
                   <input class="input" [type]="show() ? 'text' : 'password'" [(ngModel)]="password" autocomplete="current-password" />
-                  <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1">
-                    <ui-icon [name]="show() ? 'ban' : 'eye'" [size]="15" />
+                  <button type="button" class="peek" (click)="toggleShow()" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
+                    <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
                   </button>
                 </div>
               </div>
@@ -96,13 +110,11 @@ import { haptic } from './telegram';
     .ma-nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 2px; color: var(--text-3); text-decoration: none; font-size: 10px; font-weight: 500; text-align: center; line-height: 1.15; }
     .ma-nav a.on { color: var(--primary-500); }
     .ma-nav a:hover { text-decoration: none; }
-    .pass-wrap { position: relative; }
-    .peek { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; color: var(--text-3); cursor: pointer; padding: 7px; }
   `],
 })
 export class MiniAppShellComponent {
   readonly ma = inject(MiniAppService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
 
   login = '';
   password = '';
@@ -110,18 +122,19 @@ export class MiniAppShellComponent {
   readonly show = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly langs = LANG_OPTIONS;
 
   readonly tabs = computed(() => {
     const tabs: { link: string; icon: string; label: string }[] = [
-      { link: '/miniapp/home', icon: 'layout-dashboard', label: 'nav_dashboard' },
+      { link: '/miniapp/home', icon: 'clipboard-list', label: 'ma_home' },
     ];
     if (this.ma.seesManageTab()) {
-      tabs.push({ link: '/miniapp/manage', icon: 'settings', label: 'ma_manage' });
+      tabs.push({ link: '/miniapp/manage', icon: 'users', label: 'ma_team' });
     }
     if (this.ma.hasStage()) {
-      tabs.push({ link: '/miniapp/report', icon: 'plus', label: 'ma_report' });
+      tabs.push({ link: '/miniapp/report', icon: 'scissors', label: 'ma_orders' });
     }
-    tabs.push({ link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_my_work' });
+    tabs.push({ link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_tasks' });
     tabs.push({ link: '/miniapp/profile', icon: 'user', label: 'ma_profile' });
     return tabs;
   });
@@ -129,6 +142,10 @@ export class MiniAppShellComponent {
   constructor() { this.ma.init(); }
 
   deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
+
+  setLang(l: Lang): void { this.i18n.set(l); }
+
+  toggleShow(): void { this.show.set(!this.show()); }
 
   tap(): void { haptic('success'); }
 

@@ -13,6 +13,7 @@ import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.componen
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { PlanLinesFormComponent } from '../../shared/components/plan-lines-form.component';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
@@ -27,7 +28,8 @@ interface Row {
   standalone: true,
   imports: [
     FormsModule, IconComponent, ProgressComponent, LoadingComponent, EmptyComponent,
-    ModalComponent, TPipe, NumPipe, InitialsPipe, DigitsOnlyDirective,
+    ModalComponent, PlanLinesFormComponent,
+    TPipe, NumPipe, InitialsPipe, DigitsOnlyDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -108,15 +110,11 @@ interface Row {
     }
 
     @if (planModal(); as r) {
-      <ui-modal [title]="'set_daily_norm' | t" [subtitle]="r.lastName + ' ' + r.firstName" (closed)="planModal.set(null)">
-        <div class="field">
-          <label class="label">{{ 'plan_target_qty' | t }}</label>
-          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="planTarget" />
-          <div class="tiny text-3 mt-2">{{ 'plan_manager_hint' | t }}</div>
-        </div>
+      <ui-modal size="lg" [title]="'set_daily_norm' | t" [subtitle]="r.lastName + ' ' + r.firstName" (closed)="planModal.set(null)">
+        <app-plan-lines-form #planForm [userId]="r.id" (saved)="onPlanSaved()" (busy)="planBusy.set($event)" />
         <div footer class="ma-modal-foot">
           <button class="btn" type="button" (click)="planModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="savePlan()" [disabled]="planBusy()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="planForm.submit()" [disabled]="planBusy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -147,7 +145,6 @@ export class MaManageComponent {
   readonly loading = signal(false);
   readonly planModal = signal<Row | null>(null);
   readonly planBusy = signal(false);
-  planTarget = 0;
 
   readonly ownStage = computed(() => userStage(this.ma.user()));
   readonly ownStageStats = computed(() => {
@@ -187,29 +184,12 @@ export class MaManageComponent {
   }
 
   openPlan(r: Row): void {
-    this.planTarget = r.dailyPlan.targetQty;
     this.planModal.set(r);
     haptic('success');
   }
 
-  savePlan(): void {
-    const r = this.planModal();
-    if (!r) return;
-    this.planBusy.set(true);
-    this.api.post('/plans/DAILY', { userId: r.id, targetQty: +this.planTarget }).subscribe({
-      next: () => {
-        this.planBusy.set(false);
-        this.planModal.set(null);
-        this.toast.success(this.i18n.t('saved'));
-        haptic('success');
-        this.loadRows();
-      },
-      error: (e) => {
-        this.planBusy.set(false);
-        haptic('error');
-        const m = e?.error?.message;
-        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
-      },
-    });
+  onPlanSaved(): void {
+    this.planModal.set(null);
+    this.loadRows();
   }
 }

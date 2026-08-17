@@ -13,6 +13,7 @@ import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.componen
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
+import { PlanLinesFormComponent } from '../../shared/components/plan-lines-form.component';
 
 interface Row {
   id: string; firstName: string; lastName: string; position?: string; avatar?: string;
@@ -29,6 +30,7 @@ interface Row {
   standalone: true,
   imports: [
     FormsModule, ProgressComponent, EmptyComponent, LoadingComponent, ModalComponent, IconComponent,
+    PlanLinesFormComponent,
     TPipe, InitialsPipe, NumPipe, DigitsOnlyDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -138,15 +140,11 @@ interface Row {
     }
 
     @if (planModal(); as r) {
-      <ui-modal [title]="'set_daily_norm' | t" [subtitle]="r.lastName + ' ' + r.firstName" (closed)="planModal.set(null)">
-        <div class="field">
-          <label class="label">{{ 'plan_target_qty' | t }}</label>
-          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="planTarget" />
-          <div class="tiny text-3 mt-2">{{ 'plan_manager_hint' | t }}</div>
-        </div>
+      <ui-modal size="lg" [title]="'set_daily_norm' | t" [subtitle]="r.lastName + ' ' + r.firstName" (closed)="planModal.set(null)">
+        <app-plan-lines-form #planForm [userId]="r.id" (saved)="onPlanSaved()" (busy)="planBusy.set($event)" />
         <div footer class="ma-modal-foot">
           <button class="btn" type="button" (click)="planModal.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="savePlan()" [disabled]="planBusy()">{{ 'save' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="planForm.submit()" [disabled]="planBusy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
     }
@@ -164,7 +162,6 @@ export class MonitoringComponent {
   readonly dailyModal = signal<{ row: Row; plan?: PlanView; loading: boolean } | null>(null);
   readonly planBusy = signal(false);
   departmentId = '';
-  planTarget = 0;
 
   constructor() {
     this.load();
@@ -188,8 +185,12 @@ export class MonitoringComponent {
   }
 
   openPlan(r: Row): void {
-    this.planTarget = r.dailyPlan.targetQty;
     this.planModal.set(r);
+  }
+
+  onPlanSaved(): void {
+    this.planModal.set(null);
+    this.load();
   }
 
   openDaily(r: Row): void {
@@ -199,25 +200,6 @@ export class MonitoringComponent {
       error: () => {
         this.toast.error(this.i18n.t('error'));
         this.dailyModal.set(null);
-      },
-    });
-  }
-
-  savePlan(): void {
-    const r = this.planModal();
-    if (!r) return;
-    this.planBusy.set(true);
-    this.api.post('/plans/DAILY', { userId: r.id, targetQty: +this.planTarget }).subscribe({
-      next: () => {
-        this.planBusy.set(false);
-        this.planModal.set(null);
-        this.toast.success(this.i18n.t('saved'));
-        this.load();
-      },
-      error: (e) => {
-        this.planBusy.set(false);
-        const m = e?.error?.message;
-        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
   }

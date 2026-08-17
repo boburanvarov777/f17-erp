@@ -37,21 +37,19 @@ import type { Lang } from '../../core/models';
       </div>
 
       <div class="card card-pad mt-3">
-        <div class="row-between">
-          <span class="small">{{ 'language' | t }}</span>
-          <div class="row gap-1">
-            @for (l of langs; track l.code) {
-              <button
-                class="btn btn-sm lang-btn"
-                [class.btn-primary]="i18n.lang() === l.code"
-                type="button"
-                (click)="setLang(l.code)"
-                [attr.data-tip]="('lang_' + l.code) | t"
-              >
-                <span class="lang-chip" [class]="l.flagClass">{{ l.short }}</span>
-              </button>
-            }
-          </div>
+        <div class="small mb-3">{{ 'language' | t }}</div>
+        <div class="lang-picker" role="group" [attr.aria-label]="'language' | t">
+          @for (l of langs; track l.code) {
+            <button
+              type="button"
+              class="lang-picker-item"
+              [class.active]="i18n.lang() === l.code"
+              (click)="setLang(l.code)"
+            >
+              <span class="lang-picker-code">{{ l.short }}</span>
+              <span class="lang-picker-label">{{ ('lang_' + l.code) | t }}</span>
+            </button>
+          }
         </div>
       </div>
 

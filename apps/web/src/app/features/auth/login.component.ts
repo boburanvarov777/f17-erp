@@ -67,11 +67,11 @@ import type { Lang } from '../../core/models';
 
           <div class="field mb-4">
             <label class="label" for="password">{{ 'password' | t }}</label>
-            <div style="position:relative">
+            <div class="pass-wrap">
               <input id="password" class="input" name="password" [type]="show() ? 'text' : 'password'"
                      [(ngModel)]="password" autocomplete="current-password" required [disabled]="busy()" />
-              <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1">
-                <ui-icon [name]="show() ? 'ban' : 'eye'" [size]="15" />
+              <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
+                <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
               </button>
             </div>
           </div>
@@ -130,7 +130,6 @@ import type { Lang } from '../../core/models';
     .form { margin: auto; width: 100%; max-width: 372px; padding-bottom: 8vh; }
     .small-mark { width: 42px; height: 42px; border-radius: 11px; font-size: 13px; margin-bottom: 20px; display: none; }
     .form h2 { font-size: 23px; letter-spacing: -.02em; margin-bottom: 4px; }
-    .peek { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; color: var(--text-3); cursor: pointer; padding: 7px; }
     .hint { display: flex; align-items: flex-start; gap: 8px; margin-top: 22px; padding: 12px 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); font-size: 12px; color: var(--text-3); line-height: 1.5; }
     .hint svg { flex: 0 0 auto; margin-top: 1px; }
 

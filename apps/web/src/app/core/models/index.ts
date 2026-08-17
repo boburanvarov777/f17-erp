@@ -122,7 +122,7 @@ export interface Task {
 
 export interface PlanModelBreakdown {
   orderId: string; orderNumber: string; modelCode: string; modelName?: string | null;
-  stage: StageType; qty: number; defectQty: number;
+  stage: StageType; qty: number; defectQty: number; targetQty?: number;
 }
 
 export interface PlanView {
@@ -130,6 +130,7 @@ export interface PlanView {
   tasks: Task[]; total: number; done: number; overdue: number; progress: number;
   targetQty: number; producedQty: number; entries: StageEntry[];
   byModel?: PlanModelBreakdown[];
+  lines?: PlanModelBreakdown[];
 }
 
 export interface NotificationItem {

@@ -34,22 +34,22 @@ const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
           <div class="card card-pad">
             <div class="row-between mb-3">
               <b style="font-size:13.5px">{{ p.label | t }}</b>
-              <span class="badge badge-neutral">{{ plan(p.key)?.done || 0 }} / {{ plan(p.key)?.total || 0 }}</span>
+              <span class="badge badge-neutral">{{ plan(p.key)?.producedQty || 0 | num }} / {{ plan(p.key)?.targetQty || 0 | num }}</span>
             </div>
-            <ui-progress [value]="plan(p.key)?.done || 0" [max]="plan(p.key)?.total || 1" [showLabel]="false" />
+            <ui-progress [value]="plan(p.key)?.producedQty || 0" [max]="plan(p.key)?.targetQty || 1" [showLabel]="false" />
             <div class="row-between mt-3 small text-3">
               <span>{{ 'produced' | t }}: <b class="text-2">{{ plan(p.key)?.producedQty || 0 | num }}</b></span>
               @if ((plan(p.key)?.overdue || 0) > 0) {
                 <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plan(p.key)?.overdue }}</span>
               }
             </div>
-            @if (p.key === 'DAILY' && plan('DAILY')?.byModel?.length) {
+            @if (p.key === 'DAILY' && (plan('DAILY')?.lines?.length || plan('DAILY')?.byModel?.length)) {
               <div class="breakdown mt-3">
                 <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
-                @for (m of plan('DAILY')!.byModel!; track m.orderId + m.stage) {
+                @for (m of (plan('DAILY')!.lines?.length ? plan('DAILY')!.lines! : plan('DAILY')!.byModel!); track m.orderId + m.stage) {
                   <div class="break-row row-between">
-                    <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }} · {{ 'stage_' + m.stage | t }}</span>
-                    <span class="tiny bold">{{ m.qty | num }}</span>
+                    <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }}</span>
+                    <span class="tiny bold">{{ lineQty(m) }}</span>
                   </div>
                 }
               </div>
@@ -164,6 +164,10 @@ export class MyTasksComponent {
   constructor() { this.load(); }
 
   plan(key: string): PlanView | undefined { return this.plans()[key]; }
+
+  lineQty(m: { qty: number; targetQty?: number }): string {
+    return m.targetQty ? `${m.qty} / ${m.targetQty}` : `${m.qty}`;
+  }
 
   load(): void {
     this.loading.set(true);

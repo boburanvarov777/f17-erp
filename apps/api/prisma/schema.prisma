@@ -334,6 +334,7 @@ model Order {
   comments  OrderComment[]
   tasks     Task[]
   stockTx   StockTransaction[]
+  planLines PlanLine[]
 
   @@index([status])
   @@index([deadline])
@@ -543,9 +544,26 @@ model Plan {
   note      String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  lines     PlanLine[]
 
   @@unique([userId, period, dateFrom])
   @@map("plans")
+}
+
+model PlanLine {
+  id        String    @id @default(cuid())
+  planId    String
+  plan      Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  orderId   String
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage     StageType
+  targetQty Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([planId, orderId, stage])
+  @@index([orderId])
+  @@map("plan_lines")
 }
 
 // ─────────────── SYSTEM / OBSERVABILITY ───────────────
