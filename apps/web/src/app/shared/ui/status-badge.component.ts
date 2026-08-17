@@ -39,7 +39,7 @@ const STAGE_ICONS: Record<string, string> = {
   imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="badge status-badge" [class.wrap]="wrap()" [class]="'badge-' + tone()">
+    <span class="badge status-badge" [class.wrap]="wrap()" [class.light]="light()" [class]="'badge-' + tone()">
       <ui-icon [name]="icon()" [size]="11" />
       <span>{{ prefix() + value() | t }}</span>
     </span>
@@ -47,6 +47,16 @@ const STAGE_ICONS: Record<string, string> = {
   styles: [`
     .status-badge { gap: 5px; }
     .status-badge.wrap { white-space: normal; height: auto; min-height: 22px; line-height: 1.25; padding-block: 3px; }
+    .status-badge.light {
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+      font-weight: 600;
+    }
+    .status-badge.light.badge-success { color: var(--success); border-color: var(--success-br); }
+    .status-badge.light.badge-warning { color: var(--warning); border-color: var(--warning-br); }
+    .status-badge.light.badge-danger { color: var(--danger); border-color: var(--danger-br); }
+    .status-badge.light.badge-info { color: var(--info); border-color: var(--info-br); }
+    .status-badge.light.badge-neutral { color: var(--text-2); border-color: var(--border-strong); }
     .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
   `],
 })
@@ -54,6 +64,7 @@ export class StatusBadgeComponent {
   readonly value = input.required<string>();
   readonly prefix = input('st_');
   readonly wrap = input(false);
+  readonly light = input(false);
   readonly tone = computed<Tone>(() => {
     if (this.prefix() === 'stage_') return 'neutral';
     return TONES[this.value()] ?? 'neutral';

@@ -447,6 +447,16 @@ ui-lang-picker:has(.lang-grid) { display: block; width: 100%; }
 .badge-danger  { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger-br); }
 .badge-info    { background: var(--info-bg);    color: var(--info);    border-color: var(--info-br); }
 .badge-neutral { background: var(--neutral-bg); color: var(--text-2);  border-color: var(--neutral-br); }
+.badge-light {
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  font-weight: 600;
+}
+.badge-light.badge-success { color: var(--success); border-color: var(--success-br); }
+.badge-light.badge-warning { color: var(--warning); border-color: var(--warning-br); }
+.badge-light.badge-danger  { color: var(--danger);  border-color: var(--danger-br); }
+.badge-light.badge-info    { color: var(--info);    border-color: var(--info-br); }
+.badge-light.badge-neutral { color: var(--text-2);   border-color: var(--border-strong); }
 
 /* ─────────── table ─────────── */
 .table-wrap { width: 100%; overflow-x: auto; }

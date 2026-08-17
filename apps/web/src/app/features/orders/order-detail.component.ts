@@ -111,9 +111,9 @@ const STAGE_ICON: Record<string, string> = {
                   <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
 
                   <div class="pipeline-foot">
-                    <ui-status [value]="s.status" [wrap]="true" />
+                    <ui-status [value]="s.status" [wrap]="true" [light]="true" />
                     @if (s.defectQty) {
-                      <span class="badge badge-danger pipeline-defect" [attr.data-tip]="'defect_label' | t">
+                      <span class="badge badge-danger badge-light pipeline-defect" [attr.data-tip]="'defect_label' | t">
                         <ui-icon name="alert-triangle" [size]="11" />
                         {{ s.defectQty | num }}
                       </span>
