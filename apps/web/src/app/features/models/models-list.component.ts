@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of, switchMap } from 'rxjs';
@@ -142,40 +142,45 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>
           <div class="field"><label class="label">{{ 'cost' | t }}</label><input class="input" type="number" [(ngModel)]="form.cost" /></div>
           <div class="field full">
-            <label class="label">{{ 'photo' | t }}</label>
-            <div class="photo-upload">
-              <div class="photo-gallery">
+            <label class="label">
+              {{ 'photo' | t }}
+              @if (photoCount()) {
+                <span class="photo-count">{{ i18n.t('photo_count', { n: photoCount() }) }}</span>
+              }
+            </label>
+            <div class="photo-zone">
+              <input #photoInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden (change)="onPhotoSelected($event)" />
+              <div class="photo-grid">
                 @for (p of existingPhotos(); track p.id) {
-                  <div class="photo-thumb">
+                  <div class="photo-card">
                     <img [src]="p.url" [alt]="form.name || 'model'" />
-                    <button class="photo-remove" type="button" (click)="removeExistingPhoto(p.id)" [attr.data-tip]="'photo_remove' | t">
-                      <ui-icon name="x" [size]="14" />
+                    <button class="photo-del" type="button" (click)="removeExistingPhoto(p.id)" [attr.data-tip]="'photo_remove' | t">
+                      <ui-icon name="trash" [size]="14" />
                     </button>
                   </div>
                 }
                 @for (p of pendingPreviews(); track p.key) {
-                  <div class="photo-thumb">
+                  <div class="photo-card pending">
                     <img [src]="p.url" [alt]="form.name || 'model'" />
-                    <button class="photo-remove" type="button" (click)="removePendingPhoto(p.key)" [attr.data-tip]="'photo_remove' | t">
-                      <ui-icon name="x" [size]="14" />
+                    @if (p.uploading) {
+                      <div class="photo-loading"><span class="spinner"></span></div>
+                    }
+                    <button class="photo-del" type="button" (click)="removePendingPhoto(p.key)" [disabled]="p.uploading" [attr.data-tip]="'photo_remove' | t">
+                      <ui-icon name="trash" [size]="14" />
                     </button>
                   </div>
                 }
-                @if (!existingPhotos().length && !pendingPreviews().length) {
-                  <div class="photo-empty"><ui-icon name="image" [size]="34" [stroke]="1.2" /></div>
-                }
-              </div>
-              <div class="photo-actions col gap-2">
-                <input #photoInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden (change)="onPhotoSelected($event)" />
-                <button class="btn btn-sm" type="button" (click)="photoInput.click()" [disabled]="photoUploading()" [attr.data-tip]="'upload_photo' | t">
+                <button class="photo-add" type="button" (click)="photoInput.click()" [disabled]="photoUploading()" [attr.data-tip]="'upload_photo' | t">
                   @if (photoUploading()) {
-                    <span class="spinner"></span> {{ 'photo_uploading' | t }}
+                    <span class="spinner"></span>
+                    <span>{{ 'photo_uploading' | t }}</span>
                   } @else {
-                    <ui-icon name="image" [size]="15" /> {{ 'upload_photo' | t }}
+                    <ui-icon name="plus" [size]="22" />
+                    <span>{{ 'upload_photo' | t }}</span>
                   }
                 </button>
-                <div class="tiny text-3">{{ 'photo_hint' | t }}</div>
               </div>
+              <div class="tiny text-3">{{ 'photo_hint' | t }}</div>
             </div>
           </div>
           <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
@@ -220,22 +225,40 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .mphoto img { width: 100%; height: 100%; object-fit: cover; }
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-    .photo-upload { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-    .photo-gallery { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; min-width: 200px; }
-    .photo-thumb {
-      position: relative; width: 96px; height: 96px; border-radius: var(--r); border: 1px solid var(--border-strong);
-      background: var(--surface-3); overflow: hidden; flex-shrink: 0;
+    .photo-count { margin-left: 6px; font-weight: 500; color: var(--text-3); font-size: 12px; }
+    .photo-zone { display: flex; flex-direction: column; gap: 8px; }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 10px;
+      width: 100%;
     }
-    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .photo-remove {
-      position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 50%;
-      background: rgba(0,0,0,.55); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    .photo-card {
+      position: relative; aspect-ratio: 1; border-radius: var(--r); border: 1px solid var(--border-strong);
+      background: var(--surface-3); overflow: hidden;
     }
-    .photo-empty {
-      width: 96px; height: 96px; border-radius: var(--r); border: 1px dashed var(--border-strong);
-      background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3);
+    .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-card.pending { box-shadow: 0 0 0 2px var(--primary-bg); }
+    .photo-loading {
+      position: absolute; inset: 0; background: rgba(255,255,255,.72);
+      display: flex; align-items: center; justify-content: center;
     }
-    .photo-actions { flex: 1; min-width: 200px; }
+    .photo-del {
+      position: absolute; bottom: 6px; right: 6px; width: 28px; height: 28px; border: none; border-radius: var(--r);
+      background: var(--danger); color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: filter .12s ease;
+    }
+    .photo-del:hover:not(:disabled) { filter: brightness(1.1); }
+    .photo-del:disabled { opacity: .55; cursor: not-allowed; }
+    .photo-add {
+      aspect-ratio: 1; min-height: 108px; border: 2px dashed var(--border-strong); border-radius: var(--r);
+      background: var(--surface-2); color: var(--text-3); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      font-size: 11px; line-height: 1.2; padding: 8px; transition: border-color .12s ease, color .12s ease;
+    }
+    .photo-add:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .photo-add:disabled { opacity: .6; cursor: wait; }
   `],
 })
 export class ModelsListComponent {
@@ -256,9 +279,10 @@ export class ModelsListComponent {
   readonly archiving = signal<ProductModel | null>(null);
   readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
   readonly existingPhotos = signal<ModelPhoto[]>([]);
-  readonly pendingPreviews = signal<{ key: string; url: string; file: File }[]>([]);
+  readonly pendingPreviews = signal<{ key: string; url: string; file: File; uploading?: boolean }[]>([]);
   readonly removedPhotoIds = signal<string[]>([]);
   readonly photoUploading = signal(false);
+  readonly photoCount = computed(() => this.existingPhotos().length + this.pendingPreviews().length);
   readonly fe = new FieldErrorsState();
 
   form: Record<string, any> = {};
@@ -319,14 +343,53 @@ export class ModelsListComponent {
       valid.push(file);
     }
     if (!valid.length) return;
+
+    const modelId = this.editing()?.id;
+    if (modelId) {
+      this.uploadPhotosNow(modelId, valid);
+      return;
+    }
+
     this.pendingPreviews.update((p) => [
       ...p,
       ...valid.map((f) => ({ key: crypto.randomUUID(), url: URL.createObjectURL(f), file: f })),
     ]);
   }
 
+  private uploadPhotosNow(modelId: string, files: File[]): void {
+    this.photoUploading.set(true);
+    const entries = files.map((f) => ({
+      key: crypto.randomUUID(),
+      url: URL.createObjectURL(f),
+      file: f,
+      uploading: true,
+    }));
+    this.pendingPreviews.update((p) => [...p, ...entries]);
+
+    forkJoin(files.map((f) => this.api.upload<ModelPhoto>(`/models/${modelId}/photos`, f))).subscribe({
+      next: (photos) => {
+        for (const e of entries) URL.revokeObjectURL(e.url);
+        this.pendingPreviews.update((p) => p.filter((x) => !entries.some((e) => e.key === x.key)));
+        this.existingPhotos.update((p) => [...p, ...photos]);
+        this.photoUploading.set(false);
+      },
+      error: (err) => {
+        for (const e of entries) URL.revokeObjectURL(e.url);
+        this.pendingPreviews.update((p) => p.filter((x) => !entries.some((e) => e.key === x.key)));
+        this.photoUploading.set(false);
+        const m = err?.error?.message;
+        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
+    });
+  }
+
   removeExistingPhoto(id: string): void {
+    const modelId = this.editing()?.id;
     this.existingPhotos.update((p) => p.filter((x) => x.id !== id));
+    if (modelId) {
+      this.api.delete(`/models/photos/${id}`).subscribe({ error: () => this.toast.error(this.i18n.t('error')) });
+      return;
+    }
     this.removedPhotoIds.update((ids) => [...ids, id]);
   }
 
@@ -359,14 +422,14 @@ export class ModelsListComponent {
     if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size, qty: +(s.qty ?? 0) }));
 
     const id = this.editing()?.id;
-    const pending = this.pendingPreviews().map((p) => p.file);
+    const pending = this.pendingPreviews().filter((p) => !p.uploading).map((p) => p.file);
     const removed = this.removedPhotoIds();
     const req = id ? this.api.patch<ProductModel>(`/models/${id}`, body) : this.api.post<ProductModel>('/models', body);
     req.pipe(
       switchMap((model) => {
         const modelId = id || model.id;
         const ops = [
-          ...removed.map((pid) => this.api.delete(`/models/photos/${pid}`)),
+          ...(id ? [] : removed.map((pid) => this.api.delete(`/models/photos/${pid}`))),
           ...pending.map((f) => this.api.upload(`/models/${modelId}/photos`, f)),
         ];
         return ops.length ? forkJoin(ops) : of(null);
