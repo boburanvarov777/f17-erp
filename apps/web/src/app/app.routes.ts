@@ -92,8 +92,7 @@ export const routes: Routes = [
       },
       {
         path: 'roles',
-        canActivate: [permissionGuard],
-        data: { permissions: ['roles.read'] },
+        canActivate: [superProAdminGuard],
         loadComponent: () => import('./features/users/roles.component').then((m) => m.RolesComponent),
       },
       {

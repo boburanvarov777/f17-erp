@@ -46,14 +46,14 @@ async function main() {
   // ─── Roles ───
   const roles = [
     { code: 'SUPER_PRO_ADMIN', name: 'Super Pro Admin', description: 'To‘liq huquq (rollar va audit bilan)', permissions: ALL, isSystem: true },
-    { code: 'SUPER_ADMIN', name: 'Super Admin', description: 'Rollar va auditdan tashqari hamma narsa', permissions: [...SUPER_ADMIN_PERMISSIONS], isSystem: true },
+    { code: 'SUPER_ADMIN', name: 'Super Admin', description: 'Tizimning bosh administratori', permissions: [...SUPER_ADMIN_PERMISSIONS], isSystem: true },
     {
       code: 'ADMIN', name: 'Administrator', description: 'Super Admin bergan huquqlar',
       permissions: [
         ...READ_ONLY, 'orders.create', 'orders.update', 'orders.delete',
         'models.create', 'models.update', 'models.delete',
         'warehouse.create', 'warehouse.update', 'clients.read', 'clients.create', 'clients.update',
-        'users.read', 'users.create', 'users.update', 'roles.read', 'departments.read',
+        'users.read', 'users.create', 'users.update', 'departments.read',
         'tasks.create', 'tasks.update', 'tasks.delete', 'plans.update', 'schedule.update',
         ...STAGES.flatMap((s) => stagePerms(s.toLowerCase())),
       ],

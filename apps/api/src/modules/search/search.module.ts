@@ -1,6 +1,7 @@
 import { Controller, Get, Module, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtUser } from '../../common/decorators';
+import { isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('search')
@@ -42,7 +43,11 @@ export class SearchController {
         : [],
       has('users.read')
         ? this.prisma.user.findMany({
-            where: { archivedAt: null, OR: [{ firstName: like }, { lastName: like }, { login: like }, { phone: { contains: query } }] },
+            where: {
+              archivedAt: null,
+              ...(isSuperProAdmin(actor) ? {} : { role: { code: { not: SUPER_PRO_ADMIN_ROLE } } }),
+              OR: [{ firstName: like }, { lastName: like }, { login: like }, { phone: { contains: query } }],
+            },
             select: { id: true, firstName: true, lastName: true, position: true, avatar: true }, take: 5,
           })
         : [],

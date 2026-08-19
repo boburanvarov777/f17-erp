@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
+import { isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -34,6 +35,21 @@ export class UsersService {
     return { ...u, telegramId: u.telegramId ? String(u.telegramId) : null };
   }
 
+  /** Super Pro Admin users are invisible to everyone else. */
+  private scopedWhere(actor: JwtUser, where: Prisma.UserWhereInput = {}): Prisma.UserWhereInput {
+    let scoped = this.scope(actor, where);
+    if (!isSuperProAdmin(actor)) {
+      scoped = { AND: [scoped, { role: { code: { not: SUPER_PRO_ADMIN_ROLE } } }] };
+    }
+    return scoped;
+  }
+
+  private assertVisibleTarget(actor: JwtUser, roleCode: string | undefined): void {
+    if (!isSuperProAdmin(actor) && roleCode === SUPER_PRO_ADMIN_ROLE) {
+      throw notFound('err_user_not_found');
+    }
+  }
+
   async findAll(dto: QueryUsersDto, actor: JwtUser) {
     let where: Prisma.UserWhereInput = { archivedAt: null };
     if (dto.status) where.status = dto.status;
@@ -48,7 +64,7 @@ export class UsersService {
         { position: { contains: dto.search, mode: 'insensitive' } },
       ];
     }
-    where = this.scope(actor, where);
+    where = this.scopedWhere(actor, where);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
@@ -61,7 +77,7 @@ export class UsersService {
   }
 
   async findOne(id: string, actor: JwtUser) {
-    const user = await this.prisma.user.findFirst({ where: this.scope(actor, { id }), select: SELECT });
+    const user = await this.prisma.user.findFirst({ where: this.scopedWhere(actor, { id }), select: SELECT });
     if (!user) throw notFound('err_user_not_found');
     return this.serialize(user);
   }
@@ -69,7 +85,10 @@ export class UsersService {
   async create(dto: CreateUserDto, actor: JwtUser) {
     const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
     if (!role) throw badRequest('err_role_not_found');
-    if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
+    if (role.code === SUPER_PRO_ADMIN_ROLE && !isSuperProAdmin(actor)) {
+      throw forbidden('err_super_role_only');
+    }
+    if (role.permissions.includes('*') && !isSuperProAdmin(actor)) {
       throw forbidden('err_super_role_only');
     }
 
@@ -99,11 +118,15 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, actor: JwtUser) {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
+    this.assertVisibleTarget(actor, existing.role.code);
 
     if (dto.roleId && dto.roleId !== existing.roleId) {
       const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
       if (!role) throw badRequest('err_role_not_found');
-      if (role.permissions.includes('*') && !actor.permissions.includes('*')) {
+      if (role.code === SUPER_PRO_ADMIN_ROLE && !isSuperProAdmin(actor)) {
+        throw forbidden('err_super_role_only');
+      }
+      if (role.permissions.includes('*') && !isSuperProAdmin(actor)) {
         throw forbidden('err_super_role_only');
       }
       this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.ROLE_CHANGED, entity: 'User', entityId: id, oldValue: { roleId: existing.roleId }, newValue: { roleId: dto.roleId } });
@@ -132,6 +155,9 @@ export class UsersService {
 
   async setStatus(id: string, status: 'ACTIVE' | 'BLOCKED' | 'ARCHIVED', actor: JwtUser) {
     if (id === actor.sub && status !== 'ACTIVE') throw badRequest('err_cannot_block_self');
+    const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+    if (!existing) throw notFound('err_user_not_found');
+    this.assertVisibleTarget(actor, existing.role.code);
     const user = await this.prisma.user.update({
       where: { id },
       data: { status, archivedAt: status === 'ARCHIVED' ? new Date() : null },
@@ -149,6 +175,9 @@ export class UsersService {
   }
 
   async resetPassword(id: string, newPassword: string, actor: JwtUser) {
+    const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+    if (!existing) throw notFound('err_user_not_found');
+    this.assertVisibleTarget(actor, existing.role.code);
     await this.prisma.user.update({ where: { id }, data: { passwordHash: await AuthService.hash(newPassword) } });
     await this.prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PASSWORD_RESET, entity: 'User', entityId: id });
@@ -156,6 +185,9 @@ export class UsersService {
   }
 
   async unlinkTelegram(id: string, actor: JwtUser) {
+    const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+    if (!existing) throw notFound('err_user_not_found');
+    this.assertVisibleTarget(actor, existing.role.code);
     const user = await this.prisma.user.update({
       where: { id }, data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null }, select: SELECT,
     });
@@ -165,7 +197,7 @@ export class UsersService {
 
   /** Employee productivity board — today / week / month task completion. */
   async monitoring(actor: JwtUser, departmentId?: string) {
-    const where = this.scope(actor, { status: 'ACTIVE' as const, ...(departmentId ? { departmentId } : {}) });
+    const where = this.scopedWhere(actor, { status: 'ACTIVE' as const, ...(departmentId ? { departmentId } : {}) });
     const users = await this.prisma.user.findMany({
       where, select: { id: true, firstName: true, lastName: true, position: true, avatar: true, department: { select: { nameUz: true, code: true } } },
       orderBy: { lastName: 'asc' }, take: 200,

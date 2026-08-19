@@ -2,9 +2,9 @@ import type { CurrentUser } from './models';
 import { NAV_GROUPS, type NavGroupDef, type NavItemDef } from './nav.config';
 import { isSuperProAdmin, seesFullManage, userStage } from './role.util';
 
-function withoutAudit(groups: NavGroupDef[]): NavGroupDef[] {
+function withoutSuperProOnly(groups: NavGroupDef[]): NavGroupDef[] {
   return groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => i.path !== 'audit') }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.path !== 'audit' && i.path !== 'roles') }))
     .filter((g) => g.items.length > 0);
 }
 
@@ -19,7 +19,7 @@ export function filterNavGroupsForUser(
   user: CurrentUser | null | undefined,
 ): NavGroupDef[] {
   let groups = filterNavGroups(can);
-  if (!isSuperProAdmin(user)) groups = withoutAudit(groups);
+  if (!isSuperProAdmin(user)) groups = withoutSuperProOnly(groups);
   if (seesFullManage(user)) return groups;
 
   if (user?.role?.code === 'ADMIN') {

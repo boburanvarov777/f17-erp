@@ -12,6 +12,8 @@ import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
 
+const SUPER_PRO_ADMIN = 'SUPER_PRO_ADMIN';
+
 @Component({
   selector: 'app-roles',
   standalone: true,
@@ -24,9 +26,9 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           <div class="title">{{ 'roles_title' | t }}</div>
           <div class="sub">{{ i18n.t('roles_count_sub', { n: roles().length }) }}</div>
         </div>
-        @if (auth.can('roles.create')) {
-          <button class="btn btn-primary btn-sm" type="button" (click)="open({ permissions: [] })" [attr.data-tip]="'new_role' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_role' | t }}</button>
-        }
+        <button class="btn btn-primary btn-sm" type="button" (click)="open({ permissions: [] })" [attr.data-tip]="'new_role' | t">
+          <ui-icon name="plus" [size]="15" /> {{ 'new_role' | t }}
+        </button>
       </div>
 
       @if (loading()) { <ui-loading [count]="4" [height]="70" /> }
@@ -42,11 +44,16 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                   </div>
                   <div class="tiny text-3 mono">{{ r.code }}</div>
                 </div>
-                <span class="badge badge-info">{{ (r._count?.users || 0) | num }} {{ 'users_in_role' | t }}</span>
+                <div class="row gap-2 items-center">
+                  <span class="badge badge-info">{{ (r._count?.users || 0) | num }} {{ 'users_in_role' | t }}</span>
+                  <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(r)" [attr.data-tip]="canEdit(r) ? ('edit' | t) : ('view' | t)">
+                    <ui-icon [name]="canEdit(r) ? 'pencil' : 'eye'" [size]="14" />
+                  </button>
+                </div>
               </div>
               @if (r.description) { <div class="small text-2 mb-3">{{ r.description }}</div> }
 
-              @if (r.permissions.includes('*')) {
+              @if (isFullAccessRole(r)) {
                 <span class="badge badge-danger"><ui-icon name="shield-check" [size]="12" /> {{ 'full_access' | t }}</span>
               } @else {
                 <div class="row gap-1 wrap">
@@ -56,14 +63,13 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                 </div>
               }
 
-              <div class="row gap-2 mt-4">
-                <button class="btn btn-sm" type="button" (click)="open(r)" [attr.data-tip]="r.isSystem ? ('view' | t) : ('edit' | t)">
-                  <ui-icon name="eye" [size]="14" /> {{ r.isSystem ? ('view' | t) : ('edit' | t) }}
-                </button>
-                @if (!r.isSystem && auth.can('roles.delete')) {
-                  <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="remove(r)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="14" /></button>
-                }
-              </div>
+              @if (!r.isSystem && canEdit(r)) {
+                <div class="mt-4">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="remove(r)" [attr.data-tip]="'delete' | t">
+                    <ui-icon name="trash" [size]="14" /> {{ 'delete' | t }}
+                  </button>
+                </div>
+              }
             </div>
           } @empty { <ui-empty icon="shield-check" [title]="'no_data' | t" /> }
         </div>
@@ -71,7 +77,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     </div>
 
     @if (editing(); as r) {
-      <ui-modal size="lg" [title]="r.id ? r.name || '' : ('new_role' | t)" [subtitle]="'permissions' | t" (closed)="editing.set(null)">
+      <ui-modal size="lg" [title]="r.id ? (canEdit(r) ? ('edit' | t) : ('view' | t)) : ('new_role' | t)" [subtitle]="r.name || r.code || ''" (closed)="editing.set(null)">
         <div class="form-grid mb-4">
           <div class="field" [class.field-invalid]="fe.has('code')">
             <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
@@ -80,13 +86,16 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           </div>
           <div class="field" [class.field-invalid]="fe.has('name')">
             <label class="label">{{ 'role_name' | t }} <span class="req">*</span></label>
-            <input class="input" [(ngModel)]="form.name" (ngModelChange)="fe.clear('name')" />
+            <input class="input" [(ngModel)]="form.name" [disabled]="!canEditFields(r)" (ngModelChange)="fe.clear('name')" />
             @if (fe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
-          <div class="field full"><label class="label">{{ 'description' | t }}</label><input class="input" [(ngModel)]="form.description" /></div>
+          <div class="field full">
+            <label class="label">{{ 'description' | t }}</label>
+            <input class="input" [(ngModel)]="form.description" [disabled]="!canEditFields(r)" />
+          </div>
         </div>
 
-        @if (r.permissions?.includes('*')) {
+        @if (isFullAccessRole(r)) {
           <div class="badge badge-danger" style="width:100%;justify-content:flex-start;padding:11px;border-radius:var(--r)">
             <ui-icon name="shield-check" [size]="15" /> {{ 'full_access' | t }} — {{ 'roles_full_access_desc' | t }}
           </div>
@@ -96,14 +105,14 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
               <div class="row-between mb-2">
                 <b class="small">{{ g.key }}</b>
                 <label class="checkbox">
-                  <input type="checkbox" [checked]="allChecked(g.items)" (change)="toggleGroup(g.items, $any($event.target).checked)" [disabled]="r.isSystem" />
+                  <input type="checkbox" [checked]="allChecked(g.items)" (change)="toggleGroup(g.items, $any($event.target).checked)" [disabled]="!canEditFields(r)" />
                   <span class="tiny">{{ 'all' | t }}</span>
                 </label>
               </div>
               <div class="pchips">
                 @for (p of g.items; track p) {
                   <label class="checkbox pchip" [class.on]="selected().has(p)">
-                    <input type="checkbox" [checked]="selected().has(p)" (change)="toggle(p)" [disabled]="r.isSystem" />
+                    <input type="checkbox" [checked]="selected().has(p)" (change)="toggle(p)" [disabled]="!canEditFields(r)" />
                     <span>{{ p.split('.')[1] }}</span>
                   </label>
                 }
@@ -114,7 +123,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
 
         <div footer>
           <button class="btn" type="button" (click)="editing.set(null)">{{ 'close' | t }}</button>
-          @if (!r.isSystem && auth.can('roles.update', 'roles.create')) {
+          @if (canEditFields(r)) {
             <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
           }
         </div>
@@ -127,6 +136,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .pchips { display: flex; gap: 6px; flex-wrap: wrap; }
     .pchip { padding: 4px 10px; border: 1px solid var(--border-strong); border-radius: 100px; background: var(--surface); font-size: 12px; }
     .pchip.on { background: var(--primary-50); border-color: var(--primary-500); color: var(--primary); font-weight: 600; }
+    .items-center { align-items: center; }
   `],
 })
 export class RolesComponent {
@@ -155,6 +165,18 @@ export class RolesComponent {
     });
   }
 
+  isFullAccessRole(r: Partial<Role>): boolean {
+    return r.code === SUPER_PRO_ADMIN;
+  }
+
+  canEdit(r: Partial<Role>): boolean {
+    return r.code !== SUPER_PRO_ADMIN;
+  }
+
+  canEditFields(r: Partial<Role>): boolean {
+    return this.canEdit(r);
+  }
+
   load(): void {
     this.loading.set(true);
     this.api.get<Role[]>('/roles').subscribe({
@@ -166,6 +188,7 @@ export class RolesComponent {
   groupsOf(r: Role): { name: string; count: number }[] {
     const m = new Map<string, number>();
     for (const p of r.permissions) {
+      if (p === '*') continue;
       const g = p.split('.')[0];
       m.set(g, (m.get(g) ?? 0) + 1);
     }

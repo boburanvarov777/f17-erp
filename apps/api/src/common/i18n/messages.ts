@@ -32,6 +32,8 @@ const uz = {
   err_unknown_permissions: 'Noma’lum huquqlar: {items}',
   err_dept_has_users: 'Bo‘limda {n} ta xodim bor',
   err_audit_super_only: 'Audit jurnali faqat Super Pro Admin uchun',
+  err_roles_super_only: 'Rollar faqat Super Pro Admin uchun',
+  err_super_pro_role_locked: 'Super Pro Admin rolini o‘zgartirib bo‘lmaydi',
 
   // orders
   err_sizes_mismatch: 'O‘lchamlar yig‘indisi ({sizes}) umumiy miqdorga ({qty}) teng emas',
@@ -190,6 +192,8 @@ const ru: Record<MessageKey, string> = {
   err_unknown_permissions: 'Неизвестные права: {items}',
   err_dept_has_users: 'В отделе {n} сотрудников',
   err_audit_super_only: 'Журнал аудита доступен только Super Pro Admin',
+  err_roles_super_only: 'Роли доступны только Super Pro Admin',
+  err_super_pro_role_locked: 'Роль Super Pro Admin изменить нельзя',
 
   err_sizes_mismatch: 'Сумма размеров ({sizes}) не равна общему количеству ({qty})',
 
@@ -336,6 +340,8 @@ const en: Record<MessageKey, string> = {
   err_unknown_permissions: 'Unknown permissions: {items}',
   err_dept_has_users: 'The department has {n} employees',
   err_audit_super_only: 'The audit log is available to Super Pro Admin only',
+  err_roles_super_only: 'Roles are managed by Super Pro Admin only',
+  err_super_pro_role_locked: 'The Super Pro Admin role cannot be modified',
 
   err_sizes_mismatch: 'Size total ({sizes}) does not match the order quantity ({qty})',
 

@@ -235,7 +235,7 @@ export class UsersComponent {
     const qp = new URLSearchParams(location.search);
     this.search = qp.get('search') ?? '';
     this.reload();
-    this.api.get<Role[]>('/roles').subscribe({ next: (r) => this.roles.set(r), error: () => void 0 });
+    this.api.get<Role[]>('/roles/assignable').subscribe({ next: (r) => this.roles.set(r), error: () => void 0 });
     this.api.get<Department[]>('/departments').subscribe({ next: (d) => this.departments.set(d), error: () => void 0 });
   }
 

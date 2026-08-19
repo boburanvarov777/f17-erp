@@ -1,3 +1,5 @@
+import { forbidden } from './i18n/api-errors';
+
 export const PERMISSIONS = [
   'dashboard.read',
   'orders.read', 'orders.create', 'orders.update', 'orders.delete',
@@ -39,7 +41,11 @@ export const SUPER_PRO_ADMIN_ROLE = 'SUPER_PRO_ADMIN';
 
 export function isSuperProAdmin(user: { roleCode?: string; permissions?: string[] } | null | undefined): boolean {
   if (!user) return false;
-  return user.permissions?.includes(ALL_PERMISSIONS) === true || user.roleCode === SUPER_PRO_ADMIN_ROLE;
+  return user.roleCode === SUPER_PRO_ADMIN_ROLE;
+}
+
+export function assertSuperProAdmin(user: { roleCode?: string } | null | undefined): void {
+  if (!isSuperProAdmin(user)) throw forbidden('err_roles_super_only');
 }
 
 /** Super Admin: everything except role management and audit logs. */
