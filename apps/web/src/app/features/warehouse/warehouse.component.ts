@@ -11,6 +11,7 @@ import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.componen
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
+import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
@@ -19,7 +20,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
 @Component({
   selector: 'app-warehouse',
   standalone: true,
-  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, ShortDatePipe],
+  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, ShortDatePipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -140,7 +141,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
         <div class="form-grid">
           <div class="field" [class.field-invalid]="opFe.has('qty')">
             <label class="label">{{ 'quantity' | t }} ({{ m.unit }}) <span class="req">*</span></label>
-            <input class="input" type="number" min="0" step="0.001" [(ngModel)]="op.qty" (ngModelChange)="opFe.clear('qty')" />
+            <input class="input" groupedNumber [decimals]="3" [(ngModel)]="op.qty" (ngModelChange)="opFe.clear('qty')" />
             @if (opFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
@@ -171,11 +172,11 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
           </div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
           <div class="field"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" [placeholder]="'unit_placeholder' | t" /></div>
-          <div class="field"><label class="label">{{ 'min_stock' | t }}</label><input class="input" type="number" [(ngModel)]="form.minStock" /></div>
+          <div class="field"><label class="label">{{ 'min_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.minStock" /></div>
           <div class="field"><label class="label">{{ 'price' | t }}</label><input class="input" type="number" [(ngModel)]="form.price" /></div>
           <div class="field full"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>
           @if (!m.id) {
-            <div class="field full"><label class="label">{{ 'initial_stock' | t }}</label><input class="input" type="number" [(ngModel)]="form.quantity" /></div>
+            <div class="field full"><label class="label">{{ 'initial_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.quantity" /></div>
           }
         </div>
         <div footer>

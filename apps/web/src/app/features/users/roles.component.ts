@@ -6,6 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
+import { NumPipe } from '../../shared/pipes/format.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
@@ -14,7 +15,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
 @Component({
   selector: 'app-roles',
   standalone: true,
-  imports: [FormsModule, IconComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe],
+  imports: [FormsModule, IconComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -41,7 +42,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                   </div>
                   <div class="tiny text-3 mono">{{ r.code }}</div>
                 </div>
-                <span class="badge badge-info">{{ r._count?.users || 0 }} {{ 'users_in_role' | t }}</span>
+                <span class="badge badge-info">{{ (r._count?.users || 0) | num }} {{ 'users_in_role' | t }}</span>
               </div>
               @if (r.description) { <div class="small text-2 mb-3">{{ r.description }}</div> }
 
@@ -50,7 +51,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
               } @else {
                 <div class="row gap-1 wrap">
                   @for (g of groupsOf(r); track g.name) {
-                    <span class="badge badge-neutral">{{ g.name }} · {{ g.count }}</span>
+                    <span class="badge badge-neutral">{{ g.name }} · {{ g.count | num }}</span>
                   }
                 </div>
               }

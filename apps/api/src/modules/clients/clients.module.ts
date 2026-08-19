@@ -4,6 +4,8 @@ import { IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class CreateClientDto {
   @ApiProperty() @IsString() @MinLength(2) code!: string;
@@ -18,7 +20,11 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {}
 @ApiBearerAuth()
 @Controller('clients')
 export class ClientsController {
-  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    private notifications: NotificationsService,
+  ) {}
 
   @Get()
   @RequirePermissions('clients.read', 'orders.read')
@@ -35,6 +41,12 @@ export class ClientsController {
   async create(@Body() dto: CreateClientDto, @CurrentUser() actor: JwtUser) {
     const c = await this.prisma.client.create({ data: { ...dto, code: dto.code.trim().toUpperCase() } });
     this.audit.log({ userId: actor.sub, action: 'CLIENT_CREATED', entity: 'Client', entityId: c.id, newValue: c });
+    await this.notifications.broadcast({
+      type: 'CLIENT_CREATED',
+      title: `Yangi mijoz: ${c.name}`,
+      body: c.code + (c.phone ? ` · ${c.phone}` : ''),
+      link: '/orders',
+    });
     return c;
   }
 
@@ -55,5 +67,5 @@ export class ClientsController {
   }
 }
 
-@Module({ controllers: [ClientsController] })
+@Module({ imports: [NotificationsModule], controllers: [ClientsController] })
 export class ClientsModule {}

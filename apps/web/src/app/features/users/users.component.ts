@@ -15,11 +15,12 @@ import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
+import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
 
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, ShortDatePipe, InitialsPipe],
+  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, ShortDatePipe, InitialsPipe, DigitsOnlyDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -125,7 +126,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           </div>
           <div class="field" [class.field-invalid]="fe.has('phone')">
             <label class="label">{{ 'phone' | t }} <span class="req">*</span></label>
-            <input class="input mono" [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" (ngModelChange)="fe.clear('phone')" />
+            <input class="input mono" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" (ngModelChange)="fe.clear('phone')" />
             @if (fe.get('phone'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field"><label class="label">{{ 'email' | t }}</label><input class="input" type="email" [(ngModel)]="form.email" /></div>

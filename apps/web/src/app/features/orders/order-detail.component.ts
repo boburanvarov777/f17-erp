@@ -208,7 +208,7 @@ const STAGE_ICON: Record<string, string> = {
                         <td class="small nowrap">{{ d.date | shortDate: true }}</td>
                         <td><ui-status [value]="d.stage" prefix="stage_" /></td>
                         <td>{{ d.type }}</td>
-                        <td class="num" style="color:var(--danger);font-weight:600">{{ d.qty }}</td>
+                        <td class="num" style="color:var(--danger);font-weight:600">{{ d.qty | num }}</td>
                         <td class="small text-2">{{ d.reason || '—' }}</td>
                         <td class="small">{{ d.user ? d.user.lastName + ' ' + d.user.firstName : '—' }}</td>
                       </tr>

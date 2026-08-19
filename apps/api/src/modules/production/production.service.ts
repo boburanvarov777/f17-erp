@@ -24,6 +24,19 @@ export const STAGE_SLUGS: Record<string, StageType> = {
 
 const SORTABLE = ['doneQty', 'planQty', 'defectQty', 'status', 'updatedAt', 'deadline'];
 
+/** Date-only strings (YYYY-MM-DD) would otherwise land at UTC midnight and sink to the bottom of today's list. */
+function entryDate(raw: string): Date {
+  const key = String(raw || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    const d = new Date(raw);
+    return Number.isNaN(+d) ? new Date() : d;
+  }
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (key === today) return now;
+  return new Date(`${key}T12:00:00.000Z`);
+}
+
 @Injectable()
 export class ProductionService {
   constructor(
@@ -105,7 +118,7 @@ export class ProductionService {
         order: { include: { model: true, client: true } },
         responsible: { select: { id: true, firstName: true, lastName: true } },
         entries: {
-          orderBy: { date: 'desc' }, take: 100,
+          orderBy: { createdAt: 'desc' }, take: 100,
           include: { user: { select: { id: true, firstName: true, lastName: true } } },
         },
       },
@@ -156,7 +169,7 @@ export class ProductionService {
           orderStageId: current.id,
           qty: dto.qty,
           defectQty: dto.defectQty ?? 0,
-          date: new Date(dto.date),
+          date: entryDate(dto.date),
           userId: actor.sub,
           note: dto.note,
           source,
@@ -300,7 +313,7 @@ export class ProductionService {
         data: {
           orderId: dto.orderId, stage: dto.stage, type: dto.type, qty: dto.qty,
           reason: dto.reason, comment: dto.comment, userId: actor.sub,
-          date: dto.date ? new Date(dto.date) : new Date(),
+          date: dto.date ? entryDate(dto.date) : new Date(),
         },
       });
       await tx.orderStage.updateMany({

@@ -15,11 +15,13 @@ import { ModalComponent } from '../../shared/ui/modal.component';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
+import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
+import { SizeRowFieldsComponent } from '../../shared/components/size-row-fields.component';
 
 @Component({
   selector: 'app-models-list',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe],
+  imports: [FormsModule, RouterLink, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, GroupedNumberDirective, SizeRowFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -198,13 +200,13 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
           <b style="font-size:13.5px">{{ 'sizes' | t }}</b>
           <button class="btn btn-sm" type="button" (click)="addSize()"><ui-icon name="plus" [size]="14" /></button>
         </div>
-        <div class="size-grid">
+        <div class="size-list">
           @for (s of sizes(); track $index) {
-            <div class="row gap-2">
-              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
-              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" [placeholder]="'plan_done_placeholder' | t" />
-              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
-            </div>
+            <app-size-row-fields [row]="s" (changed)="touchSizes()">
+              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
+                <ui-icon name="x" [size]="14" />
+              </button>
+            </app-size-row-fields>
           }
         </div>
         @if (!sizes().length) { <div class="tiny text-3 mt-2">{{ 'model_sizes_hint' | t }}</div> }
@@ -238,7 +240,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
                 <input class="input btn-sm" [(ngModel)]="a.color" [placeholder]="'color' | t" />
                 <input class="input btn-sm" style="width:64px" [(ngModel)]="a.size" [placeholder]="'size_label' | t" />
                 <input class="input btn-sm mono" [(ngModel)]="a.code" [placeholder]="'code' | t" />
-                <input class="input btn-sm" style="width:72px" type="number" min="0" [(ngModel)]="a.qty" [placeholder]="'quantity' | t" />
+                <input class="input btn-sm" style="width:72px" groupedNumber [(ngModel)]="a.qty" [placeholder]="'quantity' | t" />
                 <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeAccessory($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
               </div>
             }
@@ -280,7 +282,7 @@ import { FieldErrorsState, runValidation } from '../../shared/utils/form-validat
     .mphoto { height: 148px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); }
     .mphoto img { width: 100%; height: 100%; object-fit: cover; }
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
-    .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .size-list { display: flex; flex-direction: column; gap: 10px; }
     .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
     .acc-grid { display: flex; flex-direction: column; gap: 8px; }
     .acc-row { display: grid; grid-template-columns: 1.2fr 1fr 64px 1fr 72px 32px; gap: 6px; align-items: center; }
@@ -484,6 +486,7 @@ export class ModelsListComponent {
 
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); }
+  touchSizes(): void { this.sizes.update((s) => [...s]); }
   addColor(): void { this.colors.update((c) => [...c, { name: '', hex: '#cccccc' }]); }
   removeColor(i: number): void { this.colors.update((c) => c.filter((_, idx) => idx !== i)); }
   addAccessory(): void { this.accessories.update((a) => [...a, { name: '', color: '', size: '', code: '', qty: null }]); }

@@ -18,6 +18,8 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
+import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
+import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
 
 const SLUG_TO_STAGE: Record<string, StageType> = {
   cutting: 'CUTTING', sewing: 'SEWING', washing: 'WASHING',
@@ -39,6 +41,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
   imports: [
     FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PaginationComponent,
     EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, DateInputComponent, TPipe, NumPipe, ShortDatePipe,
+    DigitsOnlyDirective, GroupedNumberDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -203,12 +206,12 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('qty')">
             <label class="label">{{ 'operation_qty' | t }} <span class="req">*</span></label>
-            <input class="input" type="number" min="1" [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
+            <input class="input" groupedNumber [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
             @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field">
             <label class="label">{{ 'defect_qty' | t }}</label>
-            <input class="input" type="number" min="0" [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
+            <input class="input" groupedNumber [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
@@ -229,7 +232,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
               <div class="field"><label class="label">{{ 'design_code' | t }}</label><input class="input" [(ngModel)]="entry.meta['design']" /></div>
             }
             @case ('PACKING') {
-              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="entry.meta['boxCount']" /></div>
+              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="entry.meta['boxCount']" /></div>
               <div class="field">
                 <label class="label">{{ 'sub_stage' | t }}</label>
                 <select class="select" [(ngModel)]="entry.meta['subStage']">
@@ -245,7 +248,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             @case ('LOADING') {
               <div class="field"><label class="label">{{ 'vehicle' | t }}</label><input class="input" [(ngModel)]="entry.meta['vehicle']" /></div>
               <div class="field"><label class="label">{{ 'driver' | t }}</label><input class="input" [(ngModel)]="entry.meta['driver']" /></div>
-              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="entry.meta['boxCount']" /></div>
+              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="entry.meta['boxCount']" /></div>
             }
           }
 
@@ -276,7 +279,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field" [class.field-invalid]="defectFe.has('qty')">
             <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
-            <input class="input" type="number" min="1" [(ngModel)]="defect.qty" (ngModelChange)="defectFe.clear('qty')" />
+            <input class="input" groupedNumber [(ngModel)]="defect.qty" (ngModelChange)="defectFe.clear('qty')" />
             @if (defectFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field full"><label class="label">{{ 'defect_reason' | t }}</label><input class="input" [(ngModel)]="defect.reason" /></div>
@@ -318,8 +321,8 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
                   <td class="small nowrap">{{ e.date | shortDate: true }}</td>
-                  <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty }}</td>
-                  <td class="num">{{ e.defectQty || '—' }}</td>
+                  <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}</td>
+                  <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
                   <td class="small">{{ e.user ? e.user.lastName + ' ' + e.user.firstName : '—' }}</td>
                   <td>
                     <span class="badge" [class.badge-info]="e.source === 'TELEGRAM'" [class.badge-neutral]="e.source !== 'TELEGRAM'">
@@ -366,9 +369,9 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field"><label class="label">{{ 'vehicle' | t }}</label><input class="input" [(ngModel)]="shipment.vehicle" /></div>
           <div class="field"><label class="label">{{ 'driver' | t }}</label><input class="input" [(ngModel)]="shipment.driver" /></div>
-          <div class="field"><label class="label">{{ 'driver_phone' | t }}</label><input class="input" [(ngModel)]="shipment.driverPhone" /></div>
-          <div class="field"><label class="label">{{ 'quantity' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="shipment.qty" /></div>
-          <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" type="number" min="0" [(ngModel)]="shipment.boxCount" /></div>
+          <div class="field"><label class="label">{{ 'driver_phone' | t }}</label><input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="shipment.driverPhone" [placeholder]="'phone_placeholder' | t" /></div>
+          <div class="field"><label class="label">{{ 'quantity' | t }}</label><input class="input" groupedNumber [(ngModel)]="shipment.qty" /></div>
+          <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="shipment.boxCount" /></div>
           <div class="field"><label class="label">{{ 'loading_date' | t }}</label><ui-date-input [(ngModel)]="shipment.loadingDate" /></div>
           <div class="field"><label class="label">{{ 'track_no' | t }}</label><input class="input" [(ngModel)]="shipment.trackNo" /></div>
           <div class="field">
@@ -527,6 +530,8 @@ export class ProductionComponent {
           this.entryModal.set(null);
           this.toast.success(this.i18n.t('saved'));
           this.reload(false);
+          const open = this.detail();
+          if (open && (open.order?.id ?? open.orderId) === this.entry.orderId) this.openDetail(open);
         },
         error: (e) => {
           this.busy.set(false);

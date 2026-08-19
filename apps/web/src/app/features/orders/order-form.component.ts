@@ -4,7 +4,12 @@ import type { Client, Order, OrderStatus, Priority, ProductModel, User } from '.
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
+import { ToastService } from '../../core/services/toast.service';
 import { TPipe } from '../../shared/pipes/t.pipe';
+import { NumPipe } from '../../shared/pipes/format.pipe';
+import { SizeRowFieldsComponent } from '../../shared/components/size-row-fields.component';
+import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
+import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
 import { DateInputComponent } from '../../shared/ui/date-input.component';
@@ -15,7 +20,7 @@ interface SizeRow { size: string; qty: number | null; }
 @Component({
   selector: 'app-order-form',
   standalone: true,
-  imports: [FormsModule, ModalComponent, IconComponent, DateInputComponent, TPipe],
+  imports: [FormsModule, ModalComponent, IconComponent, DateInputComponent, TPipe, NumPipe, DigitsOnlyDirective, GroupedNumberDirective, SizeRowFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ui-modal [title]="isNew() ? ('new_order' | t) : ('edit_order' | t)" [subtitle]="form.number" size="lg" (closed)="closed.emit()">
@@ -51,7 +56,7 @@ interface SizeRow { size: string; qty: number | null; }
 
         <div class="field" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
-          <input class="input" type="number" min="1" [(ngModel)]="form.qty" (ngModelChange)="fe.clear('qty')" />
+          <input class="input" groupedNumber [(ngModel)]="form.qty" (ngModelChange)="fe.clear('qty')" />
           @if (fe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
@@ -127,22 +132,20 @@ interface SizeRow { size: string; qty: number | null; }
         <b style="font-size:13.5px">{{ 'size_breakdown' | t }}</b>
         <div class="row gap-2">
           <span class="badge" [class.badge-success]="sizeTotal() === (form.qty ?? 0)" [class.badge-warning]="sizeTotal() !== (form.qty ?? 0)">
-            {{ sizeTotal() }} / {{ form.qty ?? 0 }}
+            {{ sizeTotal() | num }} / {{ (form.qty ?? 0) | num }}
           </span>
           <button class="btn btn-sm" type="button" (click)="addSize()"><ui-icon name="plus" [size]="14" /></button>
         </div>
       </div>
 
       @if (sizes().length) {
-        <div class="size-grid">
+        <div class="size-list">
           @for (s of sizes(); track $index) {
-            <div class="size-row">
-              <input class="input btn-sm" style="width:64px;height:32px" [(ngModel)]="s.size" [placeholder]="'size_placeholder' | t" />
-              <input class="input btn-sm" style="height:32px" type="number" min="0" [(ngModel)]="s.qty" (ngModelChange)="touch(); fe.clear('sizes')" [placeholder]="'plan_done_placeholder' | t" />
+            <app-size-row-fields [row]="s" [extraSizes]="modelSizeOptions()" (changed)="touch(); fe.clear('sizes')">
               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeSize($index)" [attr.data-tip]="'delete' | t">
                 <ui-icon name="x" [size]="14" />
               </button>
-            </div>
+            </app-size-row-fields>
           }
         </div>
         @if (fe.get('sizes'); as msg) {
@@ -177,7 +180,7 @@ interface SizeRow { size: string; qty: number | null; }
             <input class="input" [(ngModel)]="clientForm.name" (ngModelChange)="clientFe.clear('name')" />
             @if (clientFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
-          <div class="field"><label class="label">{{ 'phone' | t }}</label><input class="input mono" [(ngModel)]="clientForm.phone" /></div>
+          <div class="field"><label class="label">{{ 'phone' | t }}</label><input class="input mono" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="clientForm.phone" [placeholder]="'phone_placeholder' | t" /></div>
           <div class="field"><label class="label">{{ 'contact' | t }}</label><input class="input" [(ngModel)]="clientForm.contact" /></div>
         </div>
         @if (clientError()) { <div class="err-text mt-3">{{ clientError() }}</div> }
@@ -189,8 +192,7 @@ interface SizeRow { size: string; qty: number | null; }
     }
   `,
   styles: [`
-    .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-    .size-row { display: flex; align-items: center; gap: 6px; }
+    .size-list { display: flex; flex-direction: column; gap: 10px; }
     .grow { flex: 1; min-width: 0; }
   `],
 })
@@ -198,6 +200,7 @@ export class OrderFormComponent {
   private api = inject(ApiService);
   readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+  private toast = inject(ToastService);
 
   readonly fe = new FieldErrorsState();
   readonly clientFe = new FieldErrorsState();
@@ -240,6 +243,10 @@ export class OrderFormComponent {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
   readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
+  readonly modelSizeOptions = computed(() => {
+    const m = this.models().find((x) => x.id === this.form.modelId);
+    return (m?.sizes ?? []).map((s) => s.size);
+  });
   readonly sizeTotal = computed(() => { this.version(); return this.sizes().reduce((a, s) => a + (+s.qty! || 0), 0); });
 
   constructor() {
@@ -308,11 +315,12 @@ export class OrderFormComponent {
     }).subscribe({
       next: (c) => {
         this.clientBusy.set(false);
-        this.extraClients.update((list) => [...list, c]);
+        this.extraClients.update((list) => [c, ...list]);
         this.form.clientId = c.id;
         this.clientsChange.emit(this.clientOptions());
         this.showClientForm.set(false);
         this.clientForm = { code: '', name: '', phone: '', contact: '' };
+        this.toast.success(this.i18n.t('saved'), c.name);
       },
       error: (e) => {
         this.clientBusy.set(false);

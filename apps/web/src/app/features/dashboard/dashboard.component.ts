@@ -178,8 +178,8 @@ const STAGE_ICON: Record<StageType, string> = {
                     <span class="row gap-2">
                       <b class="mono small">{{ r.order.number }}</b>
                       <span class="small text-2">{{ 'stage_' + r.stage | t }}</span>
-                      <span class="badge badge-info">+{{ r.qty }}</span>
-                      @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty }}</span> }
+                      <span class="badge badge-info">+{{ r.qty | num }}</span>
+                      @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty | num }}</span> }
                     </span>
                     <span class="tiny text-3">{{ r.user }} · {{ r.progress }}%</span>
                   </span>

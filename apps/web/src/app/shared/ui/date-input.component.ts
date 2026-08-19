@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, HostListener, computed, forwardRef, inject, input, signal,
+  ChangeDetectionStrategy, Component, ElementRef, HostListener, computed, forwardRef, inject, input, signal,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { I18nService } from '../../core/services/i18n.service';
@@ -60,7 +60,7 @@ function todayIso(): string {
       </button>
 
       @if (open()) {
-        <div class="date-panel" role="dialog" [attr.aria-label]="'select_date' | t">
+        <div class="date-panel" [class.align-right]="panelAlign() === 'right'" role="dialog" [attr.aria-label]="'select_date' | t">
           <div class="date-head">
             <button type="button" class="date-nav" (click)="shiftMonth(-1)" [attr.data-tip]="'prev' | t">
               <ui-icon name="chevron-left" [size]="16" />
@@ -171,12 +171,19 @@ function todayIso(): string {
       top: calc(100% + 6px);
       left: 0;
       z-index: 260;
-      width: min(100%, 292px);
-      padding: 12px;
+      width: 336px;
+      min-width: 336px;
+      max-width: min(336px, calc(100vw - 16px));
+      padding: 14px 16px;
       border: 1px solid var(--border-strong);
       border-radius: var(--r-lg);
       background: var(--surface);
       box-shadow: var(--sh-3);
+      box-sizing: border-box;
+    }
+    .date-panel.align-right {
+      left: auto;
+      right: 0;
     }
 
     .date-head {
@@ -189,14 +196,14 @@ function todayIso(): string {
     .date-title {
       flex: 1;
       text-align: center;
-      font-size: 13.5px;
+      font-size: 14.5px;
       font-weight: 600;
       letter-spacing: -.01em;
       text-transform: capitalize;
     }
     .date-nav {
-      width: 30px;
-      height: 30px;
+      width: 34px;
+      height: 34px;
       border: 1px solid var(--border);
       border-radius: var(--r-sm);
       background: var(--surface-2);
@@ -210,31 +217,32 @@ function todayIso(): string {
 
     .date-weekdays {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 2px;
-      margin-bottom: 4px;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: 6px;
     }
     .date-weekdays span {
       text-align: center;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       letter-spacing: .02em;
       color: var(--text-3);
-      padding: 2px 0;
+      padding: 4px 0;
     }
 
     .date-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 2px;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
     }
     .date-day {
-      height: 34px;
+      height: 40px;
+      min-width: 0;
       border: none;
       border-radius: var(--r-sm);
       background: transparent;
       color: var(--text);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       font-variant-numeric: tabular-nums;
@@ -295,7 +303,7 @@ function todayIso(): string {
       border: none;
       background: transparent;
       color: var(--primary);
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       padding: 4px 2px;
@@ -306,12 +314,14 @@ function todayIso(): string {
 })
 export class DateInputComponent implements ControlValueAccessor {
   private readonly i18n = inject(I18nService);
+  private readonly host = inject(ElementRef<HTMLElement>);
 
   readonly size = input<'md' | 'sm'>('md');
   readonly mode = input<'date' | 'datetime'>('date');
   readonly placeholder = input('');
 
   readonly open = signal(false);
+  readonly panelAlign = signal<'left' | 'right'>('left');
   readonly disabled = signal(false);
   readonly viewYear = signal(new Date().getFullYear());
   readonly viewMonth = signal(new Date().getMonth());
@@ -415,8 +425,16 @@ export class DateInputComponent implements ControlValueAccessor {
         this.viewYear.set(parsed.y);
         this.viewMonth.set(parsed.m);
       }
+      queueMicrotask(() => this.syncPanelAlign());
     }
     this.onTouched();
+  }
+
+  private syncPanelAlign(): void {
+    const panel = this.host.nativeElement.querySelector('.date-panel') as HTMLElement | null;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    this.panelAlign.set(rect.right > window.innerWidth - 8 ? 'right' : 'left');
   }
 
   shiftMonth(delta: number): void {

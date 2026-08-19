@@ -7,7 +7,7 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ProgressComponent } from '../../shared/ui/progress.component';
-import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directive';
+import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
@@ -16,7 +16,7 @@ import { haptic } from './telegram';
 @Component({
   selector: 'app-ma-report',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, TPipe, DigitsOnlyDirective],
+  imports: [FormsModule, IconComponent, ProgressComponent, EmptyComponent, LoadingComponent, TPipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_orders' | t }}</h2>
@@ -54,7 +54,7 @@ import { haptic } from './telegram';
 
         <div class="field mt-4" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'ma_enter_qty' | t }}</label>
-          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="qty" (ngModelChange)="fe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
+          <input class="input" style="height:46px;font-size:18px;text-align:center" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="qty" (ngModelChange)="fe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
           @if (fe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
 
@@ -64,7 +64,7 @@ import { haptic } from './telegram';
 
         <div class="field mt-4">
           <label class="label">{{ 'defect_qty' | t }}</label>
-          <input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="defectQty" [placeholder]="'defect_qty_placeholder' | t" />
+          <input class="input" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="defectQty" [placeholder]="'defect_qty_placeholder' | t" />
         </div>
 
         <div class="field mt-3">

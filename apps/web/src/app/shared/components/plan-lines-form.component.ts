@@ -4,7 +4,7 @@ import type { PlanView } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
-import { DigitsOnlyDirective } from '../directives/digits-only.directive';
+import { GroupedNumberDirective } from '../directives/grouped-number.directive';
 import { NumPipe } from '../pipes/format.pipe';
 import { TPipe } from '../pipes/t.pipe';
 import { LoadingComponent } from '../ui/empty.component';
@@ -25,7 +25,7 @@ interface StageCandidate {
 @Component({
   selector: 'app-plan-lines-form',
   standalone: true,
-  imports: [FormsModule, TPipe, NumPipe, DigitsOnlyDirective, LoadingComponent],
+  imports: [FormsModule, TPipe, NumPipe, GroupedNumberDirective, LoadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
@@ -45,7 +45,7 @@ interface StageCandidate {
                 class="input qty-in"
                 type="tel"
                 inputmode="numeric"
-                digitsOnly
+                groupedNumber
                 [(ngModel)]="r.targetQty"
                 (ngModelChange)="onQtyChange(r)"
                 [placeholder]="'plan_done_placeholder' | t"

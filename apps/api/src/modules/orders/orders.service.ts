@@ -84,13 +84,13 @@ export class OrdersService {
           include: {
             responsible: { select: { id: true, firstName: true, lastName: true } },
             entries: {
-              orderBy: { date: 'desc' }, take: 30,
+              orderBy: { createdAt: 'desc' }, take: 30,
               include: { user: { select: { id: true, firstName: true, lastName: true } } },
             },
           },
         },
         defects: { orderBy: { date: 'desc' }, include: { user: { select: { firstName: true, lastName: true } } } },
-        shipments: true,
+        shipments: { orderBy: { createdAt: 'desc' } },
         comments: { orderBy: { createdAt: 'desc' }, include: { user: { select: { firstName: true, lastName: true, avatar: true } } } },
       },
     });
@@ -218,7 +218,7 @@ export class OrdersService {
       this.prisma.stageEntry.findMany({
         where: { orderStage: { orderId: id } },
         include: { orderStage: { select: { stage: true } }, user: { select: { firstName: true, lastName: true } } },
-        orderBy: { date: 'desc' }, take: 200,
+        orderBy: { createdAt: 'desc' }, take: 200,
       }),
       this.prisma.defect.findMany({
         where: { orderId: id }, include: { user: { select: { firstName: true, lastName: true } } },
@@ -233,7 +233,7 @@ export class OrdersService {
 
     const rows = [
       ...entries.map((e) => ({
-        at: e.date, kind: 'STAGE_ENTRY', stage: e.orderStage.stage,
+        at: e.createdAt, kind: 'STAGE_ENTRY', stage: e.orderStage.stage,
         text: `${e.orderStage.stage}: +${e.qty} dona${e.defectQty ? `, brak +${e.defectQty}` : ''}${e.cancelled ? ' (bekor qilingan)' : ''}`,
         user: e.user ? `${e.user.lastName} ${e.user.firstName}` : null, source: e.source,
       })),
