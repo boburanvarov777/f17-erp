@@ -12,6 +12,7 @@ npm-debug.log*
 Thumbs.db
 apps/web/dist/
 apps/api/dist/
+apps/api/prisma/compiled/
 apps/api/uploads/
 .idea/
 .vscode/*

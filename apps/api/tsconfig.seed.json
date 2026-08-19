@@ -1,8 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["prisma/**/*"],
+  "include": ["prisma/**/*", "src/common/**/*"],
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "outDir": "./prisma/compiled"
   }
 }

@@ -20,6 +20,7 @@ COPY . .
 RUN npx --workspace apps/api prisma generate
 RUN npm run build:web
 RUN npm run build:api
+RUN npx tsc -p apps/api/tsconfig.seed.json
 
 # ---- runtime ----
 FROM base AS runtime
@@ -31,6 +32,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build /app/apps/api/prisma/compiled ./apps/api/prisma/compiled
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
