@@ -2,7 +2,8 @@
 set -e
 
 echo "▸ Applying database schema…"
-npx --workspace apps/api prisma db push --skip-generate --accept-data-loss
+npx --workspace apps/api prisma generate
+npx --workspace apps/api prisma db push --accept-data-loss
 
 echo "▸ Syncing seed data (roles, users, demo)…"
 node apps/api/prisma/compiled/prisma/seed.js || echo "⚠ seed skipped"
