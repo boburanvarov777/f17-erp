@@ -24,7 +24,9 @@ export class OrdersService {
   ) {}
 
   async findAll(dto: QueryOrdersDto) {
-    const where: Prisma.OrderWhereInput = dto.archived === 'true' ? {} : { archivedAt: null };
+    const where: Prisma.OrderWhereInput = dto.archived === 'true'
+      ? { archivedAt: { not: null } }
+      : { archivedAt: null };
     if (dto.status) where.status = dto.status;
     if (dto.priority) where.priority = dto.priority;
     if (dto.clientId) where.clientId = dto.clientId;
@@ -45,7 +47,7 @@ export class OrdersService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where, skip: dto.skip, take: dto.limit,
-        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { deadline: 'asc' }) as any,
+        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
         include: {
           client: { select: { id: true, name: true, code: true } },
           model: { select: { id: true, code: true, name: true, photo: true } },

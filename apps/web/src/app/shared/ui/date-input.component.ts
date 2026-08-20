@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, ElementRef, HostListener, computed, forwardRef, inject, input, signal,
+  ChangeDetectionStrategy, Component, ElementRef, HostListener, OnDestroy, computed, forwardRef, inject, input, signal,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { I18nService } from '../../core/services/i18n.service';
@@ -312,7 +312,10 @@ function todayIso(): string {
     .date-link.muted { color: var(--text-3); font-weight: 500; }
   `],
 })
-export class DateInputComponent implements ControlValueAccessor {
+export class DateInputComponent implements ControlValueAccessor, OnDestroy {
+  /** Only one calendar panel open at a time (FROM/TO pairs, forms with multiple dates). */
+  private static active: DateInputComponent | null = null;
+
   private readonly i18n = inject(I18nService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
@@ -416,18 +419,44 @@ export class DateInputComponent implements ControlValueAccessor {
   registerOnTouched(fn: () => void): void { this.onTouched = fn; }
   setDisabledState(isDisabled: boolean): void { this.disabled.set(isDisabled); }
 
+  ngOnDestroy(): void {
+    this.releaseActive();
+  }
+
   toggle(): void {
     if (this.disabled()) return;
-    this.open.update((v) => !v);
-    if (this.open()) {
+    const next = !this.open();
+    if (next) {
+      DateInputComponent.closeOthers(this);
+      DateInputComponent.active = this;
       const parsed = parseIsoDate(this.value());
       if (parsed) {
         this.viewYear.set(parsed.y);
         this.viewMonth.set(parsed.m);
       }
       queueMicrotask(() => this.syncPanelAlign());
+    } else {
+      this.releaseActive();
     }
+    this.open.set(next);
     this.onTouched();
+  }
+
+  private releaseActive(): void {
+    if (DateInputComponent.active === this) DateInputComponent.active = null;
+  }
+
+  private static closeOthers(except: DateInputComponent): void {
+    const other = DateInputComponent.active;
+    if (other && other !== except) {
+      other.open.set(false);
+      DateInputComponent.active = null;
+    }
+  }
+
+  private closePanel(): void {
+    this.open.set(false);
+    this.releaseActive();
   }
 
   private syncPanelAlign(): void {
@@ -448,7 +477,7 @@ export class DateInputComponent implements ControlValueAccessor {
 
   pick(iso: string): void {
     this.emit(iso);
-    if (this.mode() === 'date') this.open.set(false);
+    if (this.mode() === 'date') this.closePanel();
   }
 
   pickToday(): void {
@@ -460,7 +489,7 @@ export class DateInputComponent implements ControlValueAccessor {
   clear(): void {
     this.value.set('');
     this.onChange('');
-    this.open.set(false);
+    this.closePanel();
   }
 
   onTimeInput(e: Event): void {
@@ -473,12 +502,12 @@ export class DateInputComponent implements ControlValueAccessor {
   @HostListener('document:click', ['$event'])
   onOutside(e: MouseEvent): void {
     if (!this.open()) return;
-    if (!(e.target as HTMLElement).closest('.date-input')) this.open.set(false);
+    if (!(e.target as HTMLElement).closest('.date-input')) this.closePanel();
   }
 
   @HostListener('document:keydown.escape')
   onEsc(): void {
-    this.open.set(false);
+    if (this.open()) this.closePanel();
   }
 
   private emit(dateIso: string): void {

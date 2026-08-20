@@ -25,6 +25,7 @@ import { SearchModule } from './modules/search/search.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { UsersModule } from './modules/users/users.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { ArchiveModule } from './modules/archive/archive.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SchedulerService } from './scheduler.service';
 import { TelegramModule } from './telegram/telegram.module';
@@ -48,6 +49,7 @@ const WEB_DIST = join(__dirname, '..', '..', 'web', 'dist', 'web', 'browser');
     OrdersModule,
     ProductionModule,
     WarehouseModule,
+    ArchiveModule,
     TasksModule,
     DashboardModule,
     NotificationsModule,

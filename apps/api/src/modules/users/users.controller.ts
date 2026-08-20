@@ -48,7 +48,8 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete user (soft archive) — Super Pro Admin only; root user is protected' })
+  @RequirePermissions('users.update')
+  @ApiOperation({ summary: 'Archive user (soft) — Super Admin / Super Pro Admin; root user is protected' })
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
     return this.users.setStatus(id, 'ARCHIVED', actor);
   }

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import type { OrderStage, Paginated, PlanModelBreakdown, PlanView } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -19,7 +20,7 @@ type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 @Component({
   selector: 'app-ma-home',
   standalone: true,
-  imports: [FormsModule, IconComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, GroupedNumberDirective],
+  imports: [FormsModule, RouterLink, IconComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_plans' | t }}</h2>
@@ -41,13 +42,13 @@ type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
       <div class="period-grid mt-4">
         @for (p of periods; track p.key) {
-          <div class="period card card-pad">
+          <a class="period card card-pad" [routerLink]="['/miniapp/home', p.key.toLowerCase()]">
             <div class="tiny text-3">{{ p.label | t }}</div>
             <div class="period-qty">{{ produced(p.key) | num }}</div>
             @if (defect(p.key) > 0) {
               <span class="badge badge-danger period-defect">{{ defect(p.key) | num }}</span>
             }
-          </div>
+          </a>
         }
       </div>
     }
@@ -101,7 +102,8 @@ type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
     .today-qty { font-size: 42px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; color: var(--primary-600); font-variant-numeric: tabular-nums; }
     .today-defect { font-size: 13px; padding: 6px 12px; border-radius: 999px; }
     .period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .period { text-align: center; padding: 12px 8px !important; }
+    .period { display: block; text-align: center; padding: 12px 8px !important; text-decoration: none; color: inherit; cursor: pointer; }
+    .period:active { background: var(--surface-3); }
     .period-qty { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
     .period-defect { margin-top: 6px; font-size: 11px; padding: 3px 8px; border-radius: 999px; }
     .quick { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -486,6 +486,17 @@ table.data thead th {
 }
 table.data thead th.sortable { cursor: pointer; user-select: none; }
 table.data thead th.sortable:hover { color: var(--text-2); }
+table.data thead th.sortable:hover .sort-icon { opacity: .85; color: var(--text-2); }
+table.data thead th.sortable.active { color: var(--text-1); }
+table.data thead th .sort-head {
+  display: inline-flex; align-items: center; gap: 5px; vertical-align: middle;
+}
+table.data thead th .sort-head.sort-end { width: 100%; justify-content: flex-end; }
+table.data thead th .sort-icon {
+  flex-shrink: 0; color: var(--text-3); opacity: .45; transition: opacity .15s, color .15s;
+}
+table.data thead th .sort-icon.active { color: var(--primary-500); opacity: 1; }
+table.data thead th.num { text-align: right; }
 table.data tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 table.data tbody tr:last-child td { border-bottom: none; }
 table.data tbody tr.clickable { cursor: pointer; }

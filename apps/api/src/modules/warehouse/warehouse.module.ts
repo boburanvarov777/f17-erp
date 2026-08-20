@@ -52,7 +52,7 @@ export class WarehouseService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.material.findMany({
         where, skip: dto.skip, take: dto.limit,
-        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { name: 'asc' }) as any,
+        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
       }),
       this.prisma.material.count({ where }),
     ]);
@@ -209,7 +209,9 @@ export class WarehouseController {
   @Patch(':id') @RequirePermissions('warehouse.update')
   update(@Param('id') id: string, @Body() dto: UpdateMaterialDto, @CurrentUser() actor: JwtUser) { return this.service.update(id, dto, actor); }
 
-  @Delete(':id') @RequirePermissions('warehouse.delete')
+  @Delete(':id')
+  @RequirePermissions('warehouse.update')
+  @ApiOperation({ summary: 'Archive material — preserved in Archive module' })
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) { return this.service.archive(id, actor); }
 
   @Post('operations')

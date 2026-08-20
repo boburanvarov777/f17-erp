@@ -51,6 +51,15 @@ export function isSuperProAdmin(user: { roleCode?: string; permissions?: string[
   return user.roleCode === SUPER_PRO_ADMIN_ROLE;
 }
 
+export function isTopAdmin(user: { roleCode?: string } | null | undefined): boolean {
+  if (!user) return false;
+  return user.roleCode === SUPER_PRO_ADMIN_ROLE || user.roleCode === 'SUPER_ADMIN';
+}
+
+export function assertTopAdmin(user: { roleCode?: string } | null | undefined): void {
+  if (!isTopAdmin(user)) throw forbidden('err_archive_forbidden');
+}
+
 export function assertSuperProAdmin(user: { roleCode?: string } | null | undefined): void {
   if (!isSuperProAdmin(user)) throw forbidden('err_roles_super_only');
 }

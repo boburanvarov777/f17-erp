@@ -14,13 +14,14 @@ import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/util
 import { GroupedNumberDirective } from '../../shared/directives/grouped-number.directive';
 import { PaginationComponent } from '../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { ConfirmComponent } from '../../shared/ui/confirm.component';
 
 const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
 
 @Component({
   selector: 'app-warehouse',
   standalone: true,
-  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, ShortDatePipe, GroupedNumberDirective],
+  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, NumPipe, ShortDatePipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -94,6 +95,7 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
                           @if (auth.can('warehouse.update')) {
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
                           }
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
                         </td>
@@ -185,6 +187,16 @@ const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
         </div>
       </ui-modal>
     }
+
+    @if (archiving(); as m) {
+      <ui-confirm
+        [title]="'archive' | t"
+        [message]="i18n.t('material_archive_confirm', { name: m.code })"
+        [note]="'material_archive_note' | t"
+        [confirmLabel]="'archive' | t"
+        (confirmed)="archive(m)"
+        (cancelled)="archiving.set(null)" />
+    }
   `,
   styles: [`
     .ops { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -209,6 +221,7 @@ export class WarehouseComponent {
   readonly busy = signal(false);
   readonly opModal = signal<Material | null>(null);
   readonly materialModal = signal<Partial<Material> | null>(null);
+  readonly archiving = signal<Material | null>(null);
 
   readonly opFe = new FieldErrorsState();
   readonly materialFe = new FieldErrorsState();
@@ -293,6 +306,17 @@ export class WarehouseComponent {
     req.subscribe({
       next: () => { this.busy.set(false); this.materialModal.set(null); this.toast.success(this.i18n.t('saved')); this.reload(false); },
       error: () => this.busy.set(false),
+    });
+  }
+
+  archive(m: Material): void {
+    this.api.delete(`/warehouse/${m.id}`).subscribe({
+      next: () => {
+        this.archiving.set(null);
+        this.toast.success(this.i18n.t('archived'));
+        this.reload(false);
+      },
+      error: () => this.archiving.set(null),
     });
   }
 

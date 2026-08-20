@@ -16,6 +16,7 @@ import { ProgressComponent } from '../../shared/ui/progress.component';
 import { PriorityBadgeComponent, StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { OrderFormComponent } from './order-form.component';
 import { DateInputComponent } from '../../shared/ui/date-input.component';
+import { TableSortHeaderComponent } from '../../shared/ui/table-sort-header.component';
 
 const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'LOADING', 'COMPLETED', 'DELAYED', 'CANCELLED'];
 const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -26,6 +27,7 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
   imports: [
     FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PriorityBadgeComponent,
     PaginationComponent, EmptyComponent, LoadingComponent, ConfirmComponent, OrderFormComponent, DateInputComponent,
+    TableSortHeaderComponent,
     TPipe, NumPipe, ShortDatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,12 +91,20 @@ const PRIORITIES: Priority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
               <table class="data">
                 <thead>
                   <tr>
-                    <th class="sortable" (click)="sort('number')">{{ 'order_no' | t }}</th>
+                    <th class="sortable" [class.active]="sortBy() === 'number'" (click)="sort('number')">
+                      <ui-table-sort [active]="sortBy() === 'number'" [direction]="sortOrder()">{{ 'order_no' | t }}</ui-table-sort>
+                    </th>
                     <th>{{ 'model' | t }}</th>
                     <th>{{ 'client' | t }}</th>
-                    <th class="sortable" (click)="sort('orderDate')">{{ 'order_date' | t }}</th>
-                    <th class="sortable" (click)="sort('deadline')">{{ 'deadline' | t }}</th>
-                    <th class="num sortable" (click)="sort('qty')">{{ 'quantity' | t }}</th>
+                    <th class="sortable" [class.active]="sortBy() === 'orderDate'" (click)="sort('orderDate')">
+                      <ui-table-sort [active]="sortBy() === 'orderDate'" [direction]="sortOrder()">{{ 'order_date' | t }}</ui-table-sort>
+                    </th>
+                    <th class="sortable" [class.active]="sortBy() === 'deadline'" (click)="sort('deadline')">
+                      <ui-table-sort [active]="sortBy() === 'deadline'" [direction]="sortOrder()">{{ 'deadline' | t }}</ui-table-sort>
+                    </th>
+                    <th class="num sortable" [class.active]="sortBy() === 'qty'" (click)="sort('qty')">
+                      <ui-table-sort align="end" [active]="sortBy() === 'qty'" [direction]="sortOrder()">{{ 'quantity' | t }}</ui-table-sort>
+                    </th>
                     <th class="num">{{ 'completed' | t }}</th>
                     <th class="num">{{ 'remaining' | t }}</th>
                     <th style="width:150px">{{ 'progress' | t }}</th>
@@ -199,8 +209,8 @@ export class OrdersListComponent {
 
   readonly page = signal(1);
   readonly limit = signal(10);
-  readonly sortBy = signal('deadline');
-  readonly sortOrder = signal<'asc' | 'desc'>('asc');
+  readonly sortBy = signal('createdAt');
+  readonly sortOrder = signal<'asc' | 'desc'>('desc');
 
   readonly data = signal<Paginated<Order> | null>(null);
   readonly clients = signal<Client[]>([]);

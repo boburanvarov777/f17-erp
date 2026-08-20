@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
-import { isProtectedUser, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { isProtectedUser, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE, isTopAdmin } from '../../common/permissions';
 import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -24,10 +24,16 @@ const SORTABLE = ['firstName', 'lastName', 'login', 'phone', 'createdAt', 'lastL
 export class UsersService {
   constructor(private prisma: PrismaService, private audit: AuditService) {}
 
+  /** Super Pro Admin / Super Admin (and other org-wide user managers) see all departments. */
+  private canSeeAllUsers(actor: JwtUser): boolean {
+    const p = actor.permissions ?? [];
+    if (p.includes('*') || p.includes('users.delete')) return true;
+    return p.includes('users.create') && p.includes('users.update');
+  }
+
   /** Managers only see their own department; full-access roles see everyone. */
   private scope(actor: JwtUser, where: Prisma.UserWhereInput): Prisma.UserWhereInput {
-    const canSeeAll = actor.permissions.includes('*') || actor.permissions.includes('users.delete');
-    if (canSeeAll || !actor.departmentId) return where;
+    if (this.canSeeAllUsers(actor) || !actor.departmentId) return where;
     return { ...where, departmentId: actor.departmentId };
   }
 
@@ -165,7 +171,7 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
-    if (status === 'ARCHIVED' && !isSuperProAdmin(actor)) {
+    if (status === 'ARCHIVED' && !isTopAdmin(actor)) {
       throw forbidden('err_users_delete_super_only');
     }
     if ((status === 'ARCHIVED' || status === 'BLOCKED') && isProtectedUser(existing)) {

@@ -32,6 +32,13 @@ export function seesDeptManage(u: CurrentUser | null | undefined): boolean {
   return !!u.department?.stage;
 }
 
+/** Warehouse staff — ombor mini app (not production floor). */
+export function isWarehouseUser(u: CurrentUser | null | undefined): boolean {
+  if (!u) return false;
+  if (u.role?.code === 'WAREHOUSE_MANAGER') return true;
+  return u.department?.code === 'WAREHOUSE';
+}
+
 /** Show Boshqaruv tab (miniapp) / manage section. */
 export function seesManageTab(u: CurrentUser | null | undefined): boolean {
   if (!u) return false;

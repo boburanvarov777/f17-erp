@@ -36,6 +36,8 @@ const uz = {
   err_audit_super_only: 'Audit jurnali faqat Super Pro Admin uchun',
   err_roles_super_only: 'Rollar faqat Super Pro Admin uchun',
   err_super_pro_role_locked: 'Super Pro Admin rolini o‘zgartirib bo‘lmaydi',
+  err_archive_forbidden: 'Arxiv faqat Super Admin va Super Pro Admin uchun',
+  err_archive_unknown_type: 'Noma’lum arxiv turi',
 
   // orders
   err_sizes_mismatch: 'O‘lchamlar yig‘indisi ({sizes}) umumiy miqdorga ({qty}) teng emas',
@@ -198,6 +200,8 @@ const ru: Record<MessageKey, string> = {
   err_audit_super_only: 'Журнал аудита доступен только Super Pro Admin',
   err_roles_super_only: 'Роли доступны только Super Pro Admin',
   err_super_pro_role_locked: 'Роль Super Pro Admin изменить нельзя',
+  err_archive_forbidden: 'Архив доступен только Super Admin и Super Pro Admin',
+  err_archive_unknown_type: 'Неизвестный тип архива',
 
   err_sizes_mismatch: 'Сумма размеров ({sizes}) не равна общему количеству ({qty})',
 
@@ -348,6 +352,8 @@ const en: Record<MessageKey, string> = {
   err_audit_super_only: 'The audit log is available to Super Pro Admin only',
   err_roles_super_only: 'Roles are managed by Super Pro Admin only',
   err_super_pro_role_locked: 'The Super Pro Admin role cannot be modified',
+  err_archive_forbidden: 'Archive is available to Super Admin and Super Pro Admin only',
+  err_archive_unknown_type: 'Unknown archive type',
 
   err_sizes_mismatch: 'Size total ({sizes}) does not match the order quantity ({qty})',
 

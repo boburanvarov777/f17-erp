@@ -48,7 +48,7 @@ interface SizeRow { size: string; qty: number | null; }
 
         <div class="field full">
           <label class="label">{{ 'model' | t }}</label>
-          <select class="select" [(ngModel)]="form.modelId" (ngModelChange)="onModelChange()">
+          <select class="select" [(ngModel)]="form.modelId">
             <option value="" disabled>{{ 'select_model' | t }}</option>
             @for (m of models(); track m.id) { <option [value]="m.id">{{ m.code }} — {{ m.name }}</option> }
           </select>
@@ -280,14 +280,6 @@ export class OrderFormComponent {
   }
 
   touch(): void { this.version.update((v) => v + 1); }
-
-  onModelChange(): void {
-    const m = this.models().find((x) => x.id === this.form.modelId);
-    if (m?.sizes?.length && !this.sizes().length) {
-      this.sizes.set(m.sizes.map((s) => ({ size: s.size, qty: s.qty ?? null })));
-    }
-    this.touch();
-  }
 
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); this.touch(); this.fe.clear('sizes'); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); this.touch(); this.fe.clear('sizes'); }

@@ -22,7 +22,7 @@ export const STAGE_SLUGS: Record<string, StageType> = {
   loading: 'LOADING', ortish: 'LOADING',
 };
 
-const SORTABLE = ['doneQty', 'planQty', 'defectQty', 'status', 'updatedAt', 'deadline'];
+const SORTABLE = ['doneQty', 'planQty', 'defectQty', 'status', 'createdAt', 'updatedAt', 'deadline'];
 
 /** Date-only strings (YYYY-MM-DD) would otherwise land at UTC midnight and sink to the bottom of today's list. */
 function entryDate(raw: string): Date {
@@ -83,7 +83,7 @@ export class ProductionService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.orderStage.findMany({
         where, skip: dto.skip, take: dto.limit,
-        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { updatedAt: 'desc' }) as any,
+        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
         include: {
           order: {
             select: {

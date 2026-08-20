@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { LangSelectComponent } from '../../shared/ui/lang-select.component';
@@ -8,6 +8,7 @@ import { deptLabel } from '../../core/dept-label';
 import type { Department } from '../../core/models';
 import { I18nService } from '../../core/services/i18n.service';
 import type { Lang } from '../../core/models';
+import { getMiniAppHomeRoute, getMiniAppTabs } from './miniapp-nav.config';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 import { FieldErrorsState, runValidation } from '../../shared/utils/form-validate';
@@ -75,9 +76,9 @@ import { loginErrorKey } from '../../shared/utils/login-error';
 
         @case ('ready') {
           <main class="ma-body"><router-outlet /></main>
-          <nav class="ma-nav" style="grid-template-columns: repeat(4, 1fr)">
-            @for (t of tabs; track t.link) {
-              <a [routerLink]="t.link" routerLinkActive="on" (click)="tap()">
+          <nav class="ma-nav" [style.grid-template-columns]="'repeat(' + tabs().length + ', 1fr)'">
+            @for (t of tabs(); track t.link) {
+              <a [routerLink]="t.link" routerLinkActive="on" [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="tap()">
                 <ui-icon [name]="t.icon" [size]="20" />
                 <span>{{ t.label | t }}</span>
               </a>
@@ -121,6 +122,7 @@ import { loginErrorKey } from '../../shared/utils/login-error';
 export class MiniAppShellComponent {
   readonly ma = inject(MiniAppService);
   readonly i18n = inject(I18nService);
+  private router = inject(Router);
 
   login = '';
   password = '';
@@ -131,12 +133,7 @@ export class MiniAppShellComponent {
   readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
 
-  readonly tabs = [
-    { link: '/miniapp/report', icon: 'scissors', label: 'ma_orders' },
-    { link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_tasks' },
-    { link: '/miniapp/home', icon: 'clipboard-list', label: 'ma_plans' },
-    { link: '/miniapp/profile', icon: 'user', label: 'ma_profile' },
-  ];
+  readonly tabs = computed(() => getMiniAppTabs(this.ma.user()));
 
   constructor() { this.ma.init(); }
 
@@ -159,7 +156,12 @@ export class MiniAppShellComponent {
     this.busy.set(true);
     this.errorKey.set(null);
     this.ma.login(this.login.trim(), this.password, this.departmentCode || undefined).subscribe({
-      next: (res) => { this.busy.set(false); this.ma.apply(res); haptic('success'); },
+      next: (res) => {
+        this.busy.set(false);
+        this.ma.apply(res);
+        haptic('success');
+        void this.router.navigateByUrl(getMiniAppHomeRoute(res.user));
+      },
       error: (e) => {
         this.busy.set(false);
         haptic('error');

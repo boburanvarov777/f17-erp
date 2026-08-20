@@ -57,7 +57,7 @@ export class RolesController {
     assertSuperProAdmin(actor);
     const roles = await this.prisma.role.findMany({
       where: search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }] } : undefined,
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       include: { _count: { select: { users: true } } },
     });
     return roles;

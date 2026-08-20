@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { isSuperProAdmin } from '../role.util';
+import { isSuperProAdmin, isTopAdmin } from '../role.util';
 import { AuthService } from '../services/auth.service';
 
 export const authGuard: CanActivateFn = (_route, state) => {
@@ -24,5 +24,13 @@ export const superProAdminGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   if (isSuperProAdmin(auth.user())) return true;
+  return router.createUrlTree(['/dashboard']);
+};
+
+/** Archive — Super Admin and Super Pro Admin only. */
+export const topAdminGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (isTopAdmin(auth.user())) return true;
   return router.createUrlTree(['/dashboard']);
 };

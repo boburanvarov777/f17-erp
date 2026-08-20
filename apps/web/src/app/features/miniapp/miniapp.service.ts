@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { AuthResponse, CurrentUser, Department } from '../../core/models';
-import { seesFullManage, seesManageTab } from '../../core/role.util';
+import { seesFullManage, seesManageTab, isWarehouseUser } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -27,6 +27,10 @@ export class MiniAppService {
 
   hasStage(): boolean {
     return !!this.user()?.department?.stage;
+  }
+
+  isWarehouseUser(): boolean {
+    return isWarehouseUser(this.user());
   }
 
   seesFullManage(): boolean {

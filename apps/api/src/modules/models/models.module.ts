@@ -190,17 +190,24 @@ export class ModelsService {
     return { success: true };
   }
 
-  /** Models used by orders are archived, never physically deleted. */
+  /** Models are always soft-archived so they appear in the Archive module. */
   async archive(id: string, actor: JwtUser) {
-    const model = await this.prisma.productModel.findUniqueOrThrow({ where: { id }, include: { _count: { select: { orders: true } } } });
-    if (model._count.orders === 0) {
-      await this.prisma.productModel.delete({ where: { id } });
-      this.audit.log({ userId: actor.sub, action: 'MODEL_DELETED', entity: 'ProductModel', entityId: id, oldValue: model });
-      return { success: true, deleted: true };
-    }
-    await this.prisma.productModel.update({ where: { id }, data: { status: 'ARCHIVED', archivedAt: new Date() } });
-    this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.MODEL_ARCHIVED, entity: 'ProductModel', entityId: id });
-    return { success: true, deleted: false, ordersLinked: model._count.orders };
+    const model = await this.prisma.productModel.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { orders: true } } },
+    });
+    await this.prisma.productModel.update({
+      where: { id },
+      data: { status: 'ARCHIVED', archivedAt: new Date() },
+    });
+    this.audit.log({
+      userId: actor.sub,
+      action: AUDIT_ACTIONS.MODEL_ARCHIVED,
+      entity: 'ProductModel',
+      entityId: id,
+      newValue: { ordersLinked: model._count.orders },
+    });
+    return { success: true, ordersLinked: model._count.orders };
   }
 
   async addFile(id: string, body: { name: string; url: string; mime?: string; size?: number }) {
