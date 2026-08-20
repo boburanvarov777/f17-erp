@@ -7,7 +7,7 @@ npx --workspace apps/api prisma db push --accept-data-loss
 
 echo "▸ Ensuring audit_logs.telegramUsername column…"
 printf '%s\n' 'ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "telegramUsername" TEXT;' \
-  | npx --workspace apps/api prisma db execute --stdin \
+  | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
   || echo "⚠ telegramUsername column ensure skipped"
 
 echo "▸ Syncing seed data (roles, users, demo)…"
