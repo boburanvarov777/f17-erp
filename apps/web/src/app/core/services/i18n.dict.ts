@@ -375,7 +375,7 @@ const uz = {
   user_archive_note: 'Foydalanuvchi fizik o‘chirilmaydi — arxivlanadi.',
   delete_user: 'O‘chirish',
   user_delete_confirm: '{name} — o‘chirishni tasdiqlaysizmi?',
-  user_delete_note: 'Foydalanuvchi ro‘yxatdan olib tashlanadi (arxiv). Asosiy administrator o‘chirilmaydi.',
+  user_delete_note: 'Foydalanuvchi bazadan butunlay o‘chiriladi — arxivga tushmaydi. Asosiy administrator (bobur) o‘chirilmaydi.',
   not_linked: 'Ulanmagan',
 
   // roles
@@ -975,7 +975,7 @@ const ru: typeof uz = {
   user_archive_note: 'Пользователь не удаляется физически — архивируется.',
   delete_user: 'Удалить',
   user_delete_confirm: 'Подтверждаете удаление {name}?',
-  user_delete_note: 'Пользователь будет удалён из списка (архив). Главного администратора удалить нельзя.',
+  user_delete_note: 'Пользователь будет удалён из базы без архивации. Главного администратора (bobur) удалить нельзя.',
   not_linked: 'Не привязан',
 
   roles_title: 'Роли',
@@ -1569,7 +1569,7 @@ const en: typeof uz = {
   user_archive_note: 'Users are archived, never physically deleted.',
   delete_user: 'Delete',
   user_delete_confirm: 'Delete {name}?',
-  user_delete_note: 'The user will be removed from the list (archived). The primary administrator cannot be deleted.',
+  user_delete_note: 'The user is permanently removed from the database — not sent to archive. The primary administrator (bobur) cannot be deleted.',
   not_linked: 'Not linked',
 
   roles_title: 'Roles',

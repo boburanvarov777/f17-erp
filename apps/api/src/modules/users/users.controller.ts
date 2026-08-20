@@ -47,11 +47,18 @@ export class UsersController {
     return this.users.setStatus(id, 'ACTIVE', actor);
   }
 
-  @Delete(':id')
+  @Post(':id/archive')
   @RequirePermissions('users.update')
   @ApiOperation({ summary: 'Archive user (soft) — Super Admin / Super Pro Admin; root user is protected' })
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
-    return this.users.setStatus(id, 'ARCHIVED', actor);
+    return this.users.archive(id, actor);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('users.delete')
+  @ApiOperation({ summary: 'Permanently delete user — Super Pro Admin only; root user (bobur) is protected' })
+  remove(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
+    return this.users.remove(id, actor);
   }
 
   @Post(':id/reset-password') @RequirePermissions('users.update')

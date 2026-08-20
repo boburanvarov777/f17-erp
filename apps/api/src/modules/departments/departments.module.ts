@@ -17,7 +17,7 @@ export class CreateDepartmentDto {
 export class UpdateDepartmentDto extends PartialType(CreateDepartmentDto) {}
 
 /** Office departments — hidden from Telegram Mini App login picker. */
-const MINIAPP_LOGIN_EXCLUDED = ['ADMIN', 'IT', 'PLANNING', 'PRODUCTION'] as const;
+const MINIAPP_LOGIN_EXCLUDED = ['ADMIN', 'PLANNING', 'PRODUCTION'] as const;
 
 @ApiTags('departments')
 @Controller('departments')

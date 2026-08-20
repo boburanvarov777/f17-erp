@@ -35,12 +35,19 @@ async function main() {
     { code: 'LASER', nameUz: 'Lazer', nameRu: 'Лазер', nameEn: 'Laser', stage: 'LASER' as StageType },
     { code: 'PACKING', nameUz: 'Upakovka', nameRu: 'Упаковка', nameEn: 'Packing', stage: 'PACKING' as StageType },
     { code: 'LOADING', nameUz: 'Ortish', nameRu: 'Отгрузка', nameEn: 'Loading', stage: 'LOADING' as StageType },
-    { code: 'IT', nameUz: 'IT', nameRu: 'IT', nameEn: 'IT', stage: null },
   ];
   for (const d of departments) {
     await prisma.department.upsert({ where: { code: d.code }, create: d, update: d });
   }
   const dept = Object.fromEntries((await prisma.department.findMany()).map((d) => [d.code, d]));
+  // Legacy — IT was seeded as a placeholder office dept; not used in F17 production flow.
+  const legacyIt = await prisma.department.findUnique({ where: { code: 'IT' } });
+  if (legacyIt) {
+    if (dept['ADMIN']) {
+      await prisma.user.updateMany({ where: { departmentId: legacyIt.id }, data: { departmentId: dept['ADMIN'].id } });
+    }
+    await prisma.department.delete({ where: { id: legacyIt.id } });
+  }
   console.log(`  departments: ${departments.length}`);
 
   // ─── Roles ───

@@ -101,6 +101,9 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                         @if (canArchiveUser(u)) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(u)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
                         }
+                        @if (canDeleteUser(u)) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="deleting.set(u)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                        }
                       </td>
                     </tr>
                   }
@@ -208,6 +211,12 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                   [note]="'user_archive_note' | t" [confirmLabel]="'archive' | t"
                   (confirmed)="archiveUser(u)" (cancelled)="archiving.set(null)" />
     }
+
+    @if (deleting(); as u) {
+      <ui-confirm [title]="'delete' | t" [message]="i18n.t('user_delete_confirm', { name: u.lastName + ' ' + u.firstName })"
+                  [note]="'user_delete_note' | t" [confirmLabel]="'delete' | t"
+                  (confirmed)="deleteUser(u)" (cancelled)="deleting.set(null)" />
+    }
   `,
 })
 export class UsersComponent {
@@ -227,6 +236,7 @@ export class UsersComponent {
   readonly error = signal('');
   readonly editing = signal<Partial<User> | null>(null);
   readonly archiving = signal<User | null>(null);
+  readonly deleting = signal<User | null>(null);
   readonly passwordFor = signal<User | null>(null);
   readonly fe = new FieldErrorsState();
   readonly pwdFe = new FieldErrorsState();
@@ -244,11 +254,17 @@ export class UsersComponent {
 
   deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
 
+  isProtectedUser = isProtectedUser;
+
   canArchiveUser(u: User): boolean {
-    return isTopAdmin(this.auth.user()) && this.auth.can('users.update') && !isProtectedUser(u) && u.id !== this.auth.user()?.id;
+    const me = this.auth.user();
+    return !!me && isTopAdmin(me) && this.auth.can('users.update') && !isProtectedUser(u) && u.id !== me.id;
   }
 
-  isProtectedUser = isProtectedUser;
+  canDeleteUser(u: User): boolean {
+    const me = this.auth.user();
+    return !!me && this.auth.isSuperProAdmin() && !isProtectedUser(u) && u.id !== me.id;
+  }
 
   onSearch(): void { clearTimeout(this.timer); this.timer = setTimeout(() => this.reload(), 320); }
 
@@ -339,10 +355,21 @@ export class UsersComponent {
   }
 
   archiveUser(u: User): void {
-    this.api.delete(`/users/${u.id}`).subscribe({
+    this.api.post(`/users/${u.id}/archive`, {}).subscribe({
       next: () => { this.archiving.set(null); this.toast.success(this.i18n.t('archived')); this.reload(false); },
       error: (e) => {
         this.archiving.set(null);
+        const m = e?.error?.message;
+        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
+    });
+  }
+
+  deleteUser(u: User): void {
+    this.api.delete(`/users/${u.id}`).subscribe({
+      next: () => { this.deleting.set(null); this.toast.success(this.i18n.t('deleted')); this.reload(false); },
+      error: (e) => {
+        this.deleting.set(null);
         const m = e?.error?.message;
         this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },

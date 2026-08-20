@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
-import { isProtectedUser, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE, isTopAdmin } from '../../common/permissions';
+import { isProtectedUser, isSuperProAdmin, isTopAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -166,14 +166,36 @@ export class UsersService {
     return this.serialize(user);
   }
 
+  async archive(id: string, actor: JwtUser) {
+    if (!isTopAdmin(actor)) throw forbidden('err_archive_forbidden');
+    return this.setStatus(id, 'ARCHIVED', actor);
+  }
+
+  async remove(id: string, actor: JwtUser) {
+    if (!isSuperProAdmin(actor)) throw forbidden('err_users_delete_super_only');
+    if (id === actor.sub) throw badRequest('err_cannot_block_self');
+    const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+    if (!existing) throw notFound('err_user_not_found');
+    this.assertVisibleTarget(actor, existing.role.code);
+    if (isProtectedUser(existing)) throw badRequest('err_cannot_delete_protected_user');
+
+    this.audit.log({
+      userId: actor.sub,
+      action: 'USER_DELETED',
+      entity: 'User',
+      entityId: id,
+      oldValue: { login: existing.login, firstName: existing.firstName, lastName: existing.lastName, role: existing.role.code },
+    });
+
+    await this.prisma.user.delete({ where: { id } });
+    return { success: true };
+  }
+
   async setStatus(id: string, status: 'ACTIVE' | 'BLOCKED' | 'ARCHIVED', actor: JwtUser) {
     if (id === actor.sub && status !== 'ACTIVE') throw badRequest('err_cannot_block_self');
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
-    if (status === 'ARCHIVED' && !isTopAdmin(actor)) {
-      throw forbidden('err_users_delete_super_only');
-    }
     if ((status === 'ARCHIVED' || status === 'BLOCKED') && isProtectedUser(existing)) {
       throw badRequest('err_cannot_delete_protected_user');
     }

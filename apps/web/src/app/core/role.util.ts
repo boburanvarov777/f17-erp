@@ -3,9 +3,11 @@ import type { CurrentUser } from './models';
 const TOP_ADMIN_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN']);
 const FULL_MANAGE_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN', 'PRODUCTION_MANAGER', 'PLANNING']);
 
-/** Audit logs, role management, and full system control — Super Pro Admin only. */
+/** Super Pro Admin — full system access including user delete. */
 export function isSuperProAdmin(u: CurrentUser | null | undefined): boolean {
-  return u?.role?.code === 'SUPER_PRO_ADMIN';
+  if (!u) return false;
+  if (u.role?.code === 'SUPER_PRO_ADMIN') return true;
+  return (u.permissions ?? []).includes('*');
 }
 
 /** Primary owner (bobur) — cannot be deleted or blocked. */
