@@ -5,7 +5,6 @@ import { seesFullManage, userStage } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RealtimeService } from '../../core/services/realtime.service';
-import { I18nService } from '../../core/services/i18n.service';
 import { AgoPipe, NumPipe, ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
@@ -98,140 +97,84 @@ const STAGE_ICON: Record<StageType, string> = {
         </div>
 
         @if (fullManage()) {
-        <div class="grid two mb-6">
-          <!-- trend -->
-          <div class="card">
-            <div class="card-head"><h3>{{ 'dash_trend' | t }}</h3></div>
-            <div class="card-body">
-              @if (maxTrend() > 0) {
-                <div class="chart">
-                  @for (p of d.trend; track p.date) {
-                    <div class="bar-col" [attr.data-tip]="'trend_tooltip' | t: { date: p.date, qty: p.qty }">
-                      <div class="bar-stack">
-                        @if (p.defect > 0) {
-                          <div class="bar defect" [style.height.%]="(p.defect / maxTrend()) * 100"></div>
-                        }
-                        <div class="bar" [style.height.%]="(p.qty / maxTrend()) * 100"></div>
-                      </div>
-                      <div class="bar-x">{{ p.date.slice(8) }}</div>
-                    </div>
-                  }
-                </div>
-                <div class="row gap-4 mt-3 tiny text-3">
-                  <span class="row gap-2"><i class="lg-dot" style="background:var(--primary-500)"></i>{{ 'actual_label' | t }}</span>
-                  <span class="row gap-2"><i class="lg-dot" style="background:var(--danger)"></i>{{ 'defect_label' | t }}</span>
-                </div>
-              } @else {
-                <ui-empty icon="chart-column" [title]="'no_data' | t" />
-              }
+          <div class="grid two">
+            <!-- upcoming -->
+            <div class="card dash-card">
+              <div class="card-head">
+                <h3>{{ 'dash_upcoming' | t }}</h3>
+                <a class="btn btn-ghost btn-sm" routerLink="/orders">{{ 'all' | t }} <ui-icon name="chevron-right" [size]="14" /></a>
+              </div>
+              <div class="table-wrap dash-card-body">
+                <table class="data">
+                  <tbody>
+                    @for (o of d.upcoming; track o.id) {
+                      <tr class="clickable" [routerLink]="['/orders', o.id]">
+                        <td>
+                          <div class="bold mono">{{ o.number }}</div>
+                          <div class="tiny text-3 truncate" style="max-width:180px">{{ o.model || o.client }}</div>
+                        </td>
+                        <td class="num">{{ o.qty | num }}</td>
+                        <td style="width:130px"><ui-progress [value]="o.progress" [max]="100" [late]="o.isLate" [showLabel]="false" /></td>
+                        <td class="nowrap">
+                          <div class="small" [class.late]="o.isLate">{{ o.deadline | shortDate }}</div>
+                          <div class="tiny" [style.color]="o.isLate ? 'var(--danger)' : 'var(--text-3)'">
+                            {{ o.isLate ? ('days_late' | t: { n: -o.daysLeft }) : ('days_left' | t: { n: o.daysLeft }) }}
+                          </div>
+                        </td>
+                        <td><ui-status [value]="o.status" /></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5"><ui-empty icon="clipboard-list" [title]="'no_orders' | t" /></td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <!-- upcoming -->
-          <div class="card">
-            <div class="card-head">
-              <h3>{{ 'dash_upcoming' | t }}</h3>
-              <a class="btn btn-ghost btn-sm" routerLink="/orders">{{ 'all' | t }} <ui-icon name="chevron-right" [size]="14" /></a>
-            </div>
-            <div class="table-wrap">
-              <table class="data">
-                <tbody>
-                  @for (o of d.upcoming; track o.id) {
-                    <tr class="clickable" [routerLink]="['/orders', o.id]">
-                      <td>
-                        <div class="bold mono">{{ o.number }}</div>
-                        <div class="tiny text-3 truncate" style="max-width:180px">{{ o.model || o.client }}</div>
-                      </td>
-                      <td class="num">{{ o.qty | num }}</td>
-                      <td style="width:130px"><ui-progress [value]="o.progress" [max]="100" [late]="o.isLate" [showLabel]="false" /></td>
-                      <td class="nowrap">
-                        <div class="small" [class.late]="o.isLate">{{ o.deadline | shortDate }}</div>
-                        <div class="tiny" [style.color]="o.isLate ? 'var(--danger)' : 'var(--text-3)'">
-                          {{ o.isLate ? ('days_late' | t: { n: -o.daysLeft }) : ('days_left' | t: { n: o.daysLeft }) }}
-                        </div>
-                      </td>
-                      <td><ui-status [value]="o.status" /></td>
-                    </tr>
-                  } @empty {
-                    <tr><td colspan="5"><ui-empty icon="clipboard-list" [title]="'no_orders' | t" /></td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid two">
-          <!-- recent -->
-          <div class="card">
-            <div class="card-head">
-              <h3>{{ 'dash_recent' | t }}</h3>
-              @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
-            </div>
-            <div class="feed">
-              @for (r of d.recent; track r.id) {
-                <a class="feed-row" [routerLink]="['/orders', r.order.id]">
-                  <span class="feed-ic" [class.tg]="r.source === 'TELEGRAM'">
-                    <ui-icon [name]="r.source === 'TELEGRAM' ? 'send' : icon(r.stage)" [size]="15" />
-                  </span>
-                  <span class="grow" style="min-width:0">
-                    <span class="row gap-2">
-                      <b class="mono small">{{ r.order.number }}</b>
-                      <span class="small text-2">{{ 'stage_' + r.stage | t }}</span>
-                      <span class="badge badge-info">+{{ r.qty | num }}</span>
-                      @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty | num }}</span> }
+            <!-- recent -->
+            <div class="card dash-card">
+              <div class="card-head">
+                <h3>{{ 'dash_recent' | t }}</h3>
+                @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
+              </div>
+              <div class="feed dash-card-body">
+                @for (r of d.recent; track r.id) {
+                  <a class="feed-row" [routerLink]="['/orders', r.order.id]">
+                    <span class="feed-ic" [class.tg]="r.source === 'TELEGRAM' || r.source === 'MINIAPP'">
+                      <ui-icon [name]="r.source === 'TELEGRAM' || r.source === 'MINIAPP' ? 'send' : icon(r.stage)" [size]="15" />
                     </span>
-                    <span class="tiny text-3">{{ r.user }} · {{ r.progress }}%</span>
-                  </span>
-                  <span class="tiny text-3 nowrap">{{ r.at | ago }}</span>
-                </a>
-              } @empty {
-                <ui-empty icon="history" [title]="'no_data' | t" />
-              }
+                    <span class="grow" style="min-width:0">
+                      <span class="row gap-2">
+                        <b class="mono small">{{ r.order.number }}</b>
+                        <span class="small text-2">{{ 'stage_' + r.stage | t }}</span>
+                        <span class="badge badge-info">+{{ r.qty | num }}</span>
+                        @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty | num }}</span> }
+                      </span>
+                      <span class="tiny text-3">{{ r.user }} · {{ r.progress }}%</span>
+                    </span>
+                    <span class="tiny text-3 nowrap">{{ r.at | ago }}</span>
+                  </a>
+                } @empty {
+                  <ui-empty icon="history" [title]="'no_data' | t" />
+                }
+              </div>
             </div>
           </div>
-
-          <!-- defects -->
-          <div class="card">
-            <div class="card-head"><h3>{{ 'dash_defects' | t }}</h3></div>
-            <div class="card-body">
-              @if (totalDefects() > 0) {
-                <div class="col gap-3">
-                  @for (x of d.defects; track x.stage) {
-                    <div>
-                      <div class="row-between small mb-2">
-                        <span>{{ 'stage_' + x.stage | t }}</span>
-                        <span class="text-3">{{ x.qty | num }} {{ 'pieces' | t }} · {{ i18n.t('audit_count', { n: x.count }) }}</span>
-                      </div>
-                      <div class="progress late"><i [style.width.%]="(x.qty / maxDefect()) * 100"></i></div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <ui-empty icon="check-circle" [title]="'no_defects' | t" />
-              }
-            </div>
-          </div>
-        </div>
         }
       }
     </div>
   `,
   styles: [`
-    .grid.two { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 960px) { .grid.two { grid-template-columns: 1fr; } }
+
+    .dash-card { display: flex; flex-direction: column; min-height: 0; }
+    .dash-card-body { flex: 1; min-height: 0; max-height: 380px; overflow-y: auto; }
+
     .s-ic { width: 26px; height: 26px; border-radius: 7px; background: var(--primary-50); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; }
     a.stage-card { text-decoration: none; color: inherit; display: block; }
     a.stage-card:hover { text-decoration: none; border-color: var(--border-strong); }
 
-    .chart { display: flex; align-items: flex-end; gap: 5px; height: 168px; }
-    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
-    .bar-stack { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
-    .bar { width: 100%; background: var(--primary-500); border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s ease; }
-    .bar.defect { background: var(--danger); border-radius: 3px 3px 0 0; }
-    .bar-x { font-size: 10px; color: var(--text-3); }
-    .lg-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
-
-    .feed { max-height: 380px; overflow-y: auto; }
     .feed-row { display: flex; align-items: center; gap: 11px; padding: 10px 16px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
     .feed-row:last-child { border-bottom: none; }
     .feed-row:hover { background: var(--surface-2); text-decoration: none; }
@@ -244,7 +187,6 @@ export class DashboardComponent {
   private api = inject(ApiService);
   readonly auth = inject(AuthService);
   readonly rt = inject(RealtimeService);
-  readonly i18n = inject(I18nService);
 
   readonly data = signal<DashboardData | null>(null);
   readonly loading = signal(false);
@@ -264,10 +206,6 @@ export class DashboardComponent {
     const stage = userStage(this.auth.user());
     return stage ? `stage_${stage}` : 'dash_stages';
   });
-
-  readonly maxTrend = computed(() => Math.max(1, ...(this.data()?.trend ?? []).map((p) => p.qty)));
-  readonly maxDefect = computed(() => Math.max(1, ...(this.data()?.defects ?? []).map((d) => d.qty)));
-  readonly totalDefects = computed(() => (this.data()?.defects ?? []).reduce((a, d) => a + d.qty, 0));
 
   constructor() {
     this.load();

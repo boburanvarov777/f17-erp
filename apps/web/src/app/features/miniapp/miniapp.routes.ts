@@ -5,7 +5,7 @@ export const MINIAPP_ROUTES: Routes = [
     path: '',
     loadComponent: () => import('./miniapp-shell.component').then((m) => m.MiniAppShellComponent),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'home' },
+      { path: '', pathMatch: 'full', redirectTo: 'report' },
       { path: 'home', loadComponent: () => import('./ma-home.component').then((m) => m.MaHomeComponent) },
       { path: 'manage', loadComponent: () => import('./ma-manage.component').then((m) => m.MaManageComponent) },
       { path: 'report', loadComponent: () => import('./ma-report.component').then((m) => m.MaReportComponent) },

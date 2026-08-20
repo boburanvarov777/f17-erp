@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ShipmentStatus, StageStatus, StageType } from '@prisma/client';
-import { IsDateString, IsEnum, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class QueryStageDto extends PaginationDto {
@@ -17,6 +17,10 @@ export class CreateEntryDto {
   @ApiPropertyOptional({ example: 3 }) @IsOptional() @IsInt() @Min(0) defectQty?: number;
   @ApiProperty({ description: 'Operation date (ISO date string)' }) @IsDateString() date!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
+  @ApiPropertyOptional({ enum: ['WEB', 'TELEGRAM', 'MINIAPP'], description: 'Where the operation was logged' })
+  @IsOptional()
+  @IsIn(['WEB', 'TELEGRAM', 'MINIAPP'])
+  source?: 'WEB' | 'TELEGRAM' | 'MINIAPP';
   @ApiPropertyOptional({
     description:
       'Stage-specific payload. WASHING: {batch,washingType,sentDate,returnedDate}; LASER: {machine,operator,design}; PACKING: {boxCount,subStage}; LOADING: {vehicle,driver,boxCount}',

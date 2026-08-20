@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
-import { isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { isProtectedUser, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -119,10 +119,17 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
+    if (isProtectedUser(existing)) {
+      if (dto.status && dto.status !== 'ACTIVE') throw badRequest('err_cannot_delete_protected_user');
+      if (dto.login && dto.login.trim().toLowerCase() !== existing.login) throw badRequest('err_cannot_delete_protected_user');
+    }
 
     if (dto.roleId && dto.roleId !== existing.roleId) {
       const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
       if (!role) throw badRequest('err_role_not_found');
+      if (isProtectedUser(existing) && role.code !== SUPER_PRO_ADMIN_ROLE) {
+        throw badRequest('err_cannot_delete_protected_user');
+      }
       if (role.code === SUPER_PRO_ADMIN_ROLE && !isSuperProAdmin(actor)) {
         throw forbidden('err_super_role_only');
       }
@@ -158,6 +165,12 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
+    if (status === 'ARCHIVED' && !isSuperProAdmin(actor)) {
+      throw forbidden('err_users_delete_super_only');
+    }
+    if ((status === 'ARCHIVED' || status === 'BLOCKED') && isProtectedUser(existing)) {
+      throw badRequest('err_cannot_delete_protected_user');
+    }
     const user = await this.prisma.user.update({
       where: { id },
       data: { status, archivedAt: status === 'ARCHIVED' ? new Date() : null },

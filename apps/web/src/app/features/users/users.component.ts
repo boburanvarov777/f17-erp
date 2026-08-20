@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import type { Department, Paginated, Role, User } from '../../core/models';
 import { deptLabel } from '../../core/dept-label';
+import { isProtectedUser, isSuperProAdmin } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -86,7 +87,7 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                       </td>
                       <td class="small nowrap">{{ u.lastLoginAt ? (u.lastLoginAt | shortDate: true) : ('never' | t) }}</td>
                       <td class="actions">
-                        @if (auth.can('users.update')) {
+                        @if (auth.can('users.update') && !isProtectedUser(u)) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openPassword(u)" [attr.data-tip]="'reset_password' | t"><ui-icon name="key-round" [size]="15" /></button>
                           @if (u.status === 'ACTIVE') {
@@ -94,9 +95,11 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                           } @else {
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'activate')" [attr.data-tip]="'activate' | t"><ui-icon name="check-circle" [size]="15" /></button>
                           }
+                        } @else if (auth.can('users.update')) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                         }
-                        @if (auth.can('users.delete')) {
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(u)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
+                        @if (canDeleteUser(u)) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="deleting.set(u)" [attr.data-tip]="'delete_user' | t"><ui-icon name="trash" [size]="15" /></button>
                         }
                       </td>
                     </tr>
@@ -200,10 +203,10 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
       </ui-modal>
     }
 
-    @if (archiving(); as u) {
-      <ui-confirm [title]="'archive' | t" [message]="i18n.t('user_archive_confirm', { name: u.lastName + ' ' + u.firstName })"
-                  [note]="'user_archive_note' | t" [confirmLabel]="'archive' | t"
-                  (confirmed)="archive(u)" (cancelled)="archiving.set(null)" />
+    @if (deleting(); as u) {
+      <ui-confirm [title]="'delete_user' | t" [message]="i18n.t('user_delete_confirm', { name: u.lastName + ' ' + u.firstName })"
+                  [note]="'user_delete_note' | t" [confirmLabel]="'delete' | t"
+                  (confirmed)="deleteUser(u)" (cancelled)="deleting.set(null)" />
     }
   `,
 })
@@ -223,7 +226,7 @@ export class UsersComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly editing = signal<Partial<User> | null>(null);
-  readonly archiving = signal<User | null>(null);
+  readonly deleting = signal<User | null>(null);
   readonly passwordFor = signal<User | null>(null);
   readonly fe = new FieldErrorsState();
   readonly pwdFe = new FieldErrorsState();
@@ -240,6 +243,12 @@ export class UsersComponent {
   }
 
   deptName(d: Department): string { return deptLabel(d, this.i18n.lang()); }
+
+  canDeleteUser(u: User): boolean {
+    return isSuperProAdmin(this.auth.user()) && !isProtectedUser(u) && u.id !== this.auth.user()?.id;
+  }
+
+  isProtectedUser = isProtectedUser;
 
   onSearch(): void { clearTimeout(this.timer); this.timer = setTimeout(() => this.reload(), 320); }
 
@@ -329,10 +338,14 @@ export class UsersComponent {
     });
   }
 
-  archive(u: User): void {
+  deleteUser(u: User): void {
     this.api.delete(`/users/${u.id}`).subscribe({
-      next: () => { this.archiving.set(null); this.toast.success(this.i18n.t('archived')); this.reload(false); },
-      error: () => this.archiving.set(null),
+      next: () => { this.deleting.set(null); this.toast.success(this.i18n.t('deleted')); this.reload(false); },
+      error: (e) => {
+        this.deleting.set(null);
+        const m = e?.error?.message;
+        this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
     });
   }
 }

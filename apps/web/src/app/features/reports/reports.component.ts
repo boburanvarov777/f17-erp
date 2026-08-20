@@ -40,18 +40,17 @@ const iso = (d: Date) =>
           <div class="sub">{{ from }} — {{ to }}</div>
         </div>
         <div class="page-actions">
-          <div class="presets no-print">
+          <div class="presets">
             @for (p of presets; track p.days) {
               <button type="button" [class.active]="activePreset() === p.days" (click)="applyPreset(p.days)">{{ p.label | t }}</button>
             }
           </div>
           <ui-date-input style="width:148px" size="sm" [(ngModel)]="from" (ngModelChange)="onRangeChange()" />
           <ui-date-input style="width:148px" size="sm" [(ngModel)]="to" (ngModelChange)="onRangeChange()" />
-          <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
         </div>
       </div>
 
-      <div class="tabs mb-4 no-print">
+      <div class="tabs mb-4">
         @for (t of tabs; track t.key) {
           <button type="button" [class.active]="tab() === t.key" (click)="switchTab(t.key)">{{ t.label | t }}</button>
         }
@@ -90,7 +89,7 @@ const iso = (d: Date) =>
               <div class="card mb-6">
                 <div class="card-head">
                   <h3>{{ 'rep_trend' | t }}</h3>
-                  <span class="tiny text-3 no-print">{{ 'rep_pick_day_hint' | t }}</span>
+                  <span class="tiny text-3">{{ 'rep_pick_day_hint' | t }}</span>
                 </div>
                 <div class="card-body">
                   @if (p.totals.operations) {
@@ -423,6 +422,4 @@ export class ReportsComponent {
         break;
     }
   }
-
-  print(): void { window.print(); }
 }

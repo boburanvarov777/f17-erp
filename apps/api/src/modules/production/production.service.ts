@@ -177,6 +177,21 @@ export class ProductionService {
         },
       });
 
+      if (dto.defectQty && dto.defectQty > 0) {
+        await tx.defect.create({
+          data: {
+            orderId: dto.orderId,
+            stage,
+            type: 'production_entry',
+            qty: dto.defectQty,
+            reason: dto.note,
+            comment: `entry:${entry.id}`,
+            userId: actor.sub,
+            date: entryDate(dto.date),
+          },
+        });
+      }
+
       const doneQty = current.doneQty + dto.qty;
       const defectQty = current.defectQty + (dto.defectQty ?? 0);
       const status: StageStatus = doneQty >= current.planQty ? 'COMPLETED' : 'IN_PROGRESS';
@@ -249,6 +264,9 @@ export class ProductionService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.stageEntry.update({ where: { id: entryId }, data: { cancelled: true } });
+      if (entry.defectQty > 0) {
+        await tx.defect.deleteMany({ where: { comment: `entry:${entryId}` } });
+      }
       await tx.stageEntry.create({
         data: {
           orderStageId: entry.orderStageId,

@@ -16,17 +16,20 @@ export class CreateDepartmentDto {
 }
 export class UpdateDepartmentDto extends PartialType(CreateDepartmentDto) {}
 
+/** Office departments — hidden from Telegram Mini App login picker. */
+const MINIAPP_LOGIN_EXCLUDED = ['ADMIN', 'IT', 'PLANNING', 'PRODUCTION'] as const;
+
 @ApiTags('departments')
 @Controller('departments')
 export class DepartmentsController {
   constructor(private prisma: PrismaService, private audit: AuditService) {}
 
-  /** Public: the Mini App login screen needs the department list before authentication. */
+  /** Public: shop-floor departments for the Mini App login screen (before authentication). */
   @Public()
   @Get('public')
   publicList() {
     return this.prisma.department.findMany({
-      where: { isActive: true },
+      where: { isActive: true, code: { notIn: [...MINIAPP_LOGIN_EXCLUDED] } },
       select: { id: true, code: true, nameUz: true, nameRu: true, nameEn: true },
       orderBy: { code: 'asc' },
     });

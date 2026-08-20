@@ -38,7 +38,6 @@ const patches = [
   ['audit.component.ts', 'detail.set(l)', `'view' | t`],
   ['my-tasks.component.ts', 'open({})', `'new_task' | t`],
   ['my-tasks.component.ts', '(click)="open(t)"', `'edit' | t`],
-  ['reports.component.ts', 'print()', `'print' | t`],
   ['order-detail.component.ts', 'print()', `'print' | t`],
   ['order-detail.component.ts', 'editing.set(o)', `'edit' | t`],
   ['order-detail.component.ts', 'addComment()', `'add_comment' | t`],

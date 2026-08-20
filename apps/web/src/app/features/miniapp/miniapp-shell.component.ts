@@ -75,8 +75,8 @@ import { loginErrorKey } from '../../shared/utils/login-error';
 
         @case ('ready') {
           <main class="ma-body"><router-outlet /></main>
-          <nav class="ma-nav" [style.gridTemplateColumns]="'repeat(' + tabs().length + ', 1fr)'">
-            @for (t of tabs(); track t.link) {
+          <nav class="ma-nav" style="grid-template-columns: repeat(4, 1fr)">
+            @for (t of tabs; track t.link) {
               <a [routerLink]="t.link" routerLinkActive="on" (click)="tap()">
                 <ui-icon [name]="t.icon" [size]="20" />
                 <span>{{ t.label | t }}</span>
@@ -131,21 +131,12 @@ export class MiniAppShellComponent {
   readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
 
-  readonly tabs = computed(() => {
-    const tabs: { link: string; icon: string; label: string }[] = [
-      { link: '/miniapp/home', icon: 'clipboard-list', label: 'ma_home' },
-    ];
-    if (this.ma.seesManageTab()) {
-      tabs.push({ link: '/miniapp/manage', icon: 'users', label: 'ma_team' });
-    }
-    if (this.ma.hasStage()) {
-      tabs.push({ link: '/miniapp/report', icon: 'scissors', label: 'ma_orders' });
-      tabs.push({ link: '/miniapp/analytics', icon: 'chart-pie', label: 'nav_analytics' });
-    }
-    tabs.push({ link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_tasks' });
-    tabs.push({ link: '/miniapp/profile', icon: 'user', label: 'ma_profile' });
-    return tabs;
-  });
+  readonly tabs = [
+    { link: '/miniapp/report', icon: 'scissors', label: 'ma_orders' },
+    { link: '/miniapp/tasks', icon: 'list-checks', label: 'ma_tasks' },
+    { link: '/miniapp/home', icon: 'clipboard-list', label: 'ma_plans' },
+    { link: '/miniapp/profile', icon: 'user', label: 'ma_profile' },
+  ];
 
   constructor() { this.ma.init(); }
 

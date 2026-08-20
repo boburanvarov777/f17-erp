@@ -39,6 +39,13 @@ export const ALL_PERMISSIONS = '*';
 
 export const SUPER_PRO_ADMIN_ROLE = 'SUPER_PRO_ADMIN';
 
+/** Primary owner account — never block, archive, or delete (see SEED_SUPERADMIN_LOGIN). */
+export const ROOT_USER_LOGIN = (process.env.SEED_SUPERADMIN_LOGIN || 'bobur').trim().toLowerCase();
+
+export function isProtectedUser(user: { login?: string } | null | undefined): boolean {
+  return (user?.login?.trim().toLowerCase() ?? '') === ROOT_USER_LOGIN;
+}
+
 export function isSuperProAdmin(user: { roleCode?: string; permissions?: string[] } | null | undefined): boolean {
   if (!user) return false;
   return user.roleCode === SUPER_PRO_ADMIN_ROLE;
@@ -48,7 +55,7 @@ export function assertSuperProAdmin(user: { roleCode?: string } | null | undefin
   if (!isSuperProAdmin(user)) throw forbidden('err_roles_super_only');
 }
 
-/** Super Admin: everything except role management and audit logs. */
+/** Super Admin: everything except role management, audit logs, and user deletion. */
 export const SUPER_ADMIN_PERMISSIONS = PERMISSIONS.filter(
-  (p) => !p.startsWith('roles.') && p !== 'audit.read',
+  (p) => !p.startsWith('roles.') && p !== 'audit.read' && p !== 'users.delete',
 );

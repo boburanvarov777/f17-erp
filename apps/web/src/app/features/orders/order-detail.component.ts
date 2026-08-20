@@ -207,7 +207,7 @@ const STAGE_ICON: Record<string, string> = {
                       <tr>
                         <td class="small nowrap">{{ d.date | shortDate: true }}</td>
                         <td><ui-status [value]="d.stage" prefix="stage_" /></td>
-                        <td>{{ d.type }}</td>
+                        <td>{{ defectTypeLabel(d.type) }}</td>
                         <td class="num" style="color:var(--danger);font-weight:600">{{ d.qty | num }}</td>
                         <td class="small text-2">{{ d.reason || '—' }}</td>
                         <td class="small">{{ d.user ? d.user.lastName + ' ' + d.user.firstName : '—' }}</td>
@@ -257,7 +257,7 @@ const STAGE_ICON: Record<string, string> = {
                     <div class="grow">
                       <div class="row gap-2 wrap">
                         <span class="small">{{ h.text }}</span>
-                        @if (h.source === 'TELEGRAM') { <span class="badge badge-info"><ui-icon name="send" [size]="10" /> {{ 'source_telegram' | t }}</span> }
+                        @if (h.source === 'TELEGRAM' || h.source === 'MINIAPP') { <span class="badge badge-info"><ui-icon name="send" [size]="10" /> {{ 'source_telegram' | t }}</span> }
                       </div>
                       <div class="tiny text-3">{{ h.user || ('system' | t) }} · {{ h.at | shortDate: true }}</div>
                     </div>
@@ -504,6 +504,11 @@ export class OrderDetailComponent {
       next: () => { this.commentText = ''; this.load(this.id()); },
       error: () => void 0,
     });
+  }
+
+  defectTypeLabel(type: string): string {
+    if (type === 'production_entry') return this.i18n.t('defect_type_production_entry');
+    return type;
   }
 
   print(): void { window.print(); }

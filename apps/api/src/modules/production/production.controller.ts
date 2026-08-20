@@ -61,6 +61,6 @@ export class ProductionController {
   @Post(':stage/entries')
   @ApiOperation({ summary: 'Record a production operation for this stage' })
   addEntry(@Param('stage') stage: string, @Body() dto: CreateEntryDto, @CurrentUser() actor: JwtUser) {
-    return this.production.addEntry(this.production.resolveStage(stage), dto, actor);
+    return this.production.addEntry(this.production.resolveStage(stage), dto, actor, dto.source ?? 'WEB');
   }
 }

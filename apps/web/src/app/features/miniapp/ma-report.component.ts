@@ -159,6 +159,7 @@ export class MaReportComponent {
         defectQty: +(this.defectQty || 0),
         date: new Date().toISOString(),
         note: this.note || this.i18n.t('ma_source_miniapp'),
+        source: 'MINIAPP',
       })
       .subscribe({
         next: () => {

@@ -58,12 +58,11 @@ const iso = (d: Date) =>
           <div class="title">{{ 'nav_analytics' | t }}</div>
           <div class="sub">{{ day }}</div>
         </div>
-        <div class="page-actions no-print">
+        <div class="page-actions">
           <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(-1)" [attr.data-tip]="'rep_prev_day' | t"><ui-icon name="chevron-left" [size]="16" /></button>
           <ui-date-input style="width:158px" size="sm" [(ngModel)]="day" (ngModelChange)="load()" />
           <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(1)" [attr.data-tip]="'rep_next_day' | t"><ui-icon name="chevron-right" [size]="16" /></button>
           <button class="btn btn-sm" type="button" (click)="today()">{{ 'today' | t }}</button>
-          <button class="btn btn-sm" type="button" (click)="print()"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
         </div>
       </div>
 
@@ -97,11 +96,11 @@ const iso = (d: Date) =>
           <div class="card-head">
             <h3>{{ 'an_by_department' | t }}</h3>
             @if (activeStage()) {
-              <button class="btn btn-sm no-print" type="button" (click)="activeStage.set(null)">
+              <button class="btn btn-sm" type="button" (click)="activeStage.set(null)">
                 <ui-icon name="x" [size]="14" /> {{ 'an_show_all' | t }}
               </button>
             } @else {
-              <span class="tiny text-3 no-print">{{ 'an_pick_dept_hint' | t }}</span>
+              <span class="tiny text-3">{{ 'an_pick_dept_hint' | t }}</span>
             }
           </div>
           <div class="card-body">
@@ -122,7 +121,7 @@ const iso = (d: Date) =>
           <div class="card">
             <div class="card-head">
               <h3>{{ 'an_trend' | t }}</h3>
-              <span class="tiny text-3 no-print">{{ 'rep_pick_day_hint' | t }}</span>
+              <span class="tiny text-3">{{ 'rep_pick_day_hint' | t }}</span>
             </div>
             <div class="card-body">
               @if (trend().length) { <ui-bar-chart [points]="trendPoints()" [height]="200" [active]="day" (pick)="pickDay($event)" /> }
@@ -316,6 +315,4 @@ export class AnalyticsComponent {
       error: () => this.trend.set([]),
     });
   }
-
-  print(): void { window.print(); }
 }

@@ -8,6 +8,13 @@ export function isSuperProAdmin(u: CurrentUser | null | undefined): boolean {
   return u?.role?.code === 'SUPER_PRO_ADMIN';
 }
 
+/** Primary owner (bobur) — cannot be deleted or blocked. */
+export const PROTECTED_USER_LOGIN = 'bobur';
+
+export function isProtectedUser(u: { login?: string } | null | undefined): boolean {
+  return (u?.login?.trim().toLowerCase() ?? '') === PROTECTED_USER_LOGIN;
+}
+
 export function isTopAdmin(u: CurrentUser | null | undefined): boolean {
   if (!u) return false;
   return TOP_ADMIN_ROLES.has(u.role?.code ?? '');

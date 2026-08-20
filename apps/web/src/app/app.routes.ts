@@ -62,10 +62,10 @@ export const routes: Routes = [
         path: 'production/:stage',
         loadComponent: () => import('./features/production/production.component').then((m) => m.ProductionComponent),
       },
-      {
-        path: 'my-tasks',
-        loadComponent: () => import('./features/tasks/my-tasks.component').then((m) => m.MyTasksComponent),
-      },
+      // {
+      //   path: 'my-tasks',
+      //   loadComponent: () => import('./features/tasks/my-tasks.component').then((m) => m.MyTasksComponent),
+      // },
       {
         path: 'monitoring',
         canActivate: [permissionGuard],

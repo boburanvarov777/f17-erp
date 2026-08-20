@@ -105,6 +105,8 @@ async function main() {
   const users = [
     { login: process.env.SEED_SUPERADMIN_LOGIN || 'bobur', password: superPassword, firstName: 'Bobur', lastName: 'Anvarov', phone: testPhone(), role: 'SUPER_PRO_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
     { login: 'admin', password: superPassword, firstName: 'Komiljon', lastName: 'Toxirov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
+    { login: 'jamshid', password: superPassword, firstName: 'Jamshid', lastName: 'Askarov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
+    { login: 'suhrob', password: superPassword, firstName: 'Suhrob', lastName: 'Rakhimov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
     { login: 'planning', password: defaultPassword, firstName: 'Susana', lastName: 'Ishikova', phone: testPhone(), role: 'PLANNING', dept: 'PLANNING', position: 'Planlashtirish menejeri', lang: 'RU' },
     { login: 'director', password: defaultPassword, firstName: 'Ali', lastName: 'Yildirim', phone: testPhone(), role: 'PRODUCTION_MANAGER', dept: 'PRODUCTION', position: 'Ishlab chiqarish mudiri', lang: 'RU' },
     { login: 'kesim', password: defaultPassword, firstName: 'Abduhamid', lastName: 'Mamatov', phone: testPhone(), role: 'CUTTING_MASTER', dept: 'CUTTING', position: 'Kesim mas’uli', lang: 'UZ' },
@@ -134,6 +136,8 @@ async function main() {
         position: data.position,
         roleId: data.roleId,
         departmentId: data.departmentId,
+        status: 'ACTIVE',
+        archivedAt: null,
         telegramId: null,
         telegramUsername: null,
         telegramLinkedAt: null,

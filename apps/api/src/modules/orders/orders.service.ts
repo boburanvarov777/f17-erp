@@ -95,7 +95,58 @@ export class OrdersService {
       },
     });
     const sorted = { ...order, stages: STAGE_ORDER.map((s) => order.stages.find((x) => x.stage === s)).filter(Boolean) as typeof order.stages };
-    return this.withProgress(sorted as any);
+    const defects = await this.mergeEntryDefects(order.id, sorted.defects);
+    return this.withProgress({ ...sorted, defects } as any);
+  }
+
+  /**
+   * Production entries can carry defectQty without a Defect row (QC modal path does create one).
+   * Surface those in order detail so the Brak tab matches stage totals.
+   */
+  private async mergeEntryDefects(
+    orderId: string,
+    explicit: { id: string; orderId: string; stage: StageType; type: string; qty: number; reason: string | null; comment: string | null; date: Date; user: { firstName: string; lastName: string } | null }[],
+  ) {
+    const linkedEntryIds = new Set(
+      explicit.map((d) => d.comment?.match(/^entry:(.+)$/)?.[1]).filter((x): x is string => !!x),
+    );
+    const explicitByStage = new Map<StageType, number>();
+    for (const d of explicit) explicitByStage.set(d.stage, (explicitByStage.get(d.stage) ?? 0) + d.qty);
+
+    const entries = await this.prisma.stageEntry.findMany({
+      where: { cancelled: false, defectQty: { gt: 0 }, orderStage: { orderId } },
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+        orderStage: { select: { stage: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    const entryByStage = new Map<StageType, number>();
+    for (const e of entries) {
+      const stage = e.orderStage.stage;
+      entryByStage.set(stage, (entryByStage.get(stage) ?? 0) + e.defectQty);
+    }
+
+    const fromEntries = entries
+      .filter((e) => !linkedEntryIds.has(e.id))
+      .filter((e) => {
+        const stage = e.orderStage.stage;
+        return (entryByStage.get(stage) ?? 0) > (explicitByStage.get(stage) ?? 0);
+      })
+      .map((e) => ({
+        id: `entry-${e.id}`,
+        orderId,
+        stage: e.orderStage.stage,
+        type: 'production_entry',
+        qty: e.defectQty,
+        reason: e.note,
+        comment: null as string | null,
+        date: e.date,
+        user: e.user,
+      }));
+
+    return [...explicit, ...fromEntries].sort((a, b) => b.date.getTime() - a.date.getTime());
   }
 
   /** Creates the order and its 6 production stages in a single transaction. */

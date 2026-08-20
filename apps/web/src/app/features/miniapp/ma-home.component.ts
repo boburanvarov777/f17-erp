@@ -10,71 +10,50 @@ import { TPipe } from '../../shared/pipes/t.pipe';
 import { LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
 import { ModalComponent } from '../../shared/ui/modal.component';
-import { ProgressComponent } from '../../shared/ui/progress.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../shared/utils/form-validate';
 import { MiniAppService } from './miniapp.service';
 import { haptic } from './telegram';
 
+type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+
 @Component({
   selector: 'app-ma-home',
   standalone: true,
-  imports: [FormsModule, IconComponent, ProgressComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, GroupedNumberDirective],
+  imports: [FormsModule, IconComponent, LoadingComponent, ModalComponent, TPipe, NumPipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (ma.user(); as u) {
-      <div class="hero">
-        <div class="row-between">
-          <div>
-            <div class="tiny" style="opacity:.75">{{ greeting() }}</div>
-            <div style="font-size:17px;font-weight:600">{{ u.fullName }}</div>
-            <div class="row gap-2 mt-1">
-              <span class="badge badge-info tiny-badge">{{ u.role?.name }}</span>
-            </div>
-            <div class="tiny" style="opacity:.75">{{ u.department?.name || u.position }}</div>
-          </div>
-          <div class="hero-ic"><ui-icon [name]="stageIcon()" [size]="22" /></div>
-        </div>
+    <h2 class="mb-3" style="font-size:17px">{{ 'ma_plans' | t }}</h2>
+
+    @if (loading()) {
+      <ui-loading [count]="2" [height]="120" />
+    } @else {
+      <div class="today card card-pad">
+        <div class="tiny text-3 mb-2">{{ 'ma_today_done' | t }}</div>
+        <div class="today-qty">{{ produced('DAILY') | num }}</div>
+        <div class="tiny text-3">{{ 'pieces' | t }}</div>
+        @if (defect('DAILY') > 0) {
+          <span class="badge badge-danger today-defect mt-2">{{ 'defect_label' | t }} {{ defect('DAILY') | num }}</span>
+        }
+        <button class="btn btn-primary btn-lg btn-block mt-4" type="button" (click)="openEntry()">
+          <ui-icon name="plus" [size]="16" /> {{ 'ma_add_work' | t }}
+        </button>
       </div>
 
-      @if (loading()) { <ui-loading [count]="3" [height]="70" /> }
-      @else {
-        <div class="col gap-3 mt-4">
-          @for (p of periods; track p.key) {
-            <div
-              class="card card-pad"
-              [class.clickable]="p.key === 'DAILY'"
-              (click)="p.key === 'DAILY' && openEntry()"
-            >
-              <div class="row-between mb-3">
-                <b class="small">{{ p.label | t }}</b>
-                <span class="badge badge-neutral">{{ plans()[p.key]?.producedQty || 0 | num }} / {{ plans()[p.key]?.targetQty || 0 | num }}</span>
-              </div>
-              <ui-progress [value]="plans()[p.key]?.producedQty || 0" [max]="plans()[p.key]?.targetQty || 1" [showLabel]="false" />
-              <div class="row-between mt-3 tiny text-3">
-                <span>{{ 'produced' | t }}: <b class="text-2">{{ plans()[p.key]?.producedQty || 0 | num }}</b> {{ 'pieces' | t }}</span>
-                @if (p.key === 'DAILY') {
-                  <span class="edit-hint"><ui-icon name="pencil" [size]="12" /> {{ 'ma_update_result' | t }}</span>
-                }
-              </div>
-              @if (p.key === 'DAILY' && dailyLines().length) {
-                <div class="model-breakdown mt-3">
-                  <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
-                  @for (m of dailyLines(); track m.orderId + m.stage) {
-                    <div class="model-row row-between">
-                      <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }}</span>
-                      <span class="tiny bold">{{ formatLine(m) }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
+      <div class="period-grid mt-4">
+        @for (p of periods; track p.key) {
+          <div class="period card card-pad">
+            <div class="tiny text-3">{{ p.label | t }}</div>
+            <div class="period-qty">{{ produced(p.key) | num }}</div>
+            @if (defect(p.key) > 0) {
+              <span class="badge badge-danger period-defect">{{ defect(p.key) | num }}</span>
+            }
+          </div>
+        }
+      </div>
     }
 
     @if (entryModal()) {
-      <ui-modal [title]="'ma_update_result' | t" (closed)="closeEntry()">
+      <ui-modal [title]="'ma_add_work' | t" (closed)="closeEntry()">
         @if (entryOrders().length) {
           <div class="field" [class.field-invalid]="entryFe.has('orderId')">
             <label class="label">{{ 'ma_select_order' | t }}</label>
@@ -118,14 +97,13 @@ import { haptic } from './telegram';
     }
   `,
   styles: [`
-    .hero { background: linear-gradient(135deg, #1b3a6b, #101828); color: #fff; border-radius: var(--r-xl); padding: 18px; }
-    .hero-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.13); display: flex; align-items: center; justify-content: center; }
-    .clickable { cursor: pointer; transition: box-shadow .15s; }
-    .clickable:active { box-shadow: var(--sh-2); }
-    .edit-hint { display: inline-flex; align-items: center; gap: 4px; color: var(--primary-500); }
-    .tiny-badge { font-size: 10px; padding: 2px 7px; }
-    .model-breakdown { border-top: 1px solid var(--border); padding-top: 10px; }
-    .model-row { padding: 4px 0; }
+    .today { text-align: center; }
+    .today-qty { font-size: 42px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; color: var(--primary-600); font-variant-numeric: tabular-nums; }
+    .today-defect { font-size: 13px; padding: 6px 12px; border-radius: 999px; }
+    .period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .period { text-align: center; padding: 12px 8px !important; }
+    .period-qty { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .period-defect { margin-top: 6px; font-size: 11px; padding: 3px 8px; border-radius: 999px; }
     .quick { display: flex; gap: 6px; flex-wrap: wrap; }
     .quick button { flex: 1; min-width: 48px; padding: 8px 0; border: 1px solid var(--border-strong); border-radius: var(--r); background: var(--surface); cursor: pointer; font-size: 13px; }
   `],
@@ -138,13 +116,13 @@ export class MaHomeComponent {
 
   readonly entryFe = new FieldErrorsState();
 
-  readonly periods = [
-    { key: 'DAILY', label: 'daily_plan' },
-    { key: 'WEEKLY', label: 'weekly_plan' },
-    { key: 'MONTHLY', label: 'monthly_plan' },
+  readonly periods: { key: PeriodKey; label: string }[] = [
+    { key: 'DAILY', label: 'ma_stat_daily' },
+    { key: 'WEEKLY', label: 'ma_stat_weekly' },
+    { key: 'MONTHLY', label: 'ma_stat_monthly' },
   ];
-  readonly quick = [10, 25, 50, 100];
-  readonly plans = signal<Record<string, PlanView>>({});
+  readonly quick = [10, 25, 50, 100, 200, 500];
+  readonly plans = signal<Partial<Record<PeriodKey, PlanView>>>({});
   readonly loading = signal(true);
   readonly entryModal = signal(false);
   readonly entryBusy = signal(false);
@@ -159,32 +137,30 @@ export class MaHomeComponent {
   constructor() {
     this.reloadPlans();
     effect(() => {
-      this.ma.productionTick();
       if (this.ma.productionTick() > 0) this.reloadPlans();
     });
   }
 
+  produced(key: PeriodKey): number {
+    return this.plans()[key]?.producedQty ?? 0;
+  }
+
+  defect(key: PeriodKey): number {
+    const entries = this.plans()[key]?.entries ?? [];
+    return entries.reduce((a, e) => a + (e.defectQty || 0), 0);
+  }
+
   entryOrders(): PlanModelBreakdown[] {
-    const assigned = this.dailyLines().filter((l) => l.targetQty && l.targetQty > 0);
-    if (assigned.length) return assigned;
-    if (this.dailyLines().length) return this.dailyLines();
+    const daily = this.plans()['DAILY'];
+    const lines = daily?.lines?.length ? daily.lines : daily?.byModel ?? [];
+    const active = lines.filter((l) => !l.targetQty || l.qty < (l.targetQty ?? 0));
+    if (active.length) return active;
+    if (lines.length) return lines;
     return this.fallbackOrders();
   }
 
-  dailyLines(): PlanModelBreakdown[] {
-    const daily = this.plans()['DAILY'];
-    if (!daily) return [];
-    if (daily.lines?.length) return daily.lines;
-    return daily.byModel ?? [];
-  }
-
   orderLabel(o: PlanModelBreakdown): string {
-    const base = `${o.orderNumber} · ${o.modelCode}`;
-    return o.targetQty ? `${base} — ${o.targetQty}` : base;
-  }
-
-  formatLine(m: PlanModelBreakdown): string {
-    return m.targetQty ? `${m.qty} / ${m.targetQty}` : String(m.qty);
+    return `${o.orderNumber} · ${o.modelCode}`;
   }
 
   reloadPlans(): void {
@@ -249,9 +225,7 @@ export class MaHomeComponent {
       { key: 'orderId', label: t('ma_select_order'), value: this.entryOrderId, required: true, when: () => this.entryOrders().length > 0 },
       { key: 'qty', label: t('quantity'), value: this.entryQty, custom: (v) => isMissingQty(v) ? t('ma_enter_qty') : null },
     ], t))) {
-      if (!this.entryOrders().length) {
-        this.toast.error(this.i18n.t('ma_no_active_orders_msg'));
-      }
+      if (!this.entryOrders().length) this.toast.error(this.i18n.t('ma_no_active_orders_msg'));
       haptic('error');
       return;
     }
@@ -263,7 +237,8 @@ export class MaHomeComponent {
       qty: +this.entryQty!,
       defectQty: +(this.entryDefect || 0),
       date: new Date().toISOString(),
-      note: this.entryNote || this.i18n.t('ma_source_dashboard'),
+      note: this.entryNote || this.i18n.t('ma_source_miniapp'),
+      source: 'MINIAPP',
     }).subscribe({
       next: () => {
         this.entryBusy.set(false);
@@ -280,17 +255,5 @@ export class MaHomeComponent {
         this.entryError.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
-  }
-
-  greeting(): string {
-    const h = new Date().getHours();
-    if (h < 12) return this.i18n.t('greeting_morning');
-    if (h < 18) return this.i18n.t('greeting_afternoon');
-    return this.i18n.t('greeting_evening');
-  }
-
-  stageIcon(): string {
-    const s = this.ma.user()?.department?.stage;
-    return ({ CUTTING: 'scissors', SEWING: 'needle', WASHING: 'droplets', LASER: 'zap', PACKING: 'package', LOADING: 'truck' } as Record<string, string>)[s ?? ''] ?? 'user';
   }
 }

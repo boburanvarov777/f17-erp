@@ -325,8 +325,9 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                   <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
                   <td class="small">{{ e.user ? e.user.lastName + ' ' + e.user.firstName : '—' }}</td>
                   <td>
-                    <span class="badge" [class.badge-info]="e.source === 'TELEGRAM'" [class.badge-neutral]="e.source !== 'TELEGRAM'">
-                      {{ e.source }}
+                    <span class="badge" [class.badge-info]="isTelegramSource(e.source)" [class.badge-neutral]="!isTelegramSource(e.source)">
+                      @if (isTelegramSource(e.source)) { <ui-icon name="send" [size]="10" /> }
+                      {{ sourceLabel(e.source) }}
                     </span>
                   </td>
                   <td class="actions">
@@ -656,5 +657,15 @@ export class ProductionComponent {
       },
       error: () => this.busy.set(false),
     });
+  }
+
+  isTelegramSource(source: string): boolean {
+    return source === 'TELEGRAM' || source === 'MINIAPP';
+  }
+
+  sourceLabel(source: string): string {
+    if (this.isTelegramSource(source)) return this.i18n.t('source_telegram');
+    if (source === 'WEB') return this.i18n.t('source_web');
+    return source;
   }
 }
