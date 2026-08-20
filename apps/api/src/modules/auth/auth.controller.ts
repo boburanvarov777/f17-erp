@@ -31,8 +31,8 @@ export class AuthController {
 
   @ApiBearerAuth()
   @Post('logout')
-  logout(@CurrentUser('sub') userId: string, @Body() dto: Partial<RefreshDto>) {
-    return this.auth.logout(userId, dto?.refreshToken);
+  logout(@CurrentUser('sub') userId: string, @Body() dto: Partial<RefreshDto>, @Req() req: Request) {
+    return this.auth.logout(userId, dto?.refreshToken, this.ctx(req));
   }
 
   @ApiBearerAuth()

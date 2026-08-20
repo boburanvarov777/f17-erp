@@ -5,7 +5,7 @@ import { createHash, randomBytes } from 'crypto';
 import { forbidden, unauthorized } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtUser } from '../../common/decorators';
-import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
+import { AuditService, AUDIT_ACTIONS, formatAuditTelegramUsername } from '../audit/audit.service';
 import { LoginDto } from './dto';
 
 const ARGON_OPTS: argon2.Options = {
@@ -60,7 +60,14 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user.id, ctx);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-    this.audit.log({ userId: user.id, action: AUDIT_ACTIONS.LOGIN, entity: 'User', entityId: user.id, ...ctx });
+    this.audit.log({
+      userId: user.id,
+      action: AUDIT_ACTIONS.LOGIN,
+      entity: 'User',
+      entityId: user.id,
+      telegramUsername: formatAuditTelegramUsername(user.telegramUsername),
+      ...ctx,
+    });
 
     return { ...tokens, user: this.publicUser(user) };
   }
@@ -140,7 +147,7 @@ export class AuthService {
     return { ...tokens, user: this.publicUser(user) };
   }
 
-  async logout(userId: string, refreshToken?: string) {
+  async logout(userId: string, refreshToken?: string, ctx: { ip?: string; device?: string } = {}) {
     if (refreshToken) {
       await this.prisma.refreshToken.updateMany({
         where: { tokenHash: this.sha(refreshToken), userId },
@@ -149,7 +156,16 @@ export class AuthService {
     } else {
       await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     }
-    this.audit.log({ userId, action: AUDIT_ACTIONS.LOGOUT });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { telegramUsername: true },
+    });
+    this.audit.log({
+      userId,
+      action: AUDIT_ACTIONS.LOGOUT,
+      telegramUsername: formatAuditTelegramUsername(user?.telegramUsername),
+      ...ctx,
+    });
     return { success: true };
   }
 

@@ -35,6 +35,7 @@ export class AuditController {
         { action: { contains: dto.search, mode: 'insensitive' } },
         { entity: { contains: dto.search, mode: 'insensitive' } },
         { entityId: { contains: dto.search, mode: 'insensitive' } },
+        { telegramUsername: { contains: dto.search, mode: 'insensitive' } },
       ];
     }
     const [items, total] = await this.prisma.$transaction([

@@ -141,7 +141,8 @@ export interface NotificationItem {
 
 export interface AuditLog {
   id: string; action: string; entity?: string; entityId?: string;
-  oldValue?: unknown; newValue?: unknown; ip?: string; device?: string; createdAt: string;
+  oldValue?: unknown; newValue?: unknown; ip?: string; device?: string;
+  telegramUsername?: string | null; createdAt: string;
   user?: { id: string; firstName: string; lastName: string; login: string } | null;
 }
 

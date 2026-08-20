@@ -29,6 +29,16 @@ export interface AuditInput {
   newValue?: unknown;
   ip?: string;
   device?: string;
+  /** Stored as @nickname — captured once per row, never backfilled from User. */
+  telegramUsername?: string | null;
+}
+
+/** Normalise Telegram handle for audit snapshots (always @prefix when present). */
+export function formatAuditTelegramUsername(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  const handle = trimmed.replace(/^@+/, '');
+  return handle ? `@${handle}` : null;
 }
 
 @Injectable()
@@ -50,6 +60,7 @@ export class AuditService {
           newValue: (input.newValue as any) ?? undefined,
           ip: input.ip,
           device: input.device,
+          telegramUsername: input.telegramUsername ?? undefined,
         },
       })
       .catch((e) => this.logger.warn(`audit failed: ${e.message}`));

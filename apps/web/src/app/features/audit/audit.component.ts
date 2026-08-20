@@ -44,7 +44,7 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
           @if (d.items.length) {
             <div class="table-wrap">
               <table class="data">
-                <thead><tr><th>{{ 'when' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'what' | t }}</th><th>{{ 'entity' | t }}</th><th>{{ 'ip' | t }}</th><th class="actions"></th></tr></thead>
+                <thead><tr><th>{{ 'when' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'what' | t }}</th><th>{{ 'entity' | t }}</th><th>{{ 'telegram' | t }}</th><th>{{ 'ip' | t }}</th><th class="actions"></th></tr></thead>
                 <tbody>
                   @for (l of d.items; track l.id) {
                     <tr>
@@ -59,6 +59,11 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
                       </td>
                       <td><span class="badge" [class]="tone(l.action)">{{ l.action }}</span></td>
                       <td class="small">{{ l.entity || '—' }}<span class="tiny text-3 mono"> {{ l.entityId ? l.entityId.slice(-6) : '' }}</span></td>
+                      <td class="small">
+                        @if (l.telegramUsername) {
+                          <span class="badge badge-info mono">{{ l.telegramUsername }}</span>
+                        } @else { <span class="text-3">—</span> }
+                      </td>
                       <td class="mono tiny text-3">{{ l.ip || '—' }}</td>
                       <td class="actions">
                         @if (l.oldValue || l.newValue) {
@@ -91,6 +96,9 @@ import { PaginationComponent } from '../../shared/ui/pagination.component';
         </div>
         <div class="divider"></div>
         <div class="small text-3">{{ 'device' | t }}: {{ l.device || '—' }}</div>
+        @if (l.telegramUsername) {
+          <div class="small text-3 mt-1">{{ 'telegram' | t }}: <span class="mono">{{ l.telegramUsername }}</span></div>
+        }
         <div footer><button class="btn" type="button" (click)="detail.set(null)">{{ 'close' | t }}</button></div>
       </ui-modal>
     }

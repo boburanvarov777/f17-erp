@@ -608,6 +608,8 @@ model AuditLog {
   newValue  Json?
   ip        String?
   device    String?
+  /** Snapshot at event time — not updated when the user changes Telegram later. */
+  telegramUsername String?
   createdAt DateTime @default(now())
 
   @@index([userId])
