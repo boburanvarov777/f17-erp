@@ -10,6 +10,11 @@ printf '%s\n' 'ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "telegramUserna
   | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
   || echo "⚠ telegramUsername column ensure skipped"
 
+echo "▸ Ensuring stage_entries.workerName column…"
+printf '%s\n' 'ALTER TABLE "stage_entries" ADD COLUMN IF NOT EXISTS "workerName" TEXT;' \
+  | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
+  || echo "⚠ workerName column ensure skipped"
+
 echo "▸ Syncing seed data (roles, users, demo)…"
 node apps/api/prisma/compiled/prisma/seed.js || echo "⚠ seed skipped"
 

@@ -422,6 +422,7 @@ model StageEntry {
   userId       String?
   user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   note         String?
+  workerName   String?
   source       String     @default("WEB") // WEB | TELEGRAM | MINIAPP
   cancelled    Boolean    @default(false)
   meta         Json?

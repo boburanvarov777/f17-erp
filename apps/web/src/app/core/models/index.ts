@@ -66,7 +66,7 @@ export interface OrderStage {
 }
 
 export interface StageEntry {
-  id: string; qty: number; defectQty: number; date: string; note?: string;
+  id: string; qty: number; defectQty: number; date: string; note?: string; workerName?: string | null;
   source: 'WEB' | 'TELEGRAM' | 'MINIAPP'; cancelled: boolean;
   user?: { id: string; firstName: string; lastName: string } | null;
   meta?: Record<string, unknown>;

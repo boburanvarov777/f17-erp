@@ -5,6 +5,7 @@ import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
+import { resolveStageStatus, stageEndDate, stageProgress } from '../../common/utils/stage-status';
 import { STAGE_PERMISSION_PREFIX } from '../../common/permissions';
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
@@ -80,7 +81,7 @@ export class ProductionService {
       };
     }
 
-    const [items, total] = await this.prisma.$transaction([
+    const [raw, total] = await this.prisma.$transaction([
       this.prisma.orderStage.findMany({
         where, skip: dto.skip, take: dto.limit,
         orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
@@ -97,15 +98,28 @@ export class ProductionService {
       }),
       this.prisma.orderStage.count({ where }),
     ]);
-
+    const items = await Promise.all(raw.map((s) => this.syncStageStatus(s)));
     return paginate(items.map((s) => this.decorate(s)), total, dto);
   }
 
-  private decorate<T extends { planQty: number; doneQty: number; defectQty: number }>(s: T) {
+  /** Fix stale COMPLETED rows when planQty was increased after the stage finished. */
+  private async syncStageStatus<T extends { id: string; stage: StageType; doneQty: number; planQty: number; status: StageStatus; endDate: Date | null }>(s: T): Promise<T> {
+    const status = resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage);
+    if (status === s.status) return s;
+    const updated = await this.prisma.orderStage.update({
+      where: { id: s.id },
+      data: { status, endDate: stageEndDate(status, s.endDate) },
+    });
+    return { ...s, ...updated };
+  }
+
+  private decorate<T extends { stage?: StageType; planQty: number; doneQty: number; defectQty: number; status?: StageStatus }>(s: T) {
+    const status = resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage);
     return {
       ...s,
+      status,
       remainingQty: Math.max(0, s.planQty - s.doneQty),
-      progress: s.planQty > 0 ? Math.min(100, Math.round((s.doneQty / s.planQty) * 100)) : 0,
+      progress: stageProgress(s.doneQty, s.planQty, s.stage),
       defectRate: s.doneQty + s.defectQty > 0 ? +((s.defectQty / (s.doneQty + s.defectQty)) * 100).toFixed(2) : 0,
     };
   }
@@ -127,7 +141,8 @@ export class ProductionService {
       where: { orderId, stage }, orderBy: { date: 'desc' },
       include: { user: { select: { firstName: true, lastName: true } } },
     });
-    return { ...this.decorate(s), defects };
+    const synced = await this.syncStageStatus(s);
+    return { ...this.decorate(synced), defects };
   }
 
   /**
@@ -160,9 +175,7 @@ export class ProductionService {
           });
         }
       }
-      if (current.doneQty + dto.qty > current.planQty) {
-        throw badRequest('err_over_plan', { plan: current.planQty, done: current.doneQty, qty: dto.qty });
-      }
+      // Cutting may exceed order qty; later stages are capped by the previous stage output (flow check above).
 
       const entry = await tx.stageEntry.create({
         data: {
@@ -172,6 +185,7 @@ export class ProductionService {
           date: entryDate(dto.date),
           userId: actor.sub,
           note: dto.note,
+          workerName: dto.workerName?.trim() || null,
           source,
           meta: (dto.meta as any) ?? undefined,
         },
@@ -194,7 +208,7 @@ export class ProductionService {
 
       const doneQty = current.doneQty + dto.qty;
       const defectQty = current.defectQty + (dto.defectQty ?? 0);
-      const status: StageStatus = doneQty >= current.planQty ? 'COMPLETED' : 'IN_PROGRESS';
+      const status = resolveStageStatus(doneQty, current.planQty, current.status, stage);
 
       const updated = await tx.orderStage.update({
         where: { id: current.id },
@@ -236,7 +250,7 @@ export class ProductionService {
     const payload = {
       orderId: dto.orderId, orderNumber: result.order.number, stage,
       doneQty: result.stage.doneQty, planQty: result.stage.planQty,
-      progress: result.stage.planQty ? Math.round((result.stage.doneQty / result.stage.planQty) * 100) : 0,
+      progress: stageProgress(result.stage.doneQty, result.stage.planQty, stage),
       status: result.stage.status, by: actor.fullName, source, at: new Date(),
     };
     this.events.emitAll('production:updated', payload);
@@ -276,12 +290,13 @@ export class ProductionService {
       });
       const doneQty = Math.max(0, entry.orderStage.doneQty - entry.qty);
       const defectQty = Math.max(0, entry.orderStage.defectQty - entry.defectQty);
+      const status = resolveStageStatus(doneQty, entry.orderStage.planQty, entry.orderStage.status, entry.orderStage.stage);
       return tx.orderStage.update({
         where: { id: entry.orderStageId },
         data: {
           doneQty, defectQty,
-          status: doneQty === 0 ? 'WAITING' : doneQty >= entry.orderStage.planQty ? 'COMPLETED' : 'IN_PROGRESS',
-          endDate: doneQty >= entry.orderStage.planQty ? new Date() : null,
+          status,
+          endDate: stageEndDate(status, entry.orderStage.endDate),
         },
       });
     });
@@ -295,13 +310,17 @@ export class ProductionService {
     const existing = await this.prisma.orderStage.findUniqueOrThrow({ where: { id: stageId } });
     this.assertStageAccess(existing.stage, actor, 'update');
 
+    const planQty = dto.planQty ?? existing.planQty;
+    const status = dto.status ?? resolveStageStatus(existing.doneQty, planQty, existing.status, existing.stage);
+    const countersChanged = dto.planQty !== undefined || dto.status !== undefined;
+
     const updated = await this.prisma.orderStage.update({
       where: { id: stageId },
       data: {
         planQty: dto.planQty,
-        status: dto.status,
+        status,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : countersChanged ? stageEndDate(status, existing.endDate) : undefined,
         deadline: dto.deadline ? new Date(dto.deadline) : undefined,
         ...(dto.responsibleId !== undefined
           ? { responsible: dto.responsibleId ? { connect: { id: dto.responsibleId } } : { disconnect: true } }

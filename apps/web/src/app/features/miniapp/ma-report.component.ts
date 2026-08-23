@@ -68,6 +68,11 @@ import { haptic } from './telegram';
         </div>
 
         <div class="field mt-3">
+          <label class="label">{{ 'worker_name' | t }}</label>
+          <input class="input" [(ngModel)]="workerName" [placeholder]="'worker_name_placeholder' | t" />
+        </div>
+
+        <div class="field mt-3">
           <label class="label">{{ 'note' | t }}</label>
           <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
         </div>
@@ -107,6 +112,7 @@ export class MaReportComponent {
   qty: number | null = null;
   defectQty: number | null = null;
   note = '';
+  workerName = '';
 
   readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
   readonly stageSlug = computed(() => this.stageType()?.toLowerCase() ?? '');
@@ -134,6 +140,7 @@ export class MaReportComponent {
     this.qty = null;
     this.defectQty = null;
     this.note = '';
+    this.workerName = '';
     this.error.set('');
     this.ok.set(false);
   }
@@ -159,6 +166,7 @@ export class MaReportComponent {
         defectQty: +(this.defectQty || 0),
         date: new Date().toISOString(),
         note: this.note || this.i18n.t('ma_source_miniapp'),
+        workerName: this.workerName.trim() || undefined,
         source: 'MINIAPP',
       })
       .subscribe({

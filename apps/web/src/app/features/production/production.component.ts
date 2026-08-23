@@ -124,7 +124,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                       <td class="num bold">{{ s.doneQty | num }}</td>
                       <td class="num">{{ s.remainingQty | num }}</td>
                       <td class="num" [style.color]="s.defectQty ? 'var(--danger)' : ''">{{ s.defectQty | num }}</td>
-                      <td><ui-progress [value]="s.doneQty" [max]="s.planQty" /></td>
+                      <td><ui-progress [value]="s.doneQty" [max]="s.planQty" [allowOver100]="isCutting()" /></td>
                       <td><ui-status [value]="s.status" /></td>
                       <td class="small">{{ s.responsible ? s.responsible.lastName : '—' }}</td>
                       <td class="small nowrap">{{ s.order?.deadline | shortDate }}</td>
@@ -132,7 +132,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                         <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openDetail(s)" [attr.data-tip]="'view' | t">
                           <ui-icon name="eye" [size]="15" />
                         </button>
-                        @if (canWrite() && s.status !== 'COMPLETED') {
+                        @if (canWrite() && (isCutting() || s.status !== 'COMPLETED')) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'update_operation' | t">
                             <ui-icon name="pencil" [size]="15" />
                           </button>
@@ -212,6 +212,10 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="field">
             <label class="label">{{ 'defect_qty' | t }}</label>
             <input class="input" groupedNumber [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
+          </div>
+          <div class="field">
+            <label class="label">{{ 'worker_name' | t }}</label>
+            <input class="input" [(ngModel)]="entry.workerName" [placeholder]="'worker_name_placeholder' | t" />
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
@@ -302,7 +306,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" style="font-size:21px;color:var(--danger)">{{ s.defectQty | num }}</div></div>
         </div>
 
-        @if (canWrite()) {
+        @if (canWrite() && canAssignUsers()) {
           <div class="row gap-2 mb-4 wrap">
             <select class="select" style="width:auto;min-width:170px" [(ngModel)]="assignId" (ngModelChange)="assignFe.clear('assignId')" [class.field-invalid]="assignFe.has('assignId')">
               <option value="">{{ 'responsible' | t }}…</option>
@@ -316,7 +320,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
+            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
@@ -324,6 +328,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                   <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}</td>
                   <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
                   <td class="small">{{ e.user ? e.user.lastName + ' ' + e.user.firstName : '—' }}</td>
+                  <td class="small">{{ e.workerName || '—' }}</td>
                   <td>
                     <span class="badge" [class.badge-info]="isTelegramSource(e.source)" [class.badge-neutral]="!isTelegramSource(e.source)">
                       @if (isTelegramSource(e.source)) { <ui-icon name="send" [size]="10" /> }
@@ -338,7 +343,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+              } @empty { <tr><td colspan="7"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
             </tbody>
           </table>
         </div>
@@ -430,14 +435,16 @@ export class ProductionComponent {
   readonly shipmentFe = new FieldErrorsState();
   readonly assignFe = new FieldErrorsState();
 
-  entry = { orderId: '', qty: null as number | null, defectQty: null as number | null, date: '', note: '', meta: {} as Record<string, unknown> };
+  entry = { orderId: '', qty: null as number | null, defectQty: null as number | null, date: '', note: '', workerName: '', meta: {} as Record<string, unknown> };
   defect = { type: '', qty: null as number | null, reason: '', comment: '' };
   shipment: Partial<Shipment> & { orderId?: string; status?: string } = {};
 
   readonly stageType = computed<StageType>(() => SLUG_TO_STAGE[this.stage()?.toLowerCase()] ?? 'CUTTING');
   readonly icon = computed(() => STAGE_ICON[this.stageType()]);
   readonly isLoading = computed(() => this.stageType() === 'LOADING');
+  readonly isCutting = computed(() => this.stageType() === 'CUTTING');
   readonly canWrite = computed(() => this.auth.can(`${this.stage().toLowerCase()}.create`, `${this.stage().toLowerCase()}.update`));
+  readonly canAssignUsers = computed(() => this.auth.can('users.read'));
   readonly openStages = computed(() => (this.data()?.items ?? []).filter((s) => s.status !== 'COMPLETED'));
 
   readonly sum = computed(() => {
@@ -445,7 +452,8 @@ export class ProductionComponent {
     const plan = items.reduce((a, s) => a + s.planQty, 0);
     const done = items.reduce((a, s) => a + s.doneQty, 0);
     const defect = items.reduce((a, s) => a + s.defectQty, 0);
-    return { plan, done, defect, remaining: Math.max(0, plan - done), progress: plan ? Math.round((done / plan) * 100) : 0 };
+    const progress = plan ? Math.round((done / plan) * 100) : 0;
+    return { plan, done, defect, remaining: Math.max(0, plan - done), progress };
   });
 
   private searchTimer?: ReturnType<typeof setTimeout>;
@@ -460,9 +468,11 @@ export class ProductionComponent {
       this.rtTimer = setTimeout(() => this.reload(false, true), 500);
     });
 
-    this.api.get<{ items: User[] }>('/users', { limit: 100 }).subscribe({
-      next: (r) => this.users.set(r.items), error: () => void 0,
-    });
+    if (this.auth.can('users.read')) {
+      this.api.get<{ items: User[] }>('/users', { limit: 100 }).subscribe({
+        next: (r) => this.users.set(r.items), error: () => void 0,
+      });
+    }
   }
 
   onSearch(): void {
@@ -493,7 +503,7 @@ export class ProductionComponent {
     this.entryFe.reset();
     this.entry = {
       orderId: s?.order?.id ?? '', qty: null, defectQty: null,
-      date: this.todayLocal(), note: '', meta: {},
+      date: this.todayLocal(), note: '', workerName: '', meta: {},
     };
     this.entryError.set('');
     this.entryModal.set(s ?? {});
@@ -523,6 +533,7 @@ export class ProductionComponent {
         defectQty: +(this.entry.defectQty || 0),
         date: new Date(this.entry.date).toISOString(),
         note: this.entry.note || undefined,
+        workerName: this.entry.workerName?.trim() || undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })
       .subscribe({
