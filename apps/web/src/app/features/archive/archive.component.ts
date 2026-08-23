@@ -6,6 +6,8 @@ import { ShortDatePipe } from '../../shared/pipes/format.pipe';
 import { TPipe } from '../../shared/pipes/t.pipe';
 import { EmptyComponent, LoadingComponent } from '../../shared/ui/empty.component';
 import { IconComponent } from '../../shared/ui/icon.component';
+import { ModalComponent } from '../../shared/ui/modal.component';
+import { OrderDetailComponent } from '../orders/order-detail.component';
 
 type ArchiveModuleKey = 'users' | 'orders' | 'models' | 'materials';
 type RestoreType = 'user' | 'order' | 'model' | 'material';
@@ -75,7 +77,7 @@ const MODULE_ICONS: Record<ArchiveModuleKey, string> = {
 @Component({
   selector: 'app-archive',
   standalone: true,
-  imports: [IconComponent, LoadingComponent, EmptyComponent, TPipe, ShortDatePipe],
+  imports: [IconComponent, LoadingComponent, EmptyComponent, ModalComponent, OrderDetailComponent, TPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -146,6 +148,9 @@ const MODULE_ICONS: Record<ArchiveModuleKey, string> = {
                         <td class="small">{{ o.client?.name || '—' }}</td>
                         <td class="small nowrap">{{ o.archivedAt | shortDate: true }}</td>
                         <td class="actions">
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openViewOrder(o)" [attr.data-tip]="'view' | t">
+                            <ui-icon name="eye" [size]="15" />
+                          </button>
                           <button class="btn btn-ghost btn-sm" type="button" (click)="restore('order', o.id)">
                             <ui-icon name="rotate-ccw" [size]="14" /> {{ 'restore' | t }}
                           </button>
@@ -216,6 +221,15 @@ const MODULE_ICONS: Record<ArchiveModuleKey, string> = {
         }
       }
     </div>
+
+    @if (viewOrder(); as o) {
+      <ui-modal size="full" [title]="o.number" [subtitle]="orderSubtitle(o)" (closed)="viewOrder.set(null)">
+        <app-order-detail [embedId]="o.id" [embedded]="true" />
+        <div footer>
+          <button class="btn" type="button" (click)="viewOrder.set(null)">{{ 'close' | t }}</button>
+        </div>
+      </ui-modal>
+    }
   `,
   styles: [`
     .mod-tabs {
@@ -269,6 +283,7 @@ export class ArchiveComponent {
   readonly module = signal<ArchiveModuleKey>('users');
   readonly data = signal<ArchivePayload | null>(null);
   readonly loading = signal(true);
+  readonly viewOrder = signal<ArchiveOrder | null>(null);
 
   constructor() {
     this.api.get<ArchiveModuleTab[]>('/archive/modules').subscribe({
@@ -293,11 +308,22 @@ export class ArchiveComponent {
   selectModule(key: ArchiveModuleKey): void {
     if (this.module() === key) return;
     this.module.set(key);
+    this.viewOrder.set(null);
     this.load(key);
+  }
+
+  openViewOrder(o: ArchiveOrder): void {
+    this.viewOrder.set(o);
+  }
+
+  orderSubtitle(o: ArchiveOrder): string {
+    const parts = [o.model?.code, o.client?.name].filter(Boolean);
+    return parts.join(' · ') || '—';
   }
 
   load(key?: ArchiveModuleKey): void {
     this.loading.set(true);
+    this.viewOrder.set(null);
     this.api.get<ArchivePayload>('/archive', { module: key ?? this.module() }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => this.loading.set(false),

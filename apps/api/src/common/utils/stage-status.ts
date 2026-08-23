@@ -2,6 +2,21 @@ import { StageStatus, StageType } from '@prisma/client';
 
 const CUTTING = 'CUTTING' satisfies StageType;
 
+/** Plan for stages after cutting — follows cutting output once any pieces are cut. */
+export function downstreamPlanQty(cuttingDoneQty: number, orderPlanQty: number): number {
+  return cuttingDoneQty > 0 ? cuttingDoneQty : orderPlanQty;
+}
+
+export function effectiveStagePlan(
+  stage: StageType | undefined,
+  storedPlanQty: number,
+  cuttingDoneQty: number,
+  orderPlanQty: number,
+): number {
+  if (!stage || stage === CUTTING) return storedPlanQty;
+  return downstreamPlanQty(cuttingDoneQty, orderPlanQty);
+}
+
 /** Derive stage status from counters; cutting never auto-completes so over-plan output stays editable. */
 export function resolveStageStatus(
   doneQty: number,

@@ -213,10 +213,6 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             <label class="label">{{ 'defect_qty' | t }}</label>
             <input class="input" groupedNumber [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
-          <div class="field">
-            <label class="label">{{ 'worker_name' | t }}</label>
-            <input class="input mono" [(ngModel)]="entry.workerName" [placeholder]="'worker_name_placeholder' | t" />
-          </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
             <ui-date-input [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
@@ -256,10 +252,12 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
             }
           }
 
-          <div class="field full">
-            <label class="label">{{ 'note' | t }}</label>
-            <input class="input" [(ngModel)]="entry.note" [placeholder]="'note_optional' | t" />
-          </div>
+          @if (isPacking()) {
+            <div class="field full">
+              <label class="label">{{ 'note' | t }}</label>
+              <input class="input" [(ngModel)]="entry.note" [placeholder]="'note_optional' | t" />
+            </div>
+          }
         </div>
         @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
 
@@ -299,9 +297,21 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
     <!-- ─── stage detail ─── -->
     @if (detail(); as s) {
       <ui-modal size="lg" [title]="s.order?.number || ''" [subtitle]="detailSubtitle(s)" (closed)="detail.set(null)">
+        @if (!isCutting() && (s.cuttingDoneQty ?? 0) > 0) {
+          <div class="cutting-feed-banner mb-4">
+            <ui-icon name="scissors" [size]="16" />
+            <span>{{ 'cutting_output_info' | t: { qty: (s.cuttingDoneQty ?? 0) | num } }}</span>
+          </div>
+        }
         <div class="stats mb-4">
           <div class="stat"><div class="k">{{ 'model' | t }}</div><div class="v small">{{ s.order?.model?.code || '—' }}</div></div>
-          <div class="stat"><div class="k">{{ 'plan_label' | t }}</div><div class="v" style="font-size:21px">{{ s.planQty | num }}</div></div>
+          <div class="stat">
+            <div class="k">{{ isCutting() ? ('plan_label' | t) : ('plan_from_cutting' | t) }}</div>
+            <div class="v" style="font-size:21px">{{ s.planQty | num }}</div>
+            @if (!isCutting() && (s.orderPlanQty ?? 0) > 0 && (s.cuttingDoneQty ?? 0) > 0 && s.cuttingDoneQty !== s.orderPlanQty) {
+              <div class="m">{{ 'order_qty_label' | t }}: {{ s.orderPlanQty | num }}</div>
+            }
+          </div>
           <div class="stat"><div class="k">{{ 'actual_label' | t }}</div><div class="v" style="font-size:21px;color:var(--success)">{{ s.doneQty | num }}</div></div>
           <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" style="font-size:21px;color:var(--danger)">{{ s.defectQty | num }}</div></div>
         </div>
@@ -320,13 +330,16 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
+            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th>@if (isPacking()) { <th>{{ 'note' | t }}</th> }<th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
                   <td class="small nowrap">{{ e.date | shortDate: true }}</td>
                   <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}</td>
                   <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
+                  @if (isPacking()) {
+                    <td class="small text-2">{{ entryNote(e.note) }}</td>
+                  }
                   <td>
                     @if (workerNick(e.workerName); as nick) {
                       <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ nick }}</span>
@@ -346,7 +359,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+              } @empty { <tr><td [attr.colspan]="isPacking() ? 7 : 6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
             </tbody>
           </table>
         </div>
@@ -400,6 +413,12 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
   `,
   styles: [`
     .head-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--primary-50); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+    .cutting-feed-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: var(--r-lg);
+      background: var(--info-bg); border: 1px solid var(--info-br);
+      color: var(--text-2); font-size: 13.5px; font-weight: 500;
+    }
   `],
 })
 export class ProductionComponent {
@@ -438,7 +457,7 @@ export class ProductionComponent {
   readonly shipmentFe = new FieldErrorsState();
   readonly assignFe = new FieldErrorsState();
 
-  entry = { orderId: '', qty: null as number | null, defectQty: null as number | null, date: '', note: '', workerName: '', meta: {} as Record<string, unknown> };
+  entry = { orderId: '', qty: null as number | null, defectQty: null as number | null, date: '', note: '', meta: {} as Record<string, unknown> };
   defect = { type: '', qty: null as number | null, reason: '', comment: '' };
   shipment: Partial<Shipment> & { orderId?: string; status?: string } = {};
 
@@ -446,6 +465,7 @@ export class ProductionComponent {
   readonly icon = computed(() => STAGE_ICON[this.stageType()]);
   readonly isLoading = computed(() => this.stageType() === 'LOADING');
   readonly isCutting = computed(() => this.stageType() === 'CUTTING');
+  readonly isPacking = computed(() => this.stageType() === 'PACKING');
   readonly canWrite = computed(() => this.auth.can(`${this.stage().toLowerCase()}.create`, `${this.stage().toLowerCase()}.update`));
   readonly canAssignUsers = computed(() => this.auth.can('users.read'));
   readonly openStages = computed(() => (this.data()?.items ?? []).filter((s) => s.status !== 'COMPLETED'));
@@ -506,7 +526,7 @@ export class ProductionComponent {
     this.entryFe.reset();
     this.entry = {
       orderId: s?.order?.id ?? '', qty: null, defectQty: null,
-      date: this.todayLocal(), note: '', workerName: '', meta: {},
+      date: this.todayLocal(), note: '', meta: {},
     };
     this.entryError.set('');
     this.entryModal.set(s ?? {});
@@ -535,8 +555,7 @@ export class ProductionComponent {
         qty: +this.entry.qty!,
         defectQty: +(this.entry.defectQty || 0),
         date: new Date(this.entry.date).toISOString(),
-        note: this.entry.note || undefined,
-        workerName: this.entry.workerName?.trim() || undefined,
+        note: this.isPacking() ? (this.entry.note || undefined) : undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })
       .subscribe({
@@ -688,5 +707,14 @@ export class ProductionComponent {
     if (this.isTelegramSource(source)) return this.i18n.t('source_telegram');
     if (source === 'WEB') return this.i18n.t('source_web');
     return source;
+  }
+
+  /** Hide auto-filled miniapp placeholder notes in the operations table. */
+  entryNote(raw?: string | null): string {
+    const note = raw?.trim();
+    if (!note) return '—';
+    const auto = this.i18n.t('ma_source_miniapp');
+    if (note === auto) return '—';
+    return note;
   }
 }

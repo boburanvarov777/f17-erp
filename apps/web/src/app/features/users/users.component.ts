@@ -248,7 +248,9 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                     <td>
                       @if (l.telegramUsername) {
                         <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ l.telegramUsername }}</span>
-                      } @else { <span class="tiny text-3">—</span> }
+                      } @else {
+                        <span class="badge badge-neutral">{{ 'source_web' | t }}</span>
+                      }
                     </td>
                     <td class="mono small">{{ l.phone || '—' }}</td>
                     <td class="tiny text-3">{{ l.ip || '—' }}</td>

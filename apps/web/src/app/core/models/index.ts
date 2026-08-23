@@ -65,6 +65,7 @@ export interface OrderStage {
   id: string; orderId: string; stage: StageType;
   planQty: number; doneQty: number; defectQty: number; status: StageStatus;
   remainingQty?: number; progress?: number; defectRate?: number;
+  orderPlanQty?: number; cuttingDoneQty?: number;
   responsible?: { id: string; firstName: string; lastName: string } | null;
   startDate?: string; endDate?: string; deadline?: string; meta?: Record<string, unknown>;
   entries?: StageEntry[]; order?: Order;

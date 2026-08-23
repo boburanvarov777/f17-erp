@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { Client, Order, ProductModel, StageType } from '../../core/models';
@@ -26,42 +27,51 @@ const STAGE_ICON: Record<string, string> = {
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PriorityBadgeComponent,
+    NgTemplateOutlet, FormsModule, RouterLink, IconComponent, ProgressComponent, StatusBadgeComponent, PriorityBadgeComponent,
     EmptyComponent, LoadingComponent, OrderFormComponent, TPipe, NumPipe, ShortDatePipe, AgoPipe, InitialsPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="page">
+    <div [class.page]="!embedded()" [class.embedded-detail]="embedded()">
       @if (loading() && !order()) {
         <ui-loading [count]="5" [height]="70" />
       } @else if (order(); as o) {
-        <div class="breadcrumb no-print">
-          <a routerLink="/orders">{{ 'orders_title' | t }}</a>
-          <ui-icon name="chevron-right" [size]="13" />
-          <span>{{ o.number }}</span>
-        </div>
+        @if (!embedded()) {
+          <div class="breadcrumb no-print">
+            <a [routerLink]="o.archivedAt ? '/archive' : '/orders'">{{ (o.archivedAt ? 'archive_title' : 'orders_title') | t }}</a>
+            <ui-icon name="chevron-right" [size]="13" />
+            <span>{{ o.number }}</span>
+          </div>
 
-        <div class="page-head">
-          <div>
-            <div class="row gap-3">
-              <span class="title mono">{{ o.number }}</span>
-              <ui-status [value]="o.status" />
-              <ui-priority [value]="o.priority" />
-              @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
+          <div class="page-head">
+            <div>
+              <div class="row gap-3">
+                <span class="title mono">{{ o.number }}</span>
+                <ui-status [value]="o.status" />
+                <ui-priority [value]="o.priority" />
+                @if (o.archivedAt) { <span class="badge badge-neutral"><ui-icon name="archive" [size]="12" /> {{ 'archived' | t }}</span> }
+                @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
+              </div>
+              <div class="sub">
+                {{ o.model ? o.model.code + ' — ' + o.model.name : '—' }} · {{ o.client?.name }} · {{ o.qty | num }} {{ 'pieces' | t }}
+              </div>
             </div>
-            <div class="sub">
-              {{ o.model ? o.model.code + ' — ' + o.model.name : '—' }} · {{ o.client?.name }} · {{ o.qty | num }} {{ 'pieces' | t }}
+            <div class="row gap-2 no-print">
+              <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
+              @if (auth.can('orders.update') && !o.archivedAt) {
+                <button class="btn btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /> {{ 'edit' | t }}</button>
+              }
             </div>
           </div>
-          <div class="row gap-2 no-print">
-            <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
-            @if (auth.can('orders.update')) {
-              <button class="btn btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /> {{ 'edit' | t }}</button>
-            }
+        }
+        @if (embedded()) {
+          <div class="row gap-2 mb-4 wrap">
+            <ui-status [value]="o.status" />
+            <ui-priority [value]="o.priority" />
+            <span class="badge badge-neutral"><ui-icon name="archive" [size]="12" /> {{ 'archived' | t }}</span>
+            @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
           </div>
-        </div>
-
-        <!-- summary -->
+        }
         <div class="stats mb-6">
           <div class="stat"><div class="k">{{ 'quantity' | t }}</div><div class="v">{{ o.qty | num }}</div></div>
           <div class="stat"><div class="k">{{ 'completed' | t }}</div><div class="v" style="color:var(--success)">{{ o.completedQty | num }}</div></div>
@@ -88,48 +98,61 @@ const STAGE_ICON: Record<string, string> = {
             </div>
             <div class="pipeline-grid">
               @for (s of o.stages; track s.stage; let i = $index) {
-                <a
-                  class="pipeline-card"
-                  [routerLink]="['/production', s.stage.toLowerCase()]"
-                  [class.done]="s.status === 'COMPLETED'"
-                  [class.active]="s.status === 'IN_PROGRESS'"
-                  [class.waiting]="s.status === 'WAITING'"
-                  [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
-                >
-                  <div class="pipeline-head">
-                    <span class="pipeline-icon"><ui-icon [name]="stageIcon(s.stage)" [size]="18" /></span>
-                    <div class="pipeline-title">
-                      <span class="pipeline-name">{{ 'stage_' + s.stage | t }}</span>
-                      <span class="pipeline-step">{{ i + 1 }} / {{ o.stages?.length ?? 0 }}</span>
-                    </div>
+                @if (readOnly()) {
+                  <div
+                    class="pipeline-card static"
+                    [class.done]="s.status === 'COMPLETED'"
+                    [class.active]="s.status === 'IN_PROGRESS'"
+                    [class.waiting]="s.status === 'WAITING'"
+                    [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+                  >
+                    <ng-container *ngTemplateOutlet="stageCardInner; context: { $implicit: s, i: i, total: o.stages?.length ?? 0 }" />
                   </div>
-
-                  <div class="pipeline-metrics">
-                    <span class="pipeline-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
-                    <span class="pipeline-pct" [style.color]="stagePctColor(s)">{{ stagePct(s) }}%</span>
-                  </div>
-                  <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
-
-                  <div class="pipeline-foot">
-                    <ui-status [value]="s.status" [wrap]="true" [light]="true" />
-                    @if (s.defectQty) {
-                      <span class="badge badge-danger badge-light pipeline-defect" [attr.data-tip]="'defect_label' | t">
-                        <ui-icon name="alert-triangle" [size]="11" />
-                        {{ s.defectQty | num }}
-                      </span>
-                    }
-                  </div>
-
-                  @if (s.responsible) {
-                    <div class="pipeline-user" [attr.title]="s.responsible.lastName + ' ' + s.responsible.firstName">
-                      {{ s.responsible.lastName }} {{ s.responsible.firstName }}
-                    </div>
-                  }
-                </a>
+                } @else {
+                  <a
+                    class="pipeline-card"
+                    [routerLink]="['/production', s.stage.toLowerCase()]"
+                    [class.done]="s.status === 'COMPLETED'"
+                    [class.active]="s.status === 'IN_PROGRESS'"
+                    [class.waiting]="s.status === 'WAITING'"
+                    [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+                  >
+                    <ng-container *ngTemplateOutlet="stageCardInner; context: { $implicit: s, i: i, total: o.stages?.length ?? 0 }" />
+                  </a>
+                }
               }
             </div>
           </div>
         </div>
+
+        <ng-template #stageCardInner let-s let-i="i" let-total="total">
+          <div class="pipeline-head">
+            <span class="pipeline-icon"><ui-icon [name]="stageIcon(s.stage)" [size]="18" /></span>
+            <div class="pipeline-title">
+              <span class="pipeline-name">{{ 'stage_' + s.stage | t }}</span>
+              <span class="pipeline-step">{{ i + 1 }} / {{ total }}</span>
+            </div>
+          </div>
+          <div class="pipeline-metrics">
+            <span class="pipeline-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
+            <span class="pipeline-pct" [style.color]="stagePctColor(s)">{{ stagePct(s) }}%</span>
+          </div>
+          <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" [allowOver100]="s.stage === 'CUTTING'" />
+          <div class="pipeline-foot">
+            <ui-status [value]="s.status" [wrap]="true" [light]="true" />
+            @if (s.defectQty) {
+              <span class="badge badge-danger badge-light pipeline-defect" [attr.data-tip]="'defect_label' | t">
+                <ui-icon name="alert-triangle" [size]="11" />
+                {{ s.defectQty | num }}
+              </span>
+            }
+          </div>
+          @if (s.responsible) {
+            <div class="pipeline-user" [attr.title]="s.responsible.lastName + ' ' + s.responsible.firstName">
+              {{ s.responsible.lastName }} {{ s.responsible.firstName }}
+            </div>
+          }
+        </ng-template>
 
         <!-- tabs -->
         <div class="tabs mb-4 no-print">
@@ -147,7 +170,10 @@ const STAGE_ICON: Record<string, string> = {
                   <dl class="kv">
                     <dt>{{ 'client' | t }}</dt><dd>{{ o.client?.name || '—' }}</dd>
                     <dt>{{ 'model' | t }}</dt>
-                    <dd>@if (o.model) { <a [routerLink]="['/models', o.model.id]">{{ o.model.code }} — {{ o.model.name }}</a> } @else { — }</dd>
+                    <dd>@if (o.model) {
+                      @if (readOnly()) { {{ o.model.code }} — {{ o.model.name }} }
+                      @else { <a [routerLink]="['/models', o.model.id]">{{ o.model.code }} — {{ o.model.name }}</a> }
+                    } @else { — }</dd>
                     <dt>{{ 'fabric' | t }}</dt><dd>{{ o.model?.fabric || '—' }}</dd>
                     <dt>{{ 'responsible' | t }}</dt><dd>{{ o.responsible ? o.responsible.lastName + ' ' + o.responsible.firstName : '—' }}</dd>
                     <dt>{{ 'created' | t }}</dt><dd>{{ o.createdBy ? o.createdBy.lastName + ' ' + o.createdBy.firstName : '—' }}</dd>
@@ -271,12 +297,14 @@ const STAGE_ICON: Record<string, string> = {
             <div class="card">
               <div class="card-head"><h3>{{ 'order_comments' | t }}</h3></div>
               <div class="card-body">
-                <div class="row gap-2 mb-4">
-                  <input class="input" [(ngModel)]="commentText" [placeholder]="'add_comment' | t" (keyup.enter)="addComment()" />
-                  <button class="btn btn-primary" type="button" (click)="addComment()" [disabled]="!commentText.trim()" [attr.data-tip]="'add_comment' | t">
-                    <ui-icon name="send" [size]="15" />
-                  </button>
-                </div>
+                @if (!readOnly()) {
+                  <div class="row gap-2 mb-4">
+                    <input class="input" [(ngModel)]="commentText" [placeholder]="'add_comment' | t" (keyup.enter)="addComment()" />
+                    <button class="btn btn-primary" type="button" (click)="addComment()" [disabled]="!commentText.trim()" [attr.data-tip]="'add_comment' | t">
+                      <ui-icon name="send" [size]="15" />
+                    </button>
+                  </div>
+                }
                 @for (c of o.comments; track c.id) {
                   <div class="row gap-3 mb-4" style="align-items:flex-start">
                     <span class="avatar sm">{{ c.user?.firstName | initials: c.user?.lastName }}</span>
@@ -296,8 +324,8 @@ const STAGE_ICON: Record<string, string> = {
       }
     </div>
 
-    @if (editing(); as o) {
-      <app-order-form [order]="o" [clients]="clients()" [models]="models()"
+    @if (editing() && !embedded()) {
+      <app-order-form [order]="editing()!" [clients]="clients()" [models]="models()"
                        (clientsChange)="clients.set($event)"
                        (saved)="onSaved()" (closed)="editing.set(null)" />
     }
@@ -347,6 +375,12 @@ const STAGE_ICON: Record<string, string> = {
       box-shadow: var(--sh-2);
       transform: translateY(-1px);
       text-decoration: none;
+    }
+    .pipeline-card.static,
+    .pipeline-card.static:hover {
+      cursor: default;
+      transform: none;
+      box-shadow: none;
     }
     .pipeline-card.done { background: var(--success-bg); border-color: var(--success-br); }
     .pipeline-card.active { background: var(--warning-bg); border-color: var(--warning-br); }
@@ -411,6 +445,9 @@ const STAGE_ICON: Record<string, string> = {
     .tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary-500); margin-top: 6px; flex: 0 0 auto; }
     .tl-dot.audit { background: var(--text-3); }
     .tl-dot.defect { background: var(--danger); }
+
+    .embedded-detail .stats { margin-bottom: 20px; }
+    .embedded-detail .card.mb-6 { margin-bottom: 20px; }
   `],
 })
 export class OrderDetailComponent {
@@ -420,7 +457,9 @@ export class OrderDetailComponent {
   readonly auth = inject(AuthService);
   readonly rt = inject(RealtimeService);
 
-  readonly id = input.required<string>();
+  readonly id = input<string>('');
+  readonly embedId = input<string>('');
+  readonly embedded = input(false);
 
   readonly order = signal<Order | null>(null);
   readonly history = signal<HistoryRow[]>([]);
@@ -435,6 +474,8 @@ export class OrderDetailComponent {
 
   readonly totalDefects = computed(() => (this.order()?.stages ?? []).reduce((a, s) => a + s.defectQty, 0));
   readonly sizeTotal = computed(() => (this.order()?.sizes ?? []).reduce((a, s) => a + s.qty, 0));
+  readonly readOnly = computed(() => this.embedded() || !!this.order()?.archivedAt);
+  readonly activeId = computed(() => (this.embedded() ? this.embedId() : this.id()) || '');
   /** Only warn when the sample is actively tracked and cutting is still running. */
   readonly sampleWarning = computed(() => {
     const o = this.order();
@@ -444,16 +485,19 @@ export class OrderDetailComponent {
   });
 
   constructor() {
-    effect(() => { const id = this.id(); if (id) this.load(id); });
-    // Push updates keep an open order card in sync with the shop floor.
+    effect(() => { const id = this.activeId(); if (id) this.load(id); });
     effect(() => {
+      if (this.embedded()) return;
       const ev = this.rt.lastProduction();
-      if (ev && ev.orderId === this.id()) this.load(this.id());
+      if (ev && ev.orderId === this.activeId()) this.load(this.activeId());
     });
 
-    this.api.get<Client[]>('/clients').subscribe({ next: (c) => this.clients.set(c), error: () => void 0 });
-    this.api.get<{ items: ProductModel[] }>('/models', { limit: 200 }).subscribe({
-      next: (m) => this.models.set(m.items), error: () => void 0,
+    effect(() => {
+      if (this.embedded()) return;
+      this.api.get<Client[]>('/clients').subscribe({ next: (c) => this.clients.set(c), error: () => void 0 });
+      this.api.get<{ items: ProductModel[] }>('/models', { limit: 200 }).subscribe({
+        next: (m) => this.models.set(m.items), error: () => void 0,
+      });
     });
   }
 

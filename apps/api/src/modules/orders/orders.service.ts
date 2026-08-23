@@ -5,7 +5,7 @@ import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
-import { resolveStageStatus, stageEndDate, stageProgress } from '../../common/utils/stage-status';
+import { resolveStageStatus, stageEndDate, stageProgress, downstreamPlanQty, effectiveStagePlan } from '../../common/utils/stage-status';
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -63,10 +63,20 @@ export class OrdersService {
   }
 
   withProgress<T extends { qty: number; stages: { stage: StageType; planQty: number; doneQty: number; defectQty: number; status: StageStatus }[]; deadline: Date; status: OrderStatus }>(order: T) {
-    const stages = order.stages.map((s) => ({
-      ...s,
-      status: resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage),
-    }));
+    const cutting = order.stages.find((s) => s.stage === 'CUTTING');
+    const cuttingDoneQty = cutting?.doneQty ?? 0;
+    const stages = order.stages.map((s) => {
+      const planQty = effectiveStagePlan(s.stage, s.planQty, cuttingDoneQty, order.qty);
+      return {
+        ...s,
+        planQty,
+        orderPlanQty: order.qty,
+        cuttingDoneQty,
+        status: resolveStageStatus(s.doneQty, planQty, s.status, s.stage),
+        remainingQty: Math.max(0, planQty - s.doneQty),
+        progress: stageProgress(s.doneQty, planQty, s.stage),
+      };
+    });
     const loading = stages.find((s) => s.stage === 'LOADING');
     const done = loading?.doneQty ?? 0;
     const totalDone = stages.reduce((a, s) => a + s.doneQty, 0);
@@ -216,11 +226,14 @@ export class OrdersService {
       }
       if (dto.qty && dto.qty !== existing.qty) {
         const stages = await tx.orderStage.findMany({ where: { orderId: id } });
+        const cutting = stages.find((s) => s.stage === 'CUTTING');
+        const cuttingDone = cutting?.doneQty ?? 0;
         for (const s of stages) {
-          const status = resolveStageStatus(s.doneQty, dto.qty, s.status, s.stage);
+          const planQty = s.stage === 'CUTTING' ? dto.qty : downstreamPlanQty(cuttingDone, dto.qty);
+          const status = resolveStageStatus(s.doneQty, planQty, s.status, s.stage);
           await tx.orderStage.update({
             where: { id: s.id },
-            data: { planQty: dto.qty, status, endDate: stageEndDate(status, s.endDate) },
+            data: { planQty, status, endDate: stageEndDate(status, s.endDate) },
           });
         }
       }

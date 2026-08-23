@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { OrderStage, Paginated, PlanModelBreakdown, PlanView } from '../../core/models';
@@ -80,14 +80,12 @@ type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
             <label class="label">{{ 'defect_qty' | t }}</label>
             <input class="input" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="entryDefect" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
-          <div class="field mt-3">
-            <label class="label">{{ 'worker_name' | t }}</label>
-            <input class="input mono" [(ngModel)]="entryWorkerName" [placeholder]="'worker_name_placeholder' | t" />
-          </div>
-          <div class="field mt-3">
-            <label class="label">{{ 'note' | t }}</label>
-            <input class="input" [(ngModel)]="entryNote" [placeholder]="'note_optional' | t" />
-          </div>
+          @if (isPacking()) {
+            <div class="field mt-3">
+              <label class="label">{{ 'note' | t }}</label>
+              <input class="input" [(ngModel)]="entryNote" [placeholder]="'note_optional' | t" />
+            </div>
+          }
         } @else {
           <div class="tiny text-3">{{ 'ma_no_active_orders_msg' | t }}</div>
         }
@@ -139,7 +137,8 @@ export class MaHomeComponent {
   entryQty: number | null = null;
   entryDefect: number | null = null;
   entryNote = '';
-  entryWorkerName = '';
+
+  readonly isPacking = computed(() => this.ma.user()?.department?.stage === 'PACKING');
 
   constructor() {
     this.reloadPlans();
@@ -190,7 +189,6 @@ export class MaHomeComponent {
     this.entryQty = null;
     this.entryDefect = null;
     this.entryNote = '';
-    this.entryWorkerName = '';
     this.entryError.set('');
     this.entryModal.set(true);
     haptic('success');
@@ -245,8 +243,7 @@ export class MaHomeComponent {
       qty: +this.entryQty!,
       defectQty: +(this.entryDefect || 0),
       date: new Date().toISOString(),
-      note: this.entryNote || this.i18n.t('ma_source_miniapp'),
-      workerName: this.entryWorkerName.trim() || undefined,
+      note: this.isPacking() ? (this.entryNote || this.i18n.t('ma_source_miniapp')) : this.i18n.t('ma_source_miniapp'),
       source: 'MINIAPP',
     }).subscribe({
       next: () => {

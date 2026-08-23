@@ -67,15 +67,12 @@ import { haptic } from './telegram';
           <input class="input" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="defectQty" [placeholder]="'defect_qty_placeholder' | t" />
         </div>
 
-        <div class="field mt-3">
-          <label class="label">{{ 'worker_name' | t }}</label>
-          <input class="input mono" [(ngModel)]="workerName" [placeholder]="'worker_name_placeholder' | t" />
-        </div>
-
-        <div class="field mt-3">
-          <label class="label">{{ 'note' | t }}</label>
-          <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
-        </div>
+        @if (isPacking()) {
+          <div class="field mt-3">
+            <label class="label">{{ 'note' | t }}</label>
+            <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
+          </div>
+        }
 
         @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
         @if (ok()) { <div class="badge badge-success mt-3" style="width:100%;justify-content:center;padding:10px;border-radius:var(--r)"><ui-icon name="check-circle" [size]="15" /> {{ 'saved' | t }}</div> }
@@ -112,10 +109,10 @@ export class MaReportComponent {
   qty: number | null = null;
   defectQty: number | null = null;
   note = '';
-  workerName = '';
 
   readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
   readonly stageSlug = computed(() => this.stageType()?.toLowerCase() ?? '');
+  readonly isPacking = computed(() => this.stageType() === 'PACKING');
 
   constructor() {
     this.load();
@@ -140,7 +137,6 @@ export class MaReportComponent {
     this.qty = null;
     this.defectQty = null;
     this.note = '';
-    this.workerName = '';
     this.error.set('');
     this.ok.set(false);
   }
@@ -165,8 +161,7 @@ export class MaReportComponent {
         qty: +this.qty!,
         defectQty: +(this.defectQty || 0),
         date: new Date().toISOString(),
-        note: this.note || this.i18n.t('ma_source_miniapp'),
-        workerName: this.workerName.trim() || undefined,
+        note: this.isPacking() ? (this.note || this.i18n.t('ma_source_miniapp')) : this.i18n.t('ma_source_miniapp'),
         source: 'MINIAPP',
       })
       .subscribe({

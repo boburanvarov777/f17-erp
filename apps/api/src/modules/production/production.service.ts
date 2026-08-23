@@ -5,7 +5,7 @@ import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
-import { resolveStageStatus, stageEndDate, stageProgress } from '../../common/utils/stage-status';
+import { resolveStageStatus, stageEndDate, stageProgress, downstreamPlanQty, effectiveStagePlan } from '../../common/utils/stage-status';
 import { STAGE_PERMISSION_PREFIX } from '../../common/permissions';
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS, formatAuditTelegramUsername } from '../audit/audit.service';
@@ -24,6 +24,8 @@ export const STAGE_SLUGS: Record<string, StageType> = {
 };
 
 const SORTABLE = ['doneQty', 'planQty', 'defectQty', 'status', 'createdAt', 'updatedAt', 'deadline'];
+
+type StageFeedCtx = { cuttingDoneQty: number; orderQty: number };
 
 /** Date-only strings (YYYY-MM-DD) would otherwise land at UTC midnight and sink to the bottom of today's list. */
 function entryDate(raw: string): Date {
@@ -98,30 +100,84 @@ export class ProductionService {
       }),
       this.prisma.orderStage.count({ where }),
     ]);
-    const items = await Promise.all(raw.map((s) => this.syncStageStatus(s)));
-    return paginate(items.map((s) => this.decorate(s)), total, dto);
+    const orderIds = [...new Set(raw.map((s) => s.orderId))];
+    const cuttingMap = await this.cuttingMap(orderIds);
+    const items = await Promise.all(raw.map((s) => {
+      const feed = this.feedCtx(s.orderId, s.order.qty, cuttingMap);
+      return this.syncStageStatus(s, feed);
+    }));
+    return paginate(items.map((s) => this.decorate(s, this.feedCtx(s.orderId, s.order.qty, cuttingMap))), total, dto);
   }
 
-  /** Fix stale COMPLETED rows when planQty was increased after the stage finished. */
-  private async syncStageStatus<T extends { id: string; stage: StageType; doneQty: number; planQty: number; status: StageStatus; endDate: Date | null }>(s: T): Promise<T> {
-    const status = resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage);
-    if (status === s.status) return s;
+  private async cuttingMap(orderIds: string[]): Promise<Map<string, { doneQty: number; planQty: number }>> {
+    if (!orderIds.length) return new Map();
+    const rows = await this.prisma.orderStage.findMany({
+      where: { orderId: { in: orderIds }, stage: 'CUTTING' },
+      select: { orderId: true, doneQty: true, planQty: true },
+    });
+    return new Map(rows.map((r) => [r.orderId, { doneQty: r.doneQty, planQty: r.planQty }]));
+  }
+
+  private feedCtx(orderId: string, orderQty: number, cuttingMap: Map<string, { doneQty: number; planQty: number }>): StageFeedCtx {
+    const cutting = cuttingMap.get(orderId);
+    return { cuttingDoneQty: cutting?.doneQty ?? 0, orderQty };
+  }
+
+  /** Fix stale status/plan when cutting output drives downstream targets. */
+  private async syncStageStatus<
+    T extends { id: string; orderId: string; stage: StageType; doneQty: number; planQty: number; status: StageStatus; endDate: Date | null },
+  >(s: T, feed: StageFeedCtx): Promise<T> {
+    const effectivePlan = effectiveStagePlan(s.stage, s.planQty, feed.cuttingDoneQty, feed.orderQty);
+    const status = resolveStageStatus(s.doneQty, effectivePlan, s.status, s.stage);
+    const planChanged = s.stage !== 'CUTTING' && s.planQty !== effectivePlan;
+    if (status === s.status && !planChanged) return s;
     const updated = await this.prisma.orderStage.update({
       where: { id: s.id },
-      data: { status, endDate: stageEndDate(status, s.endDate) },
+      data: {
+        ...(planChanged ? { planQty: effectivePlan } : {}),
+        status,
+        endDate: stageEndDate(status, s.endDate),
+      },
     });
-    return { ...s, ...updated };
+    return { ...s, ...updated, planQty: updated.planQty };
   }
 
-  private decorate<T extends { stage?: StageType; planQty: number; doneQty: number; defectQty: number; status?: StageStatus }>(s: T) {
-    const status = resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage);
+  private decorate<
+    T extends { stage?: StageType; planQty: number; doneQty: number; defectQty: number; status?: StageStatus },
+  >(s: T, feed?: StageFeedCtx) {
+    const orderQty = feed?.orderQty ?? s.planQty;
+    const cuttingDoneQty = feed?.cuttingDoneQty ?? 0;
+    const effectivePlan = effectiveStagePlan(s.stage, s.planQty, cuttingDoneQty, orderQty);
+    const status = resolveStageStatus(s.doneQty, effectivePlan, s.status, s.stage);
     return {
       ...s,
+      planQty: effectivePlan,
+      orderPlanQty: orderQty,
+      cuttingDoneQty,
       status,
-      remainingQty: Math.max(0, s.planQty - s.doneQty),
-      progress: stageProgress(s.doneQty, s.planQty, s.stage),
+      remainingQty: Math.max(0, effectivePlan - s.doneQty),
+      progress: stageProgress(s.doneQty, effectivePlan, s.stage),
       defectRate: s.doneQty + s.defectQty > 0 ? +((s.defectQty / (s.doneQty + s.defectQty)) * 100).toFixed(2) : 0,
     };
+  }
+
+  private async syncDownstreamPlans(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    cuttingDoneQty: number,
+    orderQty: number,
+  ): Promise<void> {
+    const plan = downstreamPlanQty(cuttingDoneQty, orderQty);
+    const downstream = await tx.orderStage.findMany({
+      where: { orderId, stage: { not: 'CUTTING' } },
+    });
+    for (const s of downstream) {
+      const status = resolveStageStatus(s.doneQty, plan, s.status, s.stage);
+      await tx.orderStage.update({
+        where: { id: s.id },
+        data: { planQty: plan, status, endDate: stageEndDate(status, s.endDate) },
+      });
+    }
   }
 
   async detail(stage: StageType, orderId: string, actor: JwtUser) {
@@ -141,8 +197,16 @@ export class ProductionService {
       where: { orderId, stage }, orderBy: { date: 'desc' },
       include: { user: { select: { firstName: true, lastName: true } } },
     });
-    const synced = await this.syncStageStatus(s);
-    return { ...this.decorate(synced), defects };
+    const cutting = await this.prisma.orderStage.findFirst({
+      where: { orderId, stage: 'CUTTING' },
+      select: { doneQty: true, planQty: true },
+    });
+    const feed: StageFeedCtx = {
+      cuttingDoneQty: cutting?.doneQty ?? 0,
+      orderQty: s.order.qty,
+    };
+    const synced = await this.syncStageStatus(s, feed);
+    return { ...this.decorate(synced, feed), defects };
   }
 
   /**
@@ -177,6 +241,8 @@ export class ProductionService {
       }
       // Cutting may exceed order qty; later stages are capped by the previous stage output (flow check above).
 
+      const workerName = await this.resolveWorkerName(actor, source, dto.workerName);
+
       const entry = await tx.stageEntry.create({
         data: {
           orderStageId: current.id,
@@ -185,7 +251,7 @@ export class ProductionService {
           date: entryDate(dto.date),
           userId: actor.sub,
           note: dto.note,
-          workerName: formatAuditTelegramUsername(dto.workerName),
+          workerName,
           source,
           meta: (dto.meta as any) ?? undefined,
         },
@@ -208,7 +274,12 @@ export class ProductionService {
 
       const doneQty = current.doneQty + dto.qty;
       const defectQty = current.defectQty + (dto.defectQty ?? 0);
-      const status = resolveStageStatus(doneQty, current.planQty, current.status, stage);
+      const cuttingStage = stage === 'CUTTING'
+        ? { doneQty, planQty: current.planQty }
+        : await tx.orderStage.findFirst({ where: { orderId: dto.orderId, stage: 'CUTTING' } });
+      const cuttingDoneQty = stage === 'CUTTING' ? doneQty : (cuttingStage?.doneQty ?? 0);
+      const effectivePlan = effectiveStagePlan(stage, current.planQty, cuttingDoneQty, current.order.qty);
+      const status = resolveStageStatus(doneQty, effectivePlan, current.status, stage);
 
       const updated = await tx.orderStage.update({
         where: { id: current.id },
@@ -220,6 +291,10 @@ export class ProductionService {
           ...(dto.meta ? { meta: { ...((current.meta as object) ?? {}), ...dto.meta } as any } : {}),
         },
       });
+
+      if (stage === 'CUTTING') {
+        await this.syncDownstreamPlans(tx, dto.orderId, doneQty, current.order.qty);
+      }
 
       // Open the next stage as soon as material becomes available.
       if (idx < STAGE_SEQUENCE.length - 1) {
@@ -247,25 +322,35 @@ export class ProductionService {
       newValue: { stage, qty: dto.qty, defectQty: dto.defectQty ?? 0, source },
     });
 
+    const cutting = await this.prisma.orderStage.findFirst({
+      where: { orderId: dto.orderId, stage: 'CUTTING' },
+      select: { doneQty: true },
+    });
+    const feed: StageFeedCtx = {
+      cuttingDoneQty: cutting?.doneQty ?? 0,
+      orderQty: result.order.qty,
+    };
+    const decorated = this.decorate(result.stage, feed);
+
     const payload = {
       orderId: dto.orderId, orderNumber: result.order.number, stage,
-      doneQty: result.stage.doneQty, planQty: result.stage.planQty,
-      progress: stageProgress(result.stage.doneQty, result.stage.planQty, stage),
-      status: result.stage.status, by: actor.fullName, source, at: new Date(),
+      doneQty: decorated.doneQty, planQty: decorated.planQty,
+      progress: decorated.progress,
+      status: decorated.status, by: actor.fullName, source, at: new Date(),
     };
     this.events.emitAll('production:updated', payload);
     this.events.emitAll('dashboard:refresh', { reason: 'production' });
 
-    if (result.stage.status === 'COMPLETED') {
+    if (decorated.status === 'COMPLETED') {
       await this.notifications.broadcast({
         type: 'STAGE_COMPLETED',
         title: `${result.order.number} — ${stage} yakunlandi`,
-        body: `${result.stage.doneQty} / ${result.stage.planQty} dona`,
+        body: `${decorated.doneQty} / ${decorated.planQty} dona`,
         link: `/orders/${dto.orderId}`,
       });
     }
 
-    return { ...this.decorate(result.stage), entry: result.entry };
+    return { ...decorated, entry: result.entry };
   }
 
   /** History is immutable: entries are reversed, never deleted. */
@@ -290,8 +375,19 @@ export class ProductionService {
       });
       const doneQty = Math.max(0, entry.orderStage.doneQty - entry.qty);
       const defectQty = Math.max(0, entry.orderStage.defectQty - entry.defectQty);
-      const status = resolveStageStatus(doneQty, entry.orderStage.planQty, entry.orderStage.status, entry.orderStage.stage);
-      return tx.orderStage.update({
+      const order = await tx.order.findUnique({ where: { id: entry.orderStage.orderId }, select: { qty: true } });
+      const cuttingStage = entry.orderStage.stage === 'CUTTING'
+        ? { doneQty, planQty: entry.orderStage.planQty }
+        : await tx.orderStage.findFirst({ where: { orderId: entry.orderStage.orderId, stage: 'CUTTING' } });
+      const cuttingDoneQty = entry.orderStage.stage === 'CUTTING' ? doneQty : (cuttingStage?.doneQty ?? 0);
+      const effectivePlan = effectiveStagePlan(
+        entry.orderStage.stage,
+        entry.orderStage.planQty,
+        cuttingDoneQty,
+        order?.qty ?? entry.orderStage.planQty,
+      );
+      const status = resolveStageStatus(doneQty, effectivePlan, entry.orderStage.status, entry.orderStage.stage);
+      const row = await tx.orderStage.update({
         where: { id: entry.orderStageId },
         data: {
           doneQty, defectQty,
@@ -299,11 +395,22 @@ export class ProductionService {
           endDate: stageEndDate(status, entry.orderStage.endDate),
         },
       });
+      if (entry.orderStage.stage === 'CUTTING' && order) {
+        await this.syncDownstreamPlans(tx, entry.orderStage.orderId, doneQty, order.qty);
+      }
+      return row;
     });
+
+    const order = await this.prisma.order.findUnique({ where: { id: updated.orderId }, select: { qty: true } });
+    const cutting = await this.prisma.orderStage.findFirst({
+      where: { orderId: updated.orderId, stage: 'CUTTING' },
+      select: { doneQty: true },
+    });
+    const feed: StageFeedCtx = { cuttingDoneQty: cutting?.doneQty ?? 0, orderQty: order?.qty ?? updated.planQty };
 
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.STAGE_ENTRY_CANCELLED, entity: 'StageEntry', entityId: entryId, oldValue: entry });
     this.events.emitAll('production:updated', { orderId: updated.orderId, stage: updated.stage, doneQty: updated.doneQty });
-    return this.decorate(updated);
+    return this.decorate(updated, feed);
   }
 
   async updateStage(stageId: string, dto: UpdateStageDto, actor: JwtUser) {
@@ -419,5 +526,21 @@ export class ProductionService {
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.SHIPMENT_UPDATED, entity: 'Shipment', entityId: shipment.id, newValue: dto });
     this.events.emitAll('shipment:updated', shipment);
     return shipment;
+  }
+
+  /** Web entries never store a worker nickname; Mini App / bot use linked Telegram @username. */
+  private async resolveWorkerName(
+    actor: JwtUser,
+    source: 'WEB' | 'TELEGRAM' | 'MINIAPP',
+    raw?: string | null,
+  ): Promise<string | null> {
+    if (source === 'WEB') return null;
+    const manual = formatAuditTelegramUsername(raw);
+    if (manual) return manual;
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+      select: { telegramUsername: true },
+    });
+    return formatAuditTelegramUsername(user?.telegramUsername);
   }
 }

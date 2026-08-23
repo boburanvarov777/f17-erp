@@ -9,7 +9,7 @@ import { IconComponent } from './icon.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="modal-backdrop" (click)="onBackdrop($event)">
-      <div class="modal" [class.lg]="size() === 'lg'" [class.xl]="size() === 'xl'" role="dialog" aria-modal="true">
+      <div class="modal" [class.lg]="size() === 'lg'" [class.xl]="size() === 'xl'" [class.full]="size() === 'full'" role="dialog" aria-modal="true">
         <div class="modal-head row-between">
           <div>
             <h2>{{ title() }}</h2>
@@ -28,7 +28,7 @@ import { IconComponent } from './icon.component';
 export class ModalComponent {
   readonly title = input('');
   readonly subtitle = input('');
-  readonly size = input<'md' | 'lg' | 'xl'>('md');
+  readonly size = input<'md' | 'lg' | 'xl' | 'full'>('md');
   readonly closeOnBackdrop = input(true);
   readonly closed = output<void>();
 
