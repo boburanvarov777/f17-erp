@@ -41,7 +41,7 @@ export interface User {
 
 export interface UserAccessLogItem {
   id: string; action: 'LOGIN' | 'LOGOUT'; at: string;
-  telegramUsername?: string | null; phone: string; ip?: string | null; device?: string | null;
+  telegramUsername?: string | null; phone?: string | null; ip?: string | null; device?: string | null;
 }
 
 export interface Client { id: string; code: string; name: string; contact?: string; phone?: string; note?: string; _count?: { orders: number; models: number }; }

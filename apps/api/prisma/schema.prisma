@@ -613,6 +613,8 @@ model AuditLog {
   device    String?
   /** Snapshot at event time — not updated when the user changes Telegram later. */
   telegramUsername String?
+  /** Snapshot at event time — Telegram contact phone when a shared account is used. */
+  phone     String?
   createdAt DateTime @default(now())
 
   @@index([userId])

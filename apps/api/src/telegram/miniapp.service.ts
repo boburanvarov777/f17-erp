@@ -3,6 +3,7 @@ import { parse, validate, SignatureInvalidError, ExpiredError } from '@telegram-
 import { unauthorized } from '../common/i18n/api-errors';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from '../modules/auth/auth.service';
+import { AUDIT_ACTIONS } from '../modules/audit/audit.service';
 
 export interface TelegramInitUser {
   id: number;
@@ -45,15 +46,26 @@ export class MiniAppService {
   /** Exchanges a verified Telegram identity for ERP tokens. */
   async authenticate(initData: string, ctx: { ip?: string; device?: string } = {}) {
     const tgUser = this.verifyInitData(initData);
+    const tgId = BigInt(tgUser.id);
     const user = await this.prisma.user.findUnique({
-      where: { telegramId: BigInt(tgUser.id) },
+      where: { telegramId: tgId },
       include: { role: true, department: true },
     });
     if (!user) throw unauthorized('err_tg_not_linked');
     if (user.status !== 'ACTIVE') throw unauthorized('err_user_inactive');
 
+    const session = await this.prisma.telegramSession.findUnique({
+      where: { telegramId: tgId },
+      select: { phone: true },
+    });
     const tokens = await this.auth.issueTokens(user.id, ctx);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    await this.auth.recordAccess(user.id, AUDIT_ACTIONS.LOGIN, {
+      ...ctx,
+      telegramId: tgId,
+      telegramUsername: tgUser.username,
+      phone: session?.phone ?? null,
+    });
     return { ...tokens, user: this.auth.publicUser(user) };
   }
 
@@ -66,8 +78,17 @@ export class MiniAppService {
     ctx: { ip?: string; device?: string } = {},
   ) {
     const tgUser = this.verifyInitData(initData);
-    const result = await this.auth.login({ login, password, departmentCode }, ctx);
     const tgId = BigInt(tgUser.id);
+    const session = await this.prisma.telegramSession.findUnique({
+      where: { telegramId: tgId },
+      select: { phone: true },
+    });
+    const result = await this.auth.login({ login, password, departmentCode }, {
+      ...ctx,
+      telegramId: tgId,
+      telegramUsername: tgUser.username,
+      phone: session?.phone ?? null,
+    });
     const linked = await this.prisma.user.findUnique({ where: { id: result.user.id } });
 
     if (linked?.telegramId && linked.telegramId !== tgId) {

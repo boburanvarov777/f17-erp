@@ -250,7 +250,7 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                         <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ l.telegramUsername }}</span>
                       } @else { <span class="tiny text-3">—</span> }
                     </td>
-                    <td class="mono small">{{ l.phone }}</td>
+                    <td class="mono small">{{ l.phone || '—' }}</td>
                     <td class="tiny text-3">{{ l.ip || '—' }}</td>
                   </tr>
                 }

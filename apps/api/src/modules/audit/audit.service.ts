@@ -31,6 +31,8 @@ export interface AuditInput {
   device?: string;
   /** Stored as @nickname — captured once per row, never backfilled from User. */
   telegramUsername?: string | null;
+  /** Stored phone snapshot — Telegram session contact, not the shared account phone. */
+  phone?: string | null;
 }
 
 /** Normalise Telegram handle for audit snapshots (always @prefix when present). */
@@ -61,6 +63,7 @@ export class AuditService {
           ip: input.ip,
           device: input.device,
           telegramUsername: input.telegramUsername ?? undefined,
+          phone: input.phone ?? undefined,
         },
       })
       .catch((e) => this.logger.warn(`audit failed: ${e.message}`));

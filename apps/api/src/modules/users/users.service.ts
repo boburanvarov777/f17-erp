@@ -114,7 +114,7 @@ export class UsersService {
       where: { userId: id, action: { in: ['LOGIN', 'LOGOUT'] } },
       orderBy: { createdAt: 'desc' },
       take: 200,
-      select: { id: true, action: true, createdAt: true, telegramUsername: true, ip: true, device: true },
+      select: { id: true, action: true, createdAt: true, telegramUsername: true, phone: true, ip: true, device: true },
     });
 
     return {
@@ -124,7 +124,7 @@ export class UsersService {
         action: l.action,
         at: l.createdAt,
         telegramUsername: l.telegramUsername,
-        phone: user.phone,
+        phone: l.phone ?? (l.telegramUsername ? null : user.phone),
         ip: l.ip,
         device: l.device,
       })),

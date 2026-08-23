@@ -21,6 +21,15 @@ export interface AuthTokens {
   expiresIn: number;
 }
 
+/** Optional actor snapshot for LOGIN/LOGOUT audit rows (Mini App / shared accounts). */
+export interface AuthAuditCtx {
+  ip?: string;
+  device?: string;
+  telegramUsername?: string | null;
+  phone?: string | null;
+  telegramId?: bigint | null;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -51,7 +60,7 @@ export class AuthService {
     return user;
   }
 
-  async login(dto: LoginDto, ctx: { ip?: string; device?: string } = {}) {
+  async login(dto: LoginDto, ctx: AuthAuditCtx = {}) {
     const user = await this.validateUser(dto.login, dto.password);
 
     if (dto.departmentCode && user.department?.code !== dto.departmentCode && !user.role.permissions.includes('*')) {
@@ -60,14 +69,7 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user.id, ctx);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-    this.audit.log({
-      userId: user.id,
-      action: AUDIT_ACTIONS.LOGIN,
-      entity: 'User',
-      entityId: user.id,
-      telegramUsername: formatAuditTelegramUsername(user.telegramUsername),
-      ...ctx,
-    });
+    await this.recordAccess(user.id, AUDIT_ACTIONS.LOGIN, ctx);
 
     return { ...tokens, user: this.publicUser(user) };
   }
@@ -94,7 +96,7 @@ export class AuthService {
     };
   }
 
-  async issueTokens(userId: string, ctx: { ip?: string; device?: string } = {}): Promise<AuthTokens> {
+  async issueTokens(userId: string, ctx: Pick<AuthAuditCtx, 'ip' | 'device'> = {}): Promise<AuthTokens> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       include: { role: true },
@@ -130,7 +132,7 @@ export class AuthService {
     return { accessToken, refreshToken, expiresIn: 15 * 60 };
   }
 
-  async refresh(refreshToken: string, ctx: { ip?: string; device?: string } = {}) {
+  async refresh(refreshToken: string, ctx: Pick<AuthAuditCtx, 'ip' | 'device'> = {}) {
     const record = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: this.sha(refreshToken) },
     });
@@ -147,7 +149,7 @@ export class AuthService {
     return { ...tokens, user: this.publicUser(user) };
   }
 
-  async logout(userId: string, refreshToken?: string, ctx: { ip?: string; device?: string } = {}) {
+  async logout(userId: string, refreshToken?: string, ctx: AuthAuditCtx = {}) {
     if (refreshToken) {
       await this.prisma.refreshToken.updateMany({
         where: { tokenHash: this.sha(refreshToken), userId },
@@ -156,17 +158,53 @@ export class AuthService {
     } else {
       await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     }
+    await this.recordAccess(userId, AUDIT_ACTIONS.LOGOUT, ctx);
+    return { success: true };
+  }
+
+  /** LOGIN/LOGOUT audit with actor phone/username snapshot (shared accounts). */
+  async recordAccess(userId: string, action: string, ctx: AuthAuditCtx = {}): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { telegramUsername: true },
+      select: { phone: true, telegramUsername: true, telegramId: true },
     });
+    if (!user) return;
+
+    const snapshot = await this.accessSnapshot(user, ctx);
     this.audit.log({
       userId,
-      action: AUDIT_ACTIONS.LOGOUT,
-      telegramUsername: formatAuditTelegramUsername(user?.telegramUsername),
-      ...ctx,
+      action,
+      entity: 'User',
+      entityId: userId,
+      telegramUsername: snapshot.telegramUsername,
+      phone: snapshot.phone,
+      ip: ctx.ip,
+      device: ctx.device,
     });
-    return { success: true };
+  }
+
+  private async accessSnapshot(
+    user: { phone: string; telegramUsername: string | null; telegramId: bigint | null },
+    ctx: AuthAuditCtx,
+  ): Promise<{ telegramUsername: string | null; phone: string | null }> {
+    if (ctx.telegramUsername !== undefined || ctx.phone !== undefined || ctx.telegramId !== undefined) {
+      return {
+        telegramUsername: formatAuditTelegramUsername(ctx.telegramUsername),
+        phone: ctx.phone ?? null,
+      };
+    }
+
+    const telegramId = user.telegramId;
+    const telegramUsername = formatAuditTelegramUsername(user.telegramUsername);
+    if (telegramId) {
+      const session = await this.prisma.telegramSession.findUnique({
+        where: { telegramId },
+        select: { phone: true },
+      });
+      return { telegramUsername, phone: session?.phone ?? null };
+    }
+
+    return { telegramUsername: null, phone: user.phone };
   }
 
   async me(userId: string) {
