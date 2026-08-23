@@ -183,7 +183,7 @@ export class AuthService {
     if (!ok) throw unauthorized('err_current_password');
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await AuthService.hash(newPassword) },
+      data: { passwordHash: await AuthService.hash(newPassword), passwordPlain: newPassword },
     });
     await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     this.audit.log({ userId, action: AUDIT_ACTIONS.PASSWORD_RESET, entity: 'User', entityId: userId });

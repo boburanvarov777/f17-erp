@@ -215,7 +215,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
           </div>
           <div class="field">
             <label class="label">{{ 'worker_name' | t }}</label>
-            <input class="input" [(ngModel)]="entry.workerName" [placeholder]="'worker_name_placeholder' | t" />
+            <input class="input mono" [(ngModel)]="entry.workerName" [placeholder]="'worker_name_placeholder' | t" />
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
             <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
@@ -320,15 +320,18 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
+            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
                   <td class="small nowrap">{{ e.date | shortDate: true }}</td>
                   <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}</td>
                   <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
-                  <td class="small">{{ e.user ? e.user.lastName + ' ' + e.user.firstName : '—' }}</td>
-                  <td class="small">{{ e.workerName || '—' }}</td>
+                  <td>
+                    @if (workerNick(e.workerName); as nick) {
+                      <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ nick }}</span>
+                    } @else { <span class="tiny text-3">—</span> }
+                  </td>
                   <td>
                     <span class="badge" [class.badge-info]="isTelegramSource(e.source)" [class.badge-neutral]="!isTelegramSource(e.source)">
                       @if (isTelegramSource(e.source)) { <ui-icon name="send" [size]="10" /> }
@@ -343,7 +346,7 @@ const STATUSES: StageStatus[] = ['NOT_STARTED', 'WAITING', 'IN_PROGRESS', 'COMPL
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td colspan="7"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+              } @empty { <tr><td colspan="6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
             </tbody>
           </table>
         </div>
@@ -668,6 +671,13 @@ export class ProductionComponent {
       },
       error: () => this.busy.set(false),
     });
+  }
+
+  workerNick(raw?: string | null): string | null {
+    const trimmed = raw?.trim();
+    if (!trimmed) return null;
+    const handle = trimmed.replace(/^@+/, '');
+    return handle ? `@${handle}` : null;
   }
 
   isTelegramSource(source: string): boolean {

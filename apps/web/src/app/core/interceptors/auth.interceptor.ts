@@ -22,7 +22,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(attach(auth.accessToken)).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status !== 401 || isAuthCall || !auth.refreshToken) {
-        if (err.status === 403) toast.error(err.error?.message || i18n.t('access_denied'));
+        const silent = req.headers.has('X-Silent');
+        if (err.status === 403 && !silent) toast.error(err.error?.message || i18n.t('access_denied'));
         return throwError(() => err);
       }
 

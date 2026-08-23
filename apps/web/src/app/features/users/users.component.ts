@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { Department, Paginated, Role, User } from '../../core/models';
+import type { Department, Paginated, Role, User, UserAccessLogItem } from '../../core/models';
 import { deptLabel } from '../../core/dept-label';
 import { isProtectedUser, isTopAdmin } from '../../core/role.util';
 import { ApiService } from '../../core/services/api.service';
@@ -63,6 +63,7 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
               <table class="data">
                 <thead><tr>
                   <th>{{ 'full_name' | t }}</th><th>{{ 'phone' | t }}</th><th>{{ 'login' | t }}</th>
+                  @if (auth.isSuperProAdmin()) { <th>{{ 'current_password' | t }}</th> }
                   <th>{{ 'department' | t }}</th><th>{{ 'position' | t }}</th><th>{{ 'role' | t }}</th>
                   <th>{{ 'status' | t }}</th><th>{{ 'telegram' | t }}</th><th>{{ 'last_login' | t }}</th><th class="actions"></th>
                 </tr></thead>
@@ -77,6 +78,9 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                       </td>
                       <td class="mono small">{{ u.phone }}</td>
                       <td class="mono small">{{ u.login }}</td>
+                      @if (auth.isSuperProAdmin()) {
+                        <td class="mono small">{{ u.currentPassword || '—' }}</td>
+                      }
                       <td class="small">{{ u.department ? deptName(u.department) : '—' }}</td>
                       <td class="small">{{ u.position || '—' }}</td>
                       <td><span class="badge badge-neutral">{{ u.role?.name }}</span></td>
@@ -103,6 +107,9 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                         }
                         @if (canDeleteUser(u)) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="deleting.set(u)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                        }
+                        @if (auth.isSuperProAdmin()) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openAccessLog(u)" [attr.data-tip]="'access_log' | t"><ui-icon name="eye" [size]="15" /></button>
                         }
                       </td>
                     </tr>
@@ -146,6 +153,12 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
             <input class="input" type="text" [(ngModel)]="form.password" (ngModelChange)="fe.clear('password')" />
             @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
+          @if (u.id && auth.isSuperProAdmin()) {
+            <div class="field">
+              <label class="label">{{ 'current_password' | t }}</label>
+              <input class="input mono" [ngModel]="u.currentPassword || '—'" disabled />
+            </div>
+          }
           <div class="field">
             <label class="label">{{ 'department' | t }}</label>
             <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
@@ -217,6 +230,37 @@ import { DigitsOnlyDirective } from '../../shared/directives/digits-only.directi
                   [note]="'user_delete_note' | t" [confirmLabel]="'delete' | t"
                   (confirmed)="deleteUser(u)" (cancelled)="deleting.set(null)" />
     }
+
+    @if (accessLogFor(); as u) {
+      <ui-modal size="lg" [title]="'access_log' | t" [subtitle]="u.lastName + ' ' + u.firstName" (closed)="closeAccessLog()">
+        @if (accessLogLoading()) { <ui-loading [count]="3" [height]="48" /> }
+        @else if (accessLogItems().length) {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr>
+                <th>{{ 'when' | t }}</th><th>{{ 'what' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'phone' | t }}</th><th>{{ 'ip' | t }}</th>
+              </tr></thead>
+              <tbody>
+                @for (l of accessLogItems(); track l.id) {
+                  <tr>
+                    <td class="small nowrap">{{ l.at | shortDate: true }}</td>
+                    <td><span class="badge" [class.badge-success]="l.action === 'LOGIN'" [class.badge-neutral]="l.action === 'LOGOUT'">{{ (l.action === 'LOGIN' ? 'access_log_in' : 'access_log_out') | t }}</span></td>
+                    <td>
+                      @if (l.telegramUsername) {
+                        <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ l.telegramUsername }}</span>
+                      } @else { <span class="tiny text-3">—</span> }
+                    </td>
+                    <td class="mono small">{{ l.phone }}</td>
+                    <td class="tiny text-3">{{ l.ip || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else { <ui-empty icon="history" [title]="'no_data' | t" /> }
+        <div footer><button class="btn" type="button" (click)="closeAccessLog()">{{ 'close' | t }}</button></div>
+      </ui-modal>
+    }
   `,
 })
 export class UsersComponent {
@@ -238,6 +282,9 @@ export class UsersComponent {
   readonly archiving = signal<User | null>(null);
   readonly deleting = signal<User | null>(null);
   readonly passwordFor = signal<User | null>(null);
+  readonly accessLogFor = signal<User | null>(null);
+  readonly accessLogItems = signal<UserAccessLogItem[]>([]);
+  readonly accessLogLoading = signal(false);
   readonly fe = new FieldErrorsState();
   readonly pwdFe = new FieldErrorsState();
 
@@ -374,5 +421,20 @@ export class UsersComponent {
         this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },
     });
+  }
+
+  openAccessLog(u: User): void {
+    this.accessLogFor.set(u);
+    this.accessLogItems.set([]);
+    this.accessLogLoading.set(true);
+    this.api.get<{ items: UserAccessLogItem[] }>(`/users/${u.id}/access-log`).subscribe({
+      next: (r) => { this.accessLogItems.set(r.items); this.accessLogLoading.set(false); },
+      error: () => { this.accessLogLoading.set(false); this.toast.error(this.i18n.t('error')); },
+    });
+  }
+
+  closeAccessLog(): void {
+    this.accessLogFor.set(null);
+    this.accessLogItems.set([]);
   }
 }

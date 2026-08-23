@@ -129,6 +129,7 @@ async function main() {
     const data = {
       firstName: u.firstName, lastName: u.lastName, phone: u.phone, login: u.login,
       passwordHash: await hash(u.password),
+      passwordPlain: u.password,
       position: u.position, lang: u.lang as Lang,
       roleId: role[u.role].id, departmentId: dept[u.dept].id,
     };
@@ -140,6 +141,7 @@ async function main() {
         lastName: data.lastName,
         phone: data.phone,
         passwordHash: data.passwordHash,
+        passwordPlain: data.passwordPlain,
         position: data.position,
         roleId: data.roleId,
         departmentId: data.departmentId,

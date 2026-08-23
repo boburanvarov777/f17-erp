@@ -82,7 +82,7 @@ type PeriodKey = 'DAILY' | 'WEEKLY' | 'MONTHLY';
           </div>
           <div class="field mt-3">
             <label class="label">{{ 'worker_name' | t }}</label>
-            <input class="input" [(ngModel)]="entryWorkerName" [placeholder]="'worker_name_placeholder' | t" />
+            <input class="input mono" [(ngModel)]="entryWorkerName" [placeholder]="'worker_name_placeholder' | t" />
           </div>
           <div class="field mt-3">
             <label class="label">{{ 'note' | t }}</label>

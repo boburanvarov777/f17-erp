@@ -22,6 +22,13 @@ export class UsersController {
     return this.users.monitoring(actor, departmentId);
   }
 
+  @Get(':id/access-log')
+  @RequirePermissions('users.read')
+  @ApiOperation({ summary: 'LOGIN/LOGOUT history — Super Pro Admin only' })
+  accessLog(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
+    return this.users.accessLog(id, actor);
+  }
+
   @Get(':id') @RequirePermissions('users.read')
   findOne(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
     return this.users.findOne(id, actor);

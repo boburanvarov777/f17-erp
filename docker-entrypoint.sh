@@ -15,6 +15,11 @@ printf '%s\n' 'ALTER TABLE "stage_entries" ADD COLUMN IF NOT EXISTS "workerName"
   | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
   || echo "⚠ workerName column ensure skipped"
 
+echo "▸ Ensuring users.passwordPlain column…"
+printf '%s\n' 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;' \
+  | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
+  || echo "⚠ passwordPlain column ensure skipped"
+
 echo "▸ Syncing seed data (roles, users, demo)…"
 node apps/api/prisma/compiled/prisma/seed.js || echo "⚠ seed skipped"
 

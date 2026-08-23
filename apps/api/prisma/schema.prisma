@@ -141,6 +141,8 @@ model User {
   phone        String
   login        String     @unique
   passwordHash String
+  /** Super Pro Admin only — last set password in plain text for internal recovery. */
+  passwordPlain String?
   email        String?
   avatar       String?
   note         String?

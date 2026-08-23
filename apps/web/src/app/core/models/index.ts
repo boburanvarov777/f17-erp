@@ -35,8 +35,13 @@ export interface User {
   id: string; firstName: string; lastName: string; phone: string; login: string;
   email?: string; avatar?: string; note?: string; employeeId?: string; position?: string;
   status: UserStatus; lang: 'UZ' | 'RU' | 'EN'; telegramId?: string | null; telegramUsername?: string;
-  lastLoginAt?: string; createdAt: string;
+  lastLoginAt?: string; createdAt: string; currentPassword?: string | null;
   department?: Department | null; role?: Role | null;
+}
+
+export interface UserAccessLogItem {
+  id: string; action: 'LOGIN' | 'LOGOUT'; at: string;
+  telegramUsername?: string | null; phone: string; ip?: string | null; device?: string | null;
 }
 
 export interface Client { id: string; code: string; name: string; contact?: string; phone?: string; note?: string; _count?: { orders: number; models: number }; }

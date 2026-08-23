@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { OrderStatus, Prisma, StageType } from '@prisma/client';
+import { OrderStatus, Prisma, StageStatus, StageType } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
 import { paginate } from '../../common/dto/pagination.dto';
 import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
+import { resolveStageStatus, stageEndDate, stageProgress } from '../../common/utils/stage-status';
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -61,15 +62,19 @@ export class OrdersService {
     return paginate(items.map((o) => this.withProgress(o)), total, dto);
   }
 
-  withProgress<T extends { qty: number; stages: { stage: StageType; doneQty: number; defectQty: number }[]; deadline: Date; status: OrderStatus }>(order: T) {
-    const loading = order.stages.find((s) => s.stage === 'LOADING');
+  withProgress<T extends { qty: number; stages: { stage: StageType; planQty: number; doneQty: number; defectQty: number; status: StageStatus }[]; deadline: Date; status: OrderStatus }>(order: T) {
+    const stages = order.stages.map((s) => ({
+      ...s,
+      status: resolveStageStatus(s.doneQty, s.planQty, s.status, s.stage),
+    }));
+    const loading = stages.find((s) => s.stage === 'LOADING');
     const done = loading?.doneQty ?? 0;
-    const totalDone = order.stages.reduce((a, s) => a + s.doneQty, 0);
+    const totalDone = stages.reduce((a, s) => a + s.doneQty, 0);
     const progress = order.qty > 0 ? Math.round((totalDone / (order.qty * STAGE_ORDER.length)) * 100) : 0;
     // Named defectQty so it never shadows the `defects` relation loaded by findOne().
-    const defectQty = order.stages.reduce((a, s) => a + s.defectQty, 0);
+    const defectQty = stages.reduce((a, s) => a + s.defectQty, 0);
     const isLate = order.deadline < new Date() && !['COMPLETED', 'CANCELLED'].includes(order.status);
-    return { ...order, completedQty: done, remainingQty: Math.max(0, order.qty - done), progress, defectQty, isLate };
+    return { ...order, stages, completedQty: done, remainingQty: Math.max(0, order.qty - done), progress, defectQty, isLate };
   }
 
   async findOne(id: string) {
@@ -210,7 +215,14 @@ export class OrdersService {
         if (dto.sizes.length) await tx.orderSize.createMany({ data: dto.sizes.map((s) => ({ ...s, orderId: id })) });
       }
       if (dto.qty && dto.qty !== existing.qty) {
-        await tx.orderStage.updateMany({ where: { orderId: id }, data: { planQty: dto.qty } });
+        const stages = await tx.orderStage.findMany({ where: { orderId: id } });
+        for (const s of stages) {
+          const status = resolveStageStatus(s.doneQty, dto.qty, s.status, s.stage);
+          await tx.orderStage.update({
+            where: { id: s.id },
+            data: { planQty: dto.qty, status, endDate: stageEndDate(status, s.endDate) },
+          });
+        }
       }
       return tx.order.update({
         where: { id },
@@ -338,7 +350,7 @@ export class OrdersService {
             start: barStart, end: barEnd,
             planQty: s?.planQty ?? o.qty, doneQty: s?.doneQty ?? 0,
             status: s?.status ?? 'NOT_STARTED',
-            progress: s && s.planQty > 0 ? Math.round((s.doneQty / s.planQty) * 100) : 0,
+            progress: s ? stageProgress(s.doneQty, s.planQty, s.stage) : 0,
           };
         }),
       };

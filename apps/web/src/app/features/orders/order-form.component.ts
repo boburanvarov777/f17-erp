@@ -88,13 +88,15 @@ interface SizeRow { size: string; qty: number | null; }
           </select>
         </div>
 
-        <div class="field">
-          <label class="label">{{ 'responsible' | t }}</label>
-          <select class="select" [(ngModel)]="form.responsibleId">
-            <option value="" disabled>{{ 'select_responsible' | t }}</option>
-            @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
-          </select>
-        </div>
+        @if (canPickResponsible()) {
+          <div class="field">
+            <label class="label">{{ 'responsible' | t }}</label>
+            <select class="select" [(ngModel)]="form.responsibleId">
+              <option value="" disabled>{{ 'select_responsible' | t }}</option>
+              @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
+            </select>
+          </div>
+        }
 
         <div class="field full">
           <label class="label">{{ 'note' | t }}</label>
@@ -243,6 +245,7 @@ export class OrderFormComponent {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
   readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
+  readonly canPickResponsible = computed(() => this.auth.can('users.read'));
   readonly modelSizeOptions = computed(() => {
     const m = this.models().find((x) => x.id === this.form.modelId);
     return (m?.sizes ?? []).map((s) => s.size);
@@ -274,9 +277,11 @@ export class OrderFormComponent {
       this.touch();
     });
 
-    this.api.get<{ items: User[] }>('/users', { limit: 100 }).subscribe({
-      next: (r) => this.users.set(r.items), error: () => void 0,
-    });
+    if (this.auth.can('users.read')) {
+      this.api.get<{ items: User[] }>('/users', { limit: 100 }).subscribe({
+        next: (r) => this.users.set(r.items), error: () => void 0,
+      });
+    }
   }
 
   touch(): void { this.version.update((v) => v + 1); }

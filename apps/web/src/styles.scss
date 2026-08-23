@@ -510,6 +510,7 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 .progress.ok > i { background: var(--success); }
 .progress.warn > i { background: var(--warning); }
 .progress.late > i { background: var(--danger); }
+.progress.over > i { background: var(--primary); }
 
 /* ─────────── misc ─────────── */
 .avatar {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { Role } from '../../core/models';
+import { permActionKey, permModuleKey } from '../../core/permission-i18n';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -57,8 +58,8 @@ const SUPER_PRO_ADMIN = 'SUPER_PRO_ADMIN';
                 <span class="badge badge-danger"><ui-icon name="shield-check" [size]="12" /> {{ 'full_access' | t }}</span>
               } @else {
                 <div class="row gap-1 wrap">
-                  @for (g of groupsOf(r); track g.name) {
-                    <span class="badge badge-neutral">{{ g.name }} · {{ g.count | num }}</span>
+                  @for (g of groupsOf(r); track g.key + lang()) {
+                    <span class="badge badge-neutral">{{ permModuleKey(g.key) | t }} · {{ g.count | num }}</span>
                   }
                 </div>
               }
@@ -100,10 +101,10 @@ const SUPER_PRO_ADMIN = 'SUPER_PRO_ADMIN';
             <ui-icon name="shield-check" [size]="15" /> {{ 'full_access' | t }} — {{ 'roles_full_access_desc' | t }}
           </div>
         } @else {
-          @for (g of permissionGroups(); track g.key) {
+          @for (g of permissionGroups(); track g.key + lang()) {
             <div class="pgroup">
               <div class="row-between mb-2">
-                <b class="small">{{ g.key }}</b>
+                <b class="small">{{ permModuleKey(g.key) | t }}</b>
                 <label class="checkbox">
                   <input type="checkbox" [checked]="allChecked(g.items)" (change)="toggleGroup(g.items, $any($event.target).checked)" [disabled]="!canEditFields(r)" />
                   <span class="tiny">{{ 'all' | t }}</span>
@@ -113,7 +114,7 @@ const SUPER_PRO_ADMIN = 'SUPER_PRO_ADMIN';
                 @for (p of g.items; track p) {
                   <label class="checkbox pchip" [class.on]="selected().has(p)">
                     <input type="checkbox" [checked]="selected().has(p)" (change)="toggle(p)" [disabled]="!canEditFields(r)" />
-                    <span>{{ p.split('.')[1] }}</span>
+                    <span>{{ permActionKey(p) | t }}</span>
                   </label>
                 }
               </div>
@@ -144,6 +145,9 @@ export class RolesComponent {
   private toast = inject(ToastService);
   readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+  readonly lang = this.i18n.lang;
+  readonly permModuleKey = permModuleKey;
+  readonly permActionKey = permActionKey;
 
   readonly roles = signal<Role[]>([]);
   readonly allPermissions = signal<Record<string, string[]>>({});
@@ -185,14 +189,14 @@ export class RolesComponent {
     });
   }
 
-  groupsOf(r: Role): { name: string; count: number }[] {
+  groupsOf(r: Role): { key: string; count: number }[] {
     const m = new Map<string, number>();
     for (const p of r.permissions) {
       if (p === '*') continue;
       const g = p.split('.')[0];
       m.set(g, (m.get(g) ?? 0) + 1);
     }
-    return [...m.entries()].map(([name, count]) => ({ name, count }));
+    return [...m.entries()].map(([key, count]) => ({ key, count }));
   }
 
   open(r: Partial<Role>): void {

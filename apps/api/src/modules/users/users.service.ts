@@ -18,6 +18,11 @@ const SELECT = {
   role: { select: { id: true, code: true, name: true, permissions: true } },
 } satisfies Prisma.UserSelect;
 
+function selectFor(actor: JwtUser): Prisma.UserSelect {
+  if (!isSuperProAdmin(actor)) return SELECT;
+  return { ...SELECT, passwordPlain: true };
+}
+
 const SORTABLE = ['firstName', 'lastName', 'login', 'phone', 'createdAt', 'lastLoginAt', 'status', 'position'];
 
 @Injectable()
@@ -37,8 +42,16 @@ export class UsersService {
     return { ...where, departmentId: actor.departmentId };
   }
 
-  private serialize<T extends { telegramId?: bigint | null }>(u: T) {
-    return { ...u, telegramId: u.telegramId ? String(u.telegramId) : null };
+  private serialize<T extends { telegramId?: bigint | null; passwordPlain?: string | null }>(
+    u: T,
+    actor?: JwtUser,
+  ) {
+    const { passwordPlain, ...rest } = u as T & { passwordPlain?: string | null };
+    return {
+      ...rest,
+      telegramId: u.telegramId ? String(u.telegramId) : null,
+      ...(actor && isSuperProAdmin(actor) ? { currentPassword: passwordPlain ?? null } : {}),
+    };
   }
 
   /** Super Pro Admin users are invisible to everyone else. */
@@ -74,18 +87,48 @@ export class UsersService {
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
-        where, select: SELECT, skip: dto.skip, take: dto.limit,
+        where, select: selectFor(actor), skip: dto.skip, take: dto.limit,
         orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
       }),
       this.prisma.user.count({ where }),
     ]);
-    return paginate(items.map((i) => this.serialize(i)), total, dto);
+    return paginate(items.map((i) => this.serialize(i, actor)), total, dto);
   }
 
   async findOne(id: string, actor: JwtUser) {
-    const user = await this.prisma.user.findFirst({ where: this.scopedWhere(actor, { id }), select: SELECT });
+    const user = await this.prisma.user.findFirst({ where: this.scopedWhere(actor, { id }), select: selectFor(actor) });
     if (!user) throw notFound('err_user_not_found');
-    return this.serialize(user);
+    return this.serialize(user, actor);
+  }
+
+  /** LOGIN/LOGOUT history for a user account — Super Pro Admin only. */
+  async accessLog(id: string, actor: JwtUser) {
+    if (!isSuperProAdmin(actor)) throw forbidden('err_users_access_log_super_only');
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, firstName: true, lastName: true, login: true, phone: true },
+    });
+    if (!user) throw notFound('err_user_not_found');
+
+    const items = await this.prisma.auditLog.findMany({
+      where: { userId: id, action: { in: ['LOGIN', 'LOGOUT'] } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: { id: true, action: true, createdAt: true, telegramUsername: true, ip: true, device: true },
+    });
+
+    return {
+      user,
+      items: items.map((l) => ({
+        id: l.id,
+        action: l.action,
+        at: l.createdAt,
+        telegramUsername: l.telegramUsername,
+        phone: user.phone,
+        ip: l.ip,
+        device: l.device,
+      })),
+    };
   }
 
   async create(dto: CreateUserDto, actor: JwtUser) {
@@ -105,6 +148,7 @@ export class UsersService {
         phone: normalizePhone(dto.phone),
         login: dto.login.trim().toLowerCase(),
         passwordHash: await AuthService.hash(dto.password),
+        passwordPlain: dto.password,
         email: dto.email,
         avatar: dto.avatar,
         note: dto.note,
@@ -115,10 +159,10 @@ export class UsersService {
         status: dto.status ?? 'ACTIVE',
         lang: dto.lang ?? 'UZ',
       },
-      select: SELECT,
+      select: selectFor(actor),
     });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.USER_CREATED, entity: 'User', entityId: user.id, newValue: { login: user.login, role: role.code } });
-    return this.serialize(user);
+    return this.serialize(user, actor);
   }
 
   async update(id: string, dto: UpdateUserDto, actor: JwtUser) {
@@ -155,15 +199,18 @@ export class UsersService {
     };
     if (dto.phone) data.phone = normalizePhone(dto.phone);
     if (dto.login) data.login = dto.login.trim().toLowerCase();
-    if (dto.password) data.passwordHash = await AuthService.hash(dto.password);
+    if (dto.password) {
+      data.passwordHash = await AuthService.hash(dto.password);
+      data.passwordPlain = dto.password;
+    }
     if (dto.roleId) data.role = { connect: { id: dto.roleId } };
     if (dto.departmentId !== undefined) {
       data.department = dto.departmentId ? { connect: { id: dto.departmentId } } : { disconnect: true };
     }
 
-    const user = await this.prisma.user.update({ where: { id }, data, select: SELECT });
+    const user = await this.prisma.user.update({ where: { id }, data, select: selectFor(actor) });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.USER_UPDATED, entity: 'User', entityId: id, newValue: dto });
-    return this.serialize(user);
+    return this.serialize(user, actor);
   }
 
   async archive(id: string, actor: JwtUser) {
@@ -202,7 +249,7 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id },
       data: { status, archivedAt: status === 'ARCHIVED' ? new Date() : null },
-      select: SELECT,
+      select: selectFor(actor),
     });
     if (status !== 'ACTIVE') {
       await this.prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
@@ -212,14 +259,17 @@ export class UsersService {
       action: status === 'ARCHIVED' ? AUDIT_ACTIONS.USER_ARCHIVED : AUDIT_ACTIONS.USER_BLOCKED,
       entity: 'User', entityId: id, newValue: { status },
     });
-    return this.serialize(user);
+    return this.serialize(user, actor);
   }
 
   async resetPassword(id: string, newPassword: string, actor: JwtUser) {
     const existing = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
-    await this.prisma.user.update({ where: { id }, data: { passwordHash: await AuthService.hash(newPassword) } });
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: await AuthService.hash(newPassword), passwordPlain: newPassword },
+    });
     await this.prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.PASSWORD_RESET, entity: 'User', entityId: id });
     return { success: true };
@@ -230,10 +280,10 @@ export class UsersService {
     if (!existing) throw notFound('err_user_not_found');
     this.assertVisibleTarget(actor, existing.role.code);
     const user = await this.prisma.user.update({
-      where: { id }, data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null }, select: SELECT,
+      where: { id }, data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null }, select: selectFor(actor),
     });
     this.audit.log({ userId: actor.sub, action: 'TELEGRAM_UNLINKED', entity: 'User', entityId: id });
-    return this.serialize(user);
+    return this.serialize(user, actor);
   }
 
   /** Employee productivity board — today / week / month task completion. */

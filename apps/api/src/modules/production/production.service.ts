@@ -8,7 +8,7 @@ import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { resolveStageStatus, stageEndDate, stageProgress } from '../../common/utils/stage-status';
 import { STAGE_PERMISSION_PREFIX } from '../../common/permissions';
 import { EventsGateway } from '../../realtime/events.gateway';
-import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
+import { AuditService, AUDIT_ACTIONS, formatAuditTelegramUsername } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
 
@@ -185,7 +185,7 @@ export class ProductionService {
           date: entryDate(dto.date),
           userId: actor.sub,
           note: dto.note,
-          workerName: dto.workerName?.trim() || null,
+          workerName: formatAuditTelegramUsername(dto.workerName),
           source,
           meta: (dto.meta as any) ?? undefined,
         },

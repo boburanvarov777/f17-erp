@@ -69,7 +69,7 @@ import { haptic } from './telegram';
 
         <div class="field mt-3">
           <label class="label">{{ 'worker_name' | t }}</label>
-          <input class="input" [(ngModel)]="workerName" [placeholder]="'worker_name_placeholder' | t" />
+          <input class="input mono" [(ngModel)]="workerName" [placeholder]="'worker_name_placeholder' | t" />
         </div>
 
         <div class="field mt-3">
