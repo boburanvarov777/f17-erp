@@ -204,7 +204,7 @@ export class AuthService {
       return { telegramUsername, phone: session?.phone ?? null };
     }
 
-    return { telegramUsername: null, phone: user.phone };
+    return { telegramUsername: null, phone: null };
   }
 
   async me(userId: string) {

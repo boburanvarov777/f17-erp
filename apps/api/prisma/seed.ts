@@ -107,22 +107,23 @@ async function main() {
   const superPassword = process.env.SEED_SUPERADMIN_PASSWORD || 'Admin!2026';
   const defaultPassword = 'F17erp!2026';
   const ownerPhone = process.env.SEED_OWNER_PHONE || '+998997162616';
-  const testPhone = () => ownerPhone;
+  /** Demo xodimlar uchun alohida placeholder — bitta raqam hammaga yozilmasin. */
+  const demoPhone = (n: number) => `+99890000${String(n).padStart(4, '0')}`;
 
   const users = [
-    { login: process.env.SEED_SUPERADMIN_LOGIN || 'bobur', password: superPassword, firstName: 'Bobur', lastName: 'Anvarov', phone: testPhone(), role: 'SUPER_PRO_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
-    { login: 'admin', password: superPassword, firstName: 'Komiljon', lastName: 'Toxirov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
-    { login: 'jamshid', password: superPassword, firstName: 'Jamshid', lastName: 'Askarov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
-    { login: 'suhrob', password: superPassword, firstName: 'Suhrob', lastName: 'Rakhimov', phone: testPhone(), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
-    { login: 'planning', password: defaultPassword, firstName: 'Susana', lastName: 'Ishikova', phone: testPhone(), role: 'PLANNING', dept: 'PLANNING', position: 'Planlashtirish menejeri', lang: 'RU' },
-    { login: 'director', password: defaultPassword, firstName: 'Ali', lastName: 'Yildirim', phone: testPhone(), role: 'PRODUCTION_MANAGER', dept: 'PRODUCTION', position: 'Ishlab chiqarish mudiri', lang: 'RU' },
-    { login: 'kesim', password: defaultPassword, firstName: 'Abduhamid', lastName: 'Mamatov', phone: testPhone(), role: 'CUTTING_MASTER', dept: 'CUTTING', position: 'Kesim mas’uli', lang: 'UZ' },
-    { login: 'tikuv', password: defaultPassword, firstName: 'Oygul', lastName: 'Mirzaboyeva', phone: testPhone(), role: 'SEWING_MASTER', dept: 'SEWING', position: 'Tikuv mas’uli', lang: 'UZ' },
-    { login: 'varka', password: defaultPassword, firstName: 'Vedat', lastName: 'Bey', phone: testPhone(), role: 'WASHING_MASTER', dept: 'WASHING', position: 'Varka mas’uli', lang: 'RU' },
-    { login: 'lazer', password: defaultPassword, firstName: 'Ahmadali', lastName: 'Barakabayev', phone: testPhone(), role: 'LASER_MASTER', dept: 'LASER', position: 'Lazer operatori', lang: 'UZ' },
-    { login: 'upakovka', password: defaultPassword, firstName: 'Mashhura', lastName: 'Inagamova', phone: testPhone(), role: 'PACKING_MASTER', dept: 'PACKING', position: 'Upakovka mas’uli', lang: 'UZ' },
-    { login: 'ortish', password: defaultPassword, firstName: 'Sardor', lastName: 'Qodirov', phone: testPhone(), role: 'LOADING_MASTER', dept: 'LOADING', position: 'Logistika', lang: 'UZ' },
-    { login: 'ombor', password: defaultPassword, firstName: 'Dilnoza', lastName: 'Yusupova', phone: testPhone(), role: 'WAREHOUSE_MANAGER', dept: 'WAREHOUSE', position: 'Ombor mudiri', lang: 'UZ' },
+    { login: process.env.SEED_SUPERADMIN_LOGIN || 'bobur', password: superPassword, firstName: 'Bobur', lastName: 'Anvarov', phone: ownerPhone, role: 'SUPER_PRO_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
+    { login: 'admin', password: superPassword, firstName: 'Komiljon', lastName: 'Toxirov', phone: demoPhone(1), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Rahbar', lang: 'UZ' },
+    { login: 'jamshid', password: superPassword, firstName: 'Jamshid', lastName: 'Askarov', phone: demoPhone(2), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
+    { login: 'suhrob', password: superPassword, firstName: 'Suhrob', lastName: 'Rakhimov', phone: demoPhone(3), role: 'SUPER_ADMIN', dept: 'ADMIN', position: 'Super Admin', lang: 'UZ' },
+    { login: 'planning', password: defaultPassword, firstName: 'Susana', lastName: 'Ishikova', phone: demoPhone(4), role: 'PLANNING', dept: 'PLANNING', position: 'Planlashtirish menejeri', lang: 'RU' },
+    { login: 'director', password: defaultPassword, firstName: 'Ali', lastName: 'Yildirim', phone: demoPhone(5), role: 'PRODUCTION_MANAGER', dept: 'PRODUCTION', position: 'Ishlab chiqarish mudiri', lang: 'RU' },
+    { login: 'kesim', password: defaultPassword, firstName: 'Abduhamid', lastName: 'Mamatov', phone: demoPhone(6), role: 'CUTTING_MASTER', dept: 'CUTTING', position: 'Kesim mas’uli', lang: 'UZ' },
+    { login: 'tikuv', password: defaultPassword, firstName: 'Oygul', lastName: 'Mirzaboyeva', phone: demoPhone(7), role: 'SEWING_MASTER', dept: 'SEWING', position: 'Tikuv mas’uli', lang: 'UZ' },
+    { login: 'varka', password: defaultPassword, firstName: 'Vedat', lastName: 'Bey', phone: demoPhone(8), role: 'WASHING_MASTER', dept: 'WASHING', position: 'Varka mas’uli', lang: 'RU' },
+    { login: 'lazer', password: defaultPassword, firstName: 'Ahmadali', lastName: 'Barakabayev', phone: demoPhone(9), role: 'LASER_MASTER', dept: 'LASER', position: 'Lazer operatori', lang: 'UZ' },
+    { login: 'upakovka', password: defaultPassword, firstName: 'Mashhura', lastName: 'Inagamova', phone: demoPhone(10), role: 'PACKING_MASTER', dept: 'PACKING', position: 'Upakovka mas’uli', lang: 'UZ' },
+    { login: 'ortish', password: defaultPassword, firstName: 'Sardor', lastName: 'Qodirov', phone: demoPhone(11), role: 'LOADING_MASTER', dept: 'LOADING', position: 'Logistika', lang: 'UZ' },
+    { login: 'ombor', password: defaultPassword, firstName: 'Dilnoza', lastName: 'Yusupova', phone: demoPhone(12), role: 'WAREHOUSE_MANAGER', dept: 'WAREHOUSE', position: 'Ombor mudiri', lang: 'UZ' },
   ];
 
   for (const u of users) {
@@ -139,7 +140,6 @@ async function main() {
       update: {
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone,
         passwordHash: data.passwordHash,
         passwordPlain: data.passwordPlain,
         position: data.position,
@@ -151,6 +151,14 @@ async function main() {
         telegramUsername: null,
         telegramLinkedAt: null,
       },
+    });
+  }
+  // Bir martalik tuzatish: avvalgi seed hammaga ownerPhone yozgan bo‘lsa, demo raqamlarga almashtirish.
+  for (const u of users) {
+    if (u.login === (process.env.SEED_SUPERADMIN_LOGIN || 'bobur')) continue;
+    await prisma.user.updateMany({
+      where: { login: u.login, phone: ownerPhone },
+      data: { phone: u.phone },
     });
   }
   const userByLogin = Object.fromEntries((await prisma.user.findMany()).map((u) => [u.login, u]));

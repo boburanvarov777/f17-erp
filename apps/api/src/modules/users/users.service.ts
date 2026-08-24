@@ -124,7 +124,7 @@ export class UsersService {
         action: l.action,
         at: l.createdAt,
         telegramUsername: l.telegramUsername,
-        phone: l.phone ?? (l.telegramUsername ? null : user.phone),
+        phone: l.phone ?? null,
         ip: l.ip,
         device: l.device,
       })),
