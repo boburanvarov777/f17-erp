@@ -34,6 +34,17 @@ export function seesDeptManage(u: CurrentUser | null | undefined): boolean {
   return !!u.department?.stage;
 }
 
+/** External client portal — no purchase prices or stock value totals. */
+export function isClientUser(u: CurrentUser | null | undefined): boolean {
+  if (!u) return false;
+  return (u.role?.code ?? '').toUpperCase() === 'CLIENT';
+}
+
+/** Cost, price and warehouse value columns. */
+export function seesFinancials(u: CurrentUser | null | undefined): boolean {
+  return !isClientUser(u);
+}
+
 /** Warehouse staff — ombor mini app (not production floor). */
 export function isWarehouseUser(u: CurrentUser | null | undefined): boolean {
   if (!u) return false;

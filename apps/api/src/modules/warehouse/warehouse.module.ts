@@ -32,16 +32,24 @@ export class StockOpDto {
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
 }
 
+export class UpdateTransactionDto {
+  @ApiPropertyOptional() @IsOptional() @IsNumber() qty?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
+}
+
 const SORTABLE = ['code', 'name', 'category', 'stock', 'reserved', 'minStock', 'createdAt'];
 
 @Injectable()
 export class WarehouseService {
   constructor(private prisma: PrismaService, private audit: AuditService, private notifications: NotificationsService) {}
 
-  async list(dto: PaginationDto, category?: string, status?: string) {
+  async list(dto: PaginationDto, category?: string, status?: string, asOf?: string) {
+    const end = asOf?.trim() ? this.endOfDay(asOf.trim()) : null;
+    const historical = !!end && !this.isToday(asOf!.trim());
+
     const where: Prisma.MaterialWhereInput = { archivedAt: null };
+    if (end) where.createdAt = { lte: end };
     if (category) where.category = category;
-    if (status) where.status = status as any;
     if (dto.search) {
       where.OR = [
         { code: { contains: dto.search, mode: 'insensitive' } },
@@ -49,6 +57,21 @@ export class WarehouseService {
         { supplier: { contains: dto.search, mode: 'insensitive' } },
       ];
     }
+
+    if (historical) {
+      const all = await this.prisma.material.findMany({
+        where,
+        orderBy: buildOrderBy(dto.sortBy, dto.sortOrder, SORTABLE, { createdAt: 'desc' }) as any,
+      });
+      const snapshots = await this.snapshotForMaterials(all.map((m) => m.id), end!);
+      let rows = all.map((m) => this.decorate(m, snapshots.get(m.id)));
+      if (status) rows = rows.filter((m) => m.status === status);
+      const total = rows.length;
+      const items = rows.slice(dto.skip, dto.skip + dto.limit);
+      return { ...paginate(items, total, dto), asOf: asOf!.trim() };
+    }
+
+    if (status) where.status = status as any;
     const [items, total] = await this.prisma.$transaction([
       this.prisma.material.findMany({
         where, skip: dto.skip, take: dto.limit,
@@ -59,9 +82,100 @@ export class WarehouseService {
     return paginate(items.map((m) => this.decorate(m)), total, dto);
   }
 
-  private decorate(m: any) {
-    const available = Number(m.stock) - Number(m.reserved);
-    return { ...m, stock: Number(m.stock), reserved: Number(m.reserved), minStock: Number(m.minStock), price: m.price ? Number(m.price) : null, available };
+  private decorate(m: any, snap?: { stock: number; reserved: number }) {
+    const stock = snap ? snap.stock : Number(m.stock);
+    const reserved = snap ? snap.reserved : Number(m.reserved);
+    const minStock = Number(m.minStock);
+    const available = stock - reserved;
+    const status = stock <= 0 ? 'OUT' : stock <= minStock ? 'LOW' : 'OK';
+    return {
+      ...m,
+      stock,
+      reserved,
+      minStock,
+      available,
+      status,
+      price: m.price ? Number(m.price) : null,
+    };
+  }
+
+  private endOfDay(dateStr: string): Date {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) throw badRequest('v_date', { field: 'date' });
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+
+  private isToday(dateStr: string): boolean {
+    const iso = (x: Date) =>
+      `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    return iso(new Date(dateStr)) === iso(new Date());
+  }
+
+  private applyOp(stock: number, reserved: number, op: StockOp, qty: number) {
+    switch (op) {
+      case 'IN': return { stock: stock + qty, reserved };
+      case 'OUT':
+        if (stock - reserved < qty) throw badRequest('err_stock_insufficient', { available: stock - reserved, unit: '—' });
+        return { stock: stock - qty, reserved };
+      case 'RESERVE':
+        if (stock - reserved < qty) throw badRequest('err_reserve_insufficient', { available: stock - reserved, unit: '—' });
+        return { stock, reserved: reserved + qty };
+      case 'RETURN': return { stock: stock + qty, reserved: Math.max(0, reserved - qty) };
+      case 'INVENTORY': return { stock: qty, reserved };
+      default: return { stock, reserved };
+    }
+  }
+
+  /** Replay ledger and sync balances on every row + material totals. */
+  private async rebuildMaterialBalances(client: Prisma.TransactionClient, materialId: string) {
+    const material = await client.material.findUniqueOrThrow({ where: { id: materialId } });
+    const txs = await client.stockTransaction.findMany({
+      where: { materialId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+
+    let stock = 0;
+    let reserved = 0;
+    for (const row of txs) {
+      const qty = Number(row.qty);
+      ({ stock, reserved } = this.applyOp(stock, reserved, row.op, qty));
+      await client.stockTransaction.update({
+        where: { id: row.id },
+        data: { balance: new Prisma.Decimal(stock) },
+      });
+    }
+
+    const minStock = Number(material.minStock);
+    const status = stock <= 0 ? 'OUT' : stock <= minStock ? 'LOW' : 'OK';
+    await client.material.update({
+      where: { id: materialId },
+      data: { stock: new Prisma.Decimal(stock), reserved: new Prisma.Decimal(reserved), status },
+    });
+    return { stock, reserved, status };
+  }
+
+  private async snapshotForMaterials(materialIds: string[], end: Date) {
+    const map = new Map<string, { stock: number; reserved: number }>();
+    if (!materialIds.length) return map;
+    for (const id of materialIds) map.set(id, { stock: 0, reserved: 0 });
+
+    const txs = await this.prisma.stockTransaction.findMany({
+      where: { materialId: { in: materialIds }, createdAt: { lte: end } },
+      orderBy: [{ materialId: 'asc' }, { createdAt: 'asc' }],
+      select: { materialId: true, op: true, qty: true },
+    });
+
+    for (const tx of txs) {
+      const s = map.get(tx.materialId)!;
+      const qty = Number(tx.qty);
+      try {
+        ({ stock: s.stock, reserved: s.reserved } = this.applyOp(s.stock, s.reserved, tx.op, qty));
+      } catch {
+        // ignore inconsistent historical rows
+      }
+    }
+    return map;
   }
 
   async create(dto: CreateMaterialDto, actor: JwtUser) {
@@ -185,6 +299,50 @@ export class WarehouseService {
     ]);
     return paginate(items.map((t) => ({ ...t, qty: Number(t.qty), balance: Number(t.balance) })), total, p);
   }
+
+  async updateTransaction(txId: string, dto: UpdateTransactionDto, actor: JwtUser) {
+    if (dto.qty != null && dto.qty <= 0) throw badRequest('err_qty_positive');
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.stockTransaction.findUniqueOrThrow({ where: { id: txId } });
+      await tx.stockTransaction.update({
+        where: { id: txId },
+        data: {
+          ...(dto.qty != null ? { qty: new Prisma.Decimal(dto.qty) } : {}),
+          ...(dto.note !== undefined ? { note: dto.note || null } : {}),
+        },
+      });
+      await this.rebuildMaterialBalances(tx, row.materialId);
+      return tx.stockTransaction.findUniqueOrThrow({
+        where: { id: txId },
+        include: {
+          material: { select: { code: true, name: true, unit: true } },
+          user: { select: { firstName: true, lastName: true } },
+          order: { select: { number: true } },
+        },
+      });
+    });
+
+    this.audit.log({
+      userId: actor.sub, action: 'WAREHOUSE_TX_UPDATED', entity: 'StockTransaction', entityId: txId, newValue: dto,
+    });
+    return { ...updated, qty: Number(updated.qty), balance: Number(updated.balance) };
+  }
+
+  async deleteTransaction(txId: string, actor: JwtUser) {
+    const materialId = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.stockTransaction.findUniqueOrThrow({ where: { id: txId } });
+      await tx.stockTransaction.delete({ where: { id: txId } });
+      await this.rebuildMaterialBalances(tx, row.materialId);
+      return row.materialId;
+    });
+
+    this.audit.log({
+      userId: actor.sub, action: 'WAREHOUSE_TX_DELETED', entity: 'StockTransaction', entityId: txId,
+      newValue: { materialId },
+    });
+    return { success: true };
+  }
 }
 
 @ApiTags('warehouse')
@@ -194,13 +352,32 @@ export class WarehouseController {
   constructor(private service: WarehouseService) {}
 
   @Get() @RequirePermissions('warehouse.read')
-  list(@Query() dto: PaginationDto, @Query('category') category?: string, @Query('status') status?: string) {
-    return this.service.list(dto, category, status);
+  list(
+    @Query() dto: PaginationDto,
+    @Query('category') category?: string,
+    @Query('status') status?: string,
+    @Query('asOf') asOf?: string,
+  ) {
+    return this.service.list(dto, category, status, asOf);
   }
 
   @Get('transactions') @RequirePermissions('warehouse.read')
   transactions(@Query('materialId') materialId?: string, @Query() dto?: PaginationDto) {
     return this.service.transactions(materialId, dto);
+  }
+
+  @Patch('transactions/:txId')
+  @RequirePermissions('warehouse.update')
+  @ApiOperation({ summary: 'Edit transaction qty/note and rebuild material balances' })
+  updateTransaction(@Param('txId') txId: string, @Body() dto: UpdateTransactionDto, @CurrentUser() actor: JwtUser) {
+    return this.service.updateTransaction(txId, dto, actor);
+  }
+
+  @Delete('transactions/:txId')
+  @RequirePermissions('warehouse.update')
+  @ApiOperation({ summary: 'Delete transaction and rebuild material balances' })
+  deleteTransaction(@Param('txId') txId: string, @CurrentUser() actor: JwtUser) {
+    return this.service.deleteTransaction(txId, actor);
   }
 
   @Post() @RequirePermissions('warehouse.create')

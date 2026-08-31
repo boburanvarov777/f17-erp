@@ -137,10 +137,12 @@
                   <div class="card-head"><h3>{{ 'rep_stock_status' | t }}</h3></div>
                   <div class="card-body"><ui-donut-chart [points]="stockStatusPoints()" [caption]="'material' | t" /></div>
                 </div>
-                <div class="card">
-                  <div class="card-head"><h3>{{ 'rep_top_value' | t }}</h3></div>
-                  <div class="card-body"><ui-rank-chart [points]="stockValuePoints()" /></div>
-                </div>
+                @if (showFinancials()) {
+                  <div class="card">
+                    <div class="card-head"><h3>{{ 'rep_top_value' | t }}</h3></div>
+                    <div class="card-body"><ui-rank-chart [points]="stockValuePoints()" /></div>
+                  </div>
+                }
               </div>
               <div class="card">
                 <div class="card-head"><h3>{{ 'rep_low_stock' | t }}</h3></div>
@@ -148,10 +150,12 @@
                   @if (lowStockPoints().length) { <ui-rank-chart [points]="lowStockPoints()" /> }
                   @else { <ui-empty icon="check-circle" [title]="'no_data' | t" /> }
                 </div>
-                <div class="card-foot row-between">
-                  <b class="small">{{ 'report_value' | t }}</b>
-                  <b>{{ warehouseValue() | num }} {{ 'currency_uzs' | t }}</b>
-                </div>
+                @if (showFinancials()) {
+                  <div class="card-foot row-between">
+                    <b class="small">{{ 'report_value' | t }}</b>
+                    <b>{{ warehouseValue() | num }} {{ 'currency_uzs' | t }}</b>
+                  </div>
+                }
               </div>
             } @else {
               <div class="card"><ui-empty icon="boxes" [title]="'no_data' | t" /></div>

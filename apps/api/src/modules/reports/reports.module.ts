@@ -300,14 +300,14 @@ export class ReportsService {
     return grouped.map((g) => ({ stage: g.stage, type: g.type, qty: g._sum.qty ?? 0, count: g._count._all }));
   }
 
-  async warehouse() {
+  async warehouse(hideFinancials = false) {
     const materials = await this.prisma.material.findMany({ where: { archivedAt: null } });
     return materials.map((m) => ({
       code: m.code, name: m.name, unit: m.unit,
       stock: Number(m.stock), reserved: Number(m.reserved),
       available: Number(m.stock) - Number(m.reserved),
       minStock: Number(m.minStock), status: m.status,
-      value: m.price ? Number(m.price) * Number(m.stock) : null,
+      value: hideFinancials ? null : (m.price ? Number(m.price) * Number(m.stock) : null),
     }));
   }
 }
@@ -342,7 +342,10 @@ export class ReportsController {
   defects(@Query('from') from?: string, @Query('to') to?: string) { return this.service.defects(from, to); }
 
   @Get('warehouse') @RequirePermissions('reports.read')
-  warehouse() { return this.service.warehouse(); }
+  warehouse(@CurrentUser() actor: JwtUser) {
+    const hideFinancials = (actor.roleCode ?? '').toUpperCase() === 'CLIENT';
+    return this.service.warehouse(hideFinancials);
+  }
 }
 
 @Module({ controllers: [ReportsController], providers: [ReportsService] })

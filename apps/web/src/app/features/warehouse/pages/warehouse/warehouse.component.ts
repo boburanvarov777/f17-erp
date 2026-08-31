@@ -16,15 +16,19 @@ import { GroupedNumberDirective } from '../../../../shared/directives/grouped-nu
 import { PaginationComponent } from '../../../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
+import { DateInputComponent } from '../../../../shared/ui/date-input.component';
 
 const OPS: StockOp[] = ['IN', 'OUT', 'RESERVE', 'RETURN', 'INVENTORY'];
+
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 @Component({
   selector: 'app-warehouse',
   templateUrl: './warehouse.component.html',
   styleUrl: './warehouse.component.scss',
   standalone: true,
-  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, NumPipe, ShortDatePipe, GroupedNumberDirective],
+  imports: [FormsModule, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, DateInputComponent, TPipe, NumPipe, ShortDatePipe, GroupedNumberDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WarehouseComponent {
@@ -34,8 +38,10 @@ export class WarehouseComponent {
   readonly auth = inject(AuthService);
 
   readonly ops = OPS;
-  search = ''; category = ''; status = '';
+  search = ''; category = ''; status = ''; asOfDate = '';
   readonly tab = signal<'stock' | 'tx'>('stock');
+  readonly txMaterial = signal<Material | null>(null);
+  readonly snapshotAsOf = signal<string | null>(null);
   readonly page = signal(1);
   readonly limit = signal(10);
   readonly data = signal<Paginated<Material> | null>(null);
@@ -45,15 +51,25 @@ export class WarehouseComponent {
   readonly opModal = signal<Material | null>(null);
   readonly materialModal = signal<Partial<Material> | null>(null);
   readonly archiving = signal<Material | null>(null);
+  readonly txEditing = signal<StockTransaction | null>(null);
+  readonly txDeleting = signal<StockTransaction | null>(null);
 
   readonly opFe = new FieldErrorsState();
   readonly materialFe = new FieldErrorsState();
+  readonly txFe = new FieldErrorsState();
+
+  readonly canManage = computed(() => this.auth.can('warehouse.update'));
 
   op: { op: StockOp; qty: number | null; note: string } = { op: 'IN', qty: null, note: '' };
+  txForm: { qty: number | null; note: string } = { qty: null, note: '' };
   form: Record<string, any> = {};
   private timer?: ReturnType<typeof setTimeout>;
 
   readonly categories = computed(() => [...new Set((this.data()?.items ?? []).map((m) => m.category).filter(Boolean))] as string[]);
+  readonly historicalView = computed(() => {
+    const d = this.asOfDate.trim();
+    return !!d && d !== isoDate(new Date());
+  });
   readonly lowCount = computed(() => (this.data()?.items ?? []).filter((m) => m.status === 'LOW').length);
   readonly outCount = computed(() => (this.data()?.items ?? []).filter((m) => m.status === 'OUT').length);
   readonly reservedCount = computed(() => (this.data()?.items ?? []).reduce((a, m) => a + m.reserved, 0));
@@ -70,21 +86,55 @@ export class WarehouseComponent {
   reload(resetPage = true): void {
     if (resetPage) this.page.set(1);
     this.loading.set(true);
-    this.api.get<Paginated<Material>>('/warehouse', {
+    const params: Record<string, string | number> = {
       page: this.page(), limit: this.limit(), search: this.search, category: this.category, status: this.status,
-    }).subscribe({
-      next: (d) => { this.data.set(d); this.page.set(d.page); this.limit.set(d.limit); this.loading.set(false); },
+    };
+    const asOf = this.asOfDate.trim();
+    if (asOf && asOf !== isoDate(new Date())) params['asOf'] = asOf;
+
+    this.api.get<Paginated<Material> & { asOf?: string }>('/warehouse', params).subscribe({
+      next: (d) => {
+        this.data.set(d);
+        this.page.set(d.page);
+        this.limit.set(d.limit);
+        this.snapshotAsOf.set(d.asOf ?? (asOf && asOf !== isoDate(new Date()) ? asOf : null));
+        this.loading.set(false);
+      },
       error: () => this.loading.set(false),
     });
   }
 
+  onAsOfChange(): void { this.reload(); }
+
+  clearAsOf(): void {
+    this.asOfDate = '';
+    this.snapshotAsOf.set(null);
+    this.reload();
+  }
+
   loadTx(materialId?: string): void {
-    this.api.get<Paginated<StockTransaction>>('/warehouse/transactions', { materialId, limit: 100 }).subscribe({
+    const mid = materialId ?? this.txMaterial()?.id;
+    this.api.get<Paginated<StockTransaction>>('/warehouse/transactions', { materialId: mid, limit: 100 }).subscribe({
       next: (d) => this.transactions.set(d.items), error: () => void 0,
     });
   }
 
-  showTx(m: Material): void { this.loadTx(m.id); this.tab.set('tx'); }
+  showTx(m: Material): void {
+    this.txMaterial.set(m);
+    this.loadTx(m.id);
+    this.tab.set('tx');
+  }
+
+  openAllTx(): void {
+    this.txMaterial.set(null);
+    this.tab.set('tx');
+    this.loadTx();
+  }
+
+  backToStock(): void {
+    this.txMaterial.set(null);
+    this.tab.set('stock');
+  }
 
   openOp(m: Material): void { this.opFe.reset(); this.op = { op: 'IN', qty: null, note: '' }; this.opModal.set(m); }
 
@@ -141,6 +191,53 @@ export class WarehouseComponent {
       },
       error: () => this.archiving.set(null),
     });
+  }
+
+  openTxEdit(t: StockTransaction): void {
+    this.txFe.reset();
+    this.txForm = { qty: t.qty, note: t.note ?? '' };
+    this.txEditing.set(t);
+  }
+
+  saveTxEdit(t: StockTransaction): void {
+    const label = this.i18n.t('quantity');
+    if (!this.txFe.apply(runValidation([
+      { key: 'qty', label, value: this.txForm.qty, custom: (v) => isMissingQty(v) ? this.i18n.t('field_required', { field: label }) : null },
+    ], (k, p) => this.i18n.t(k, p as any)))) return;
+
+    this.busy.set(true);
+    this.api.patch<StockTransaction>(`/warehouse/transactions/${t.id}`, {
+      qty: +this.txForm.qty!,
+      note: this.txForm.note || undefined,
+    }).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.txEditing.set(null);
+        this.toast.success(this.i18n.t('saved'));
+        this.reload(false);
+        this.loadTx();
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  deleteTx(t: StockTransaction): void {
+    this.busy.set(true);
+    this.api.delete(`/warehouse/transactions/${t.id}`).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.txDeleting.set(null);
+        this.toast.success(this.i18n.t('deleted'));
+        this.reload(false);
+        this.loadTx();
+      },
+      error: () => { this.busy.set(false); this.txDeleting.set(null); },
+    });
+  }
+
+  txLabel(t: StockTransaction): string {
+    const mat = t.material?.name || t.material?.code || '—';
+    return `${this.i18n.t('op_' + t.op)} · ${mat} · ${t.qty}`;
   }
 
   opTone(op: StockOp): string {

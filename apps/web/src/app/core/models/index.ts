@@ -113,7 +113,7 @@ export interface Material {
 }
 
 export interface StockTransaction {
-  id: string; op: StockOp; qty: number; balance: number; note?: string; createdAt: string;
+  id: string; materialId?: string; op: StockOp; qty: number; balance: number; note?: string; createdAt: string;
   material?: { code: string; name: string; unit: string };
   user?: { firstName: string; lastName: string };
   order?: { number: string };

@@ -30,12 +30,16 @@ export class ApiService {
     });
   }
 
-  post<T>(path: string, body?: unknown): Observable<T> {
-    return this.http.post<T>(`${this.base}${path}`, body ?? {});
+  post<T>(path: string, body?: unknown, opts?: { silent?: boolean }): Observable<T> {
+    return this.http.post<T>(`${this.base}${path}`, body ?? {}, this.requestOpts(opts));
   }
 
-  patch<T>(path: string, body?: unknown): Observable<T> {
-    return this.http.patch<T>(`${this.base}${path}`, body ?? {});
+  patch<T>(path: string, body?: unknown, opts?: { silent?: boolean }): Observable<T> {
+    return this.http.patch<T>(`${this.base}${path}`, body ?? {}, this.requestOpts(opts));
+  }
+
+  private requestOpts(opts?: { silent?: boolean }) {
+    return opts?.silent ? { headers: new HttpHeaders({ 'X-Silent': '1' }) } : {};
   }
 
   delete<T>(path: string): Observable<T> {

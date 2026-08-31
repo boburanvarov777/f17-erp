@@ -7,8 +7,21 @@
     .photo-tile {
       position: relative; border: none; padding: 0; border-radius: var(--r); overflow: hidden;
       aspect-ratio: 1; background: var(--surface-3); cursor: zoom-in;
+      display: flex; align-items: center; justify-content: center;
     }
-    .photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
+    .photos-grid.single .photo-tile {
+      aspect-ratio: auto;
+      min-height: 280px;
+      max-height: min(56vh, 560px);
+    }
+    .photo-tile img {
+      width: 100%; height: 100%; object-fit: contain; object-position: center;
+      display: block; transition: transform .2s ease;
+    }
+    .photos-grid.single .photo-tile img {
+      height: auto;
+      max-height: min(56vh, 560px);
+    }
     .photo-hover {
       position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
       background: rgba(0,0,0,.45); color: #fff; opacity: 0; transition: opacity .15s ease;
@@ -20,7 +33,16 @@
       color: var(--text-3); background: var(--surface-3); border-radius: var(--r); margin-bottom: 12px;
     }
     .empty-hint { margin: 8px 0 0; text-align: center; font-size: 12px; color: var(--text-3); line-height: 1.45; }
-    .lightbox-img { display: block; width: 100%; max-height: min(78vh, 900px); object-fit: contain; margin: 0 auto; border-radius: var(--r); }
+    .lightbox-img {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      max-height: min(78vh, 900px);
+      object-fit: contain;
+      margin: 0 auto;
+      border-radius: var(--r);
+    }
     dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
     dl.kv dt { color: var(--text-3); } dl.kv dd { margin: 0; }
     .size-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }

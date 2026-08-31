@@ -14,8 +14,16 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.18); transition: background .12s ease, color .12s ease, transform .12s ease;
     }
     .mcard-edit:hover { background: var(--primary); color: #fff; transform: scale(1.05); }
-    .mphoto { height: 148px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); }
-    .mphoto img { width: 100%; height: 100%; object-fit: cover; }
+    .mphoto {
+      height: 200px;
+      background: var(--surface-3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      overflow: hidden;
+    }
+    .mphoto img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-list { display: flex; flex-direction: column; gap: 10px; }
     .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
@@ -34,7 +42,7 @@
       position: relative; aspect-ratio: 1; border-radius: var(--r); border: 1px solid var(--border-strong);
       background: var(--surface-3); overflow: hidden;
     }
-    .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-card img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
     .photo-card.pending { box-shadow: 0 0 0 2px var(--primary-bg); }
     .photo-loading {
       position: absolute; inset: 0; background: rgba(255,255,255,.72);

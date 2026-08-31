@@ -1,25 +1,61 @@
     <div class="page">
+      @if (tab() === 'tx') {
+        <div class="breadcrumb no-print">
+          <button type="button" class="breadcrumb-back" (click)="backToStock()">{{ 'warehouse_title' | t }}</button>
+          <ui-icon name="chevron-right" [size]="13" />
+          @if (txMaterial(); as m) {
+            <span>{{ m.code }} · {{ m.name }}</span>
+          } @else {
+            <span>{{ 'transactions' | t }}</span>
+          }
+        </div>
+      }
+
       <div class="page-head">
         <div>
-          <div class="title">{{ 'warehouse_title' | t }}</div>
-          <div class="sub">{{ i18n.t('warehouse_positions_count', { n: data()?.total || 0 }) }}</div>
+          @if (tab() === 'tx') {
+            <div class="title">{{ 'history' | t }}</div>
+            <div class="sub">
+              @if (txMaterial(); as m) {
+                {{ m.code }} · {{ m.name }}
+              } @else {
+                {{ 'transactions' | t }}
+              }
+            </div>
+          } @else {
+            <div class="title">{{ 'warehouse_title' | t }}</div>
+            <div class="sub">
+              {{ i18n.t('warehouse_positions_count', { n: data()?.total || 0 }) }}
+              @if (snapshotAsOf(); as d) {
+                · {{ i18n.t('warehouse_as_of_hint', { date: d }) }}
+              }
+            </div>
+          }
         </div>
         <div class="page-actions">
-          <button class="btn btn-sm" type="button" (click)="tab.set(tab() === 'stock' ? 'tx' : 'stock')" [attr.data-tip]="tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t)">
-            <ui-icon name="history" [size]="15" /> {{ tab() === 'stock' ? ('transactions' | t) : ('warehouse_title' | t) }}
-          </button>
-          @if (auth.can('warehouse.create')) {
+          @if (tab() === 'tx') {
+            <button class="btn btn-sm" type="button" (click)="backToStock()">
+              <ui-icon name="arrow-left" [size]="15" /> {{ 'back' | t }}
+            </button>
+          } @else {
+            <button class="btn btn-sm" type="button" (click)="openAllTx()" [attr.data-tip]="'transactions' | t">
+              <ui-icon name="history" [size]="15" /> {{ 'transactions' | t }}
+            </button>
+          }
+          @if (auth.can('warehouse.create') && tab() === 'stock' && !historicalView()) {
             <button class="btn btn-primary btn-sm" type="button" (click)="openMaterial({})" [attr.data-tip]="'new_material' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_material' | t }}</button>
           }
         </div>
       </div>
 
+      @if (tab() === 'stock') {
       <div class="stats mb-6">
         <div class="stat"><div class="k">{{ 'total' | t }}</div><div class="v">{{ data()?.total || 0 }}</div></div>
         <div class="stat"><div class="k">{{ 'st_LOW' | t }}</div><div class="v" style="color:var(--warning)">{{ lowCount() }}</div></div>
         <div class="stat"><div class="k">{{ 'st_OUT' | t }}</div><div class="v" style="color:var(--danger)">{{ outCount() }}</div></div>
         <div class="stat"><div class="k">{{ 'reserved' | t }}</div><div class="v">{{ reservedCount() | num }}</div></div>
       </div>
+      }
 
       <div class="card">
         @if (tab() === 'stock') {
@@ -38,6 +74,15 @@
               <option value="LOW">{{ 'st_LOW' | t }}</option>
               <option value="OUT">{{ 'st_OUT' | t }}</option>
             </select>
+            <ui-date-input
+              style="width:148px"
+              size="sm"
+              [(ngModel)]="asOfDate"
+              (ngModelChange)="onAsOfChange()"
+              [placeholder]="'warehouse_as_of' | t" />
+            @if (asOfDate) {
+              <button class="btn btn-sm" type="button" (click)="clearAsOf()">{{ 'warehouse_as_of_clear' | t }}</button>
+            }
             <div class="grow"></div>
             <span class="tiny text-3 nowrap"><ui-icon name="info" [size]="13" /> {{ 'stock_note' | t }}</span>
           </div>
@@ -66,10 +111,10 @@
                         <td class="small">{{ m.supplier || '—' }}</td>
                         <td><ui-status [value]="m.status" /></td>
                         <td class="actions">
-                          @if (auth.can('warehouse.update')) {
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
+                          @if (canManage() && !historicalView()) {
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
                           }
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
                         </td>
@@ -83,10 +128,15 @@
             } @else { <ui-empty icon="boxes" [title]="'no_data' | t" /> }
           }
         } @else {
-          <div class="card-head"><h3>{{ 'transactions' | t }}</h3></div>
+          <div class="card-head row-between">
+            <h3>{{ 'transactions' | t }}</h3>
+            <button class="btn btn-ghost btn-sm" type="button" (click)="backToStock()">
+              <ui-icon name="arrow-left" [size]="14" /> {{ 'back' | t }}
+            </button>
+          </div>
           <div class="table-wrap">
             <table class="data">
-              <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'operation_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'balance' | t }}</th><th>{{ 'order' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'note' | t }}</th></tr></thead>
+              <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'operation_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'balance' | t }}</th><th>{{ 'order' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'note' | t }}</th>@if (canManage()) { <th class="actions"></th> }</tr></thead>
               <tbody>
                 @for (t of transactions(); track t.id) {
                   <tr>
@@ -98,8 +148,14 @@
                     <td class="small mono">{{ t.order?.number || '—' }}</td>
                     <td class="small">{{ t.user ? t.user.lastName + ' ' + t.user.firstName : '—' }}</td>
                     <td class="small text-3">{{ t.note || '—' }}</td>
+                    @if (canManage()) {
+                      <td class="actions">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openTxEdit(t)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="txDeleting.set(t)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                      </td>
+                    }
                   </tr>
-                } @empty { <tr><td colspan="8"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+                } @empty { <tr><td [attr.colspan]="canManage() ? 9 : 8"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
               </tbody>
             </table>
           </div>
@@ -164,10 +220,43 @@
 
     @if (archiving(); as m) {
       <ui-confirm
-        [title]="'archive' | t"
+        [title]="'delete' | t"
         [message]="i18n.t('material_archive_confirm', { name: m.code })"
         [note]="'material_archive_note' | t"
-        [confirmLabel]="'archive' | t"
+        [confirmLabel]="'delete' | t"
         (confirmed)="archive(m)"
         (cancelled)="archiving.set(null)" />
+    }
+
+    @if (txEditing(); as t) {
+      <ui-modal size="lg" [title]="'tx_edit_title' | t" [subtitle]="txLabel(t)" (closed)="txEditing.set(null)">
+        <div class="form-grid">
+          <div class="field">
+            <label class="label">{{ 'operation_type' | t }}</label>
+            <input class="input" [value]="('op_' + t.op | t)" disabled />
+          </div>
+          <div class="field" [class.field-invalid]="txFe.errors()['qty']">
+            <label class="label">{{ 'quantity' | t }} ({{ t.material?.unit }}) <span class="req">*</span></label>
+            <input class="input" groupedNumber [decimals]="3" [(ngModel)]="txForm.qty" (ngModelChange)="txFe.clear('qty')" />
+            @if (txFe.errors()['qty']; as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field full">
+            <label class="label">{{ 'note' | t }}</label>
+            <input class="input" [(ngModel)]="txForm.note" />
+          </div>
+        </div>
+        <div footer>
+          <button class="btn" type="button" (click)="txEditing.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveTxEdit(t)" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
+
+    @if (txDeleting(); as t) {
+      <ui-confirm
+        [title]="'delete' | t"
+        [message]="i18n.t('tx_delete_confirm', { name: txLabel(t) })"
+        [confirmLabel]="'delete' | t"
+        (confirmed)="deleteTx(t)"
+        (cancelled)="txDeleting.set(null)" />
     }

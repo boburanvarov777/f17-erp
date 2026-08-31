@@ -310,6 +310,11 @@ const uz = {
   balance: 'Qoldiq',
   new_material: 'Yangi material',
   stock_note: 'Ombor qoldig‘i qo‘lda o‘zgartirilmaydi — har bir o‘zgarish transaction orqali amalga oshiriladi.',
+  warehouse_as_of: 'Qoldiq sanasi',
+  warehouse_as_of_hint: '{date} holatidagi qoldiq',
+  warehouse_as_of_clear: 'Bugungi holat',
+  tx_edit_title: 'Operatsiyani tahrirlash',
+  tx_delete_confirm: '«{name}» operatsiyasini o‘chirasizmi? Qoldiq qayta hisoblanadi.',
 
   // production
   production_title: 'Ishlab chiqarish',
@@ -935,6 +940,11 @@ const ru: typeof uz = {
   balance: 'Остаток',
   new_material: 'Новый материал',
   stock_note: 'Остаток не меняется вручную — каждое изменение проходит через транзакцию.',
+  warehouse_as_of: 'Дата остатка',
+  warehouse_as_of_hint: 'Остаток на {date}',
+  warehouse_as_of_clear: 'Сегодня',
+  tx_edit_title: 'Редактировать операцию',
+  tx_delete_confirm: 'Удалить операцию «{name}»? Остаток будет пересчитан.',
 
   production_title: 'Производство',
   stage: 'Этап',
@@ -1551,6 +1561,11 @@ const en: typeof uz = {
   balance: 'Balance',
   new_material: 'New material',
   stock_note: 'Stock is never edited by hand — every change goes through a transaction.',
+  warehouse_as_of: 'Balance date',
+  warehouse_as_of_hint: 'Stock as of {date}',
+  warehouse_as_of_clear: 'Today',
+  tx_edit_title: 'Edit operation',
+  tx_delete_confirm: 'Delete operation «{name}»? Stock will be recalculated.',
 
   production_title: 'Production',
   stage: 'Stage',

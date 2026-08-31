@@ -7,6 +7,7 @@ import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { seesFinancials } from '../../../../core/utils/role.util';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
 import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
 import { EmptyComponent } from '../../../../shared/ui/empty/empty.component';
@@ -15,7 +16,7 @@ import { IconComponent } from '../../../../shared/ui/icon.component';
 import { ModalComponent } from '../../../../shared/ui/modal.component';
 import { PaginationComponent } from '../../../../shared/ui/pagination.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
-import { FieldErrorsState, runValidation } from '../../../../shared/utils/form-validate';
+import { applyApiValidationErrors, FieldErrorsState, focusFirstInvalidField, runValidation } from '../../../../shared/utils/form-validate';
 import { GroupedNumberDirective } from '../../../../shared/directives/grouped-number.directive';
 import { SizeRowFieldsComponent } from '../../../../shared/components/size-row-fields.component';
 import { FilePickerComponent, type FilePickerItem } from '../../../../shared/components/file-picker.component';
@@ -43,6 +44,7 @@ export class ModelsListComponent {
   private toast = inject(ToastService);
   readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+  readonly showFinancials = computed(() => seesFinancials(this.auth.user()));
 
   search = ''; clientId = ''; status = '';
   readonly view = signal<'grid' | 'table'>((localStorage.getItem('f17_models_view') as 'grid' | 'table') || 'grid');
@@ -457,10 +459,14 @@ export class ModelsListComponent {
 
   save(): void {
     const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
-    if (!this.fe.apply(runValidation([
-      { key: 'code', label: t('model_code'), value: this.form['code'], required: true },
-      { key: 'name', label: t('model_name'), value: this.form['name'], required: true },
-    ], t))) return;
+    const clientErrors = runValidation([
+      { key: 'code', label: t('model_code'), value: this.form['code'], required: true, minLength: 2 },
+      { key: 'name', label: t('model_name'), value: this.form['name'], required: true, minLength: 2 },
+    ], t);
+    if (!this.fe.apply(clientErrors)) {
+      focusFirstInvalidField(Object.keys(clientErrors!));
+      return;
+    }
 
     this.busy.set(true);
     const body: Record<string, unknown> = { ...this.form };
@@ -485,7 +491,9 @@ export class ModelsListComponent {
     const id = this.editing()?.id;
     const pending = this.pendingPreviews().filter((p) => !p.uploading).map((p) => p.file);
     const removed = this.removedPhotoIds();
-    const req = id ? this.api.patch<ProductModel>(`/models/${id}`, body) : this.api.post<ProductModel>('/models', body);
+    const req = id
+      ? this.api.patch<ProductModel>(`/models/${id}`, body, { silent: true })
+      : this.api.post<ProductModel>('/models', body, { silent: true });
     req.pipe(
       switchMap((model) => {
         const modelId = id || model.id;
@@ -511,6 +519,12 @@ export class ModelsListComponent {
       },
       error: (err) => {
         this.busy.set(false);
+        const apiErrors = applyApiValidationErrors(err);
+        if (apiErrors) {
+          this.fe.apply(apiErrors);
+          focusFirstInvalidField(Object.keys(apiErrors));
+          return;
+        }
         const m = err?.error?.message;
         this.toast.error(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
       },

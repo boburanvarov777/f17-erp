@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { RouterLink } from '@angular/router';
 import type { ModelColor, ProductModel } from '../../../../core/models';
 import { ApiService } from '../../../../core/services/api.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { seesFinancials } from '../../../../core/utils/role.util';
 import { NumPipe, ShortDatePipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
 import { EmptyComponent } from '../../../../shared/ui/empty/empty.component';
@@ -21,6 +23,8 @@ import { FilePickerComponent, type FilePickerItem } from '../../../../shared/com
 })
 export class ModelDetailComponent {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
+  readonly showFinancials = computed(() => seesFinancials(this.auth.user()));
   readonly id = input.required<string>();
   readonly model = signal<ProductModel | null>(null);
   readonly loading = signal(false);

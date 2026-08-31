@@ -38,7 +38,9 @@
                 <dt>{{ 'season' | t }}</dt><dd>{{ m.season || '—' }}</dd>
                 <dt>{{ 'fabric' | t }}</dt><dd>{{ m.fabric || '—' }}</dd>
                 <dt>{{ 'lining' | t }}</dt><dd>{{ m.lining || '—' }}</dd>
-                <dt>{{ 'cost' | t }}</dt><dd>{{ m.cost ? (m.cost | num) + ' ' + ('currency_uzs' | t) : '—' }}</dd>
+                @if (showFinancials()) {
+                  <dt>{{ 'cost' | t }}</dt><dd>{{ m.cost ? (m.cost | num) + ' ' + ('currency_uzs' | t) : '—' }}</dd>
+                }
               </dl>
               @if (m.description) { <div class="divider"></div><div class="small text-2">{{ m.description }}</div> }
             </div>

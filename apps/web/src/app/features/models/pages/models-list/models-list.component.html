@@ -104,15 +104,15 @@
     @if (editing(); as m) {
       <ui-modal size="lg" [title]="m.id ? ('edit' | t) : ('new_model' | t)" (closed)="editing.set(null)">
         <div class="form-grid">
-          <div class="field" [class.field-invalid]="fe.has('code')">
+          <div class="field" data-field="code" [class.field-invalid]="fe.errors()['code']">
             <label class="label">{{ 'model_code' | t }} <span class="req">*</span></label>
             <input class="input mono" [(ngModel)]="form.code" (ngModelChange)="fe.clear('code')" />
-            @if (fe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+            @if (fe.errors()['code']; as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
-          <div class="field" [class.field-invalid]="fe.has('name')">
+          <div class="field" data-field="name" [class.field-invalid]="fe.errors()['name']">
             <label class="label">{{ 'model_name' | t }} <span class="req">*</span></label>
             <input class="input" [(ngModel)]="form.name" (ngModelChange)="fe.clear('name')" />
-            @if (fe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+            @if (fe.errors()['name']; as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
           <div class="field"><label class="label">{{ 'season' | t }}</label><input class="input" [(ngModel)]="form.season" [placeholder]="'season_placeholder' | t" /></div>
@@ -123,7 +123,9 @@
           </div>
           <div class="field full"><label class="label">{{ 'fabric' | t }}</label><input class="input" [(ngModel)]="form.fabric" /></div>
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>
-          <div class="field"><label class="label">{{ 'cost' | t }}</label><input class="input" type="number" [(ngModel)]="form.cost" /></div>
+          @if (showFinancials()) {
+            <div class="field"><label class="label">{{ 'cost' | t }}</label><input class="input" type="number" [(ngModel)]="form.cost" /></div>
+          }
           <div class="field full">
             <label class="label">
               {{ 'photo' | t }}

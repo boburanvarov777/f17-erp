@@ -82,4 +82,47 @@ export class FieldErrorsState {
     this.errors.set(map ?? {});
     return !map;
   }
+
+  keys(): string[] {
+    return Object.keys(this.errors());
+  }
+}
+
+const API_FIELD_KEYS: Record<string, string> = {
+  f_code: 'code',
+  f_name: 'name',
+  code: 'code',
+  name: 'name',
+};
+
+/** Map NestJS DTO validation (`i18n` refs) onto form field keys. */
+export function applyApiValidationErrors(err: { error?: { message?: string | string[]; i18n?: unknown } }): Record<string, string> | null {
+  const raw = err?.error?.i18n;
+  if (!raw) return null;
+  const refs = (Array.isArray(raw) ? raw : [raw]) as { vars?: { field?: string } }[];
+  const messages = err?.error?.message;
+  const msgList = Array.isArray(messages) ? messages : messages ? [messages] : [];
+  const errors: Record<string, string> = {};
+
+  refs.forEach((ref, i) => {
+    const field = String(ref?.vars?.field ?? '');
+    const key = API_FIELD_KEYS[field] ?? field.replace(/^f_/, '');
+    if (!key) return;
+    errors[key] = msgList[i] ?? msgList[0] ?? field;
+  });
+
+  return Object.keys(errors).length ? errors : null;
+}
+
+/** Scroll modal/page to the first invalid field and focus its input. */
+export function focusFirstInvalidField(keys: string[]): void {
+  queueMicrotask(() => {
+    for (const key of keys) {
+      const wrap = document.querySelector(`[data-field="${key}"]`);
+      if (!wrap) continue;
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (wrap.querySelector('input, select, textarea') as HTMLElement | null)?.focus();
+      break;
+    }
+  });
 }

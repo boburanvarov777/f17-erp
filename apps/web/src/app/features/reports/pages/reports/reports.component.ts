@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../../../core/services/api.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { I18nService } from '../../../../core/services/i18n.service';
+import { seesFinancials } from '../../../../core/utils/role.util';
 import { NumPipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
 import { PALETTE, STAGE_COLOR, STATUS_COLOR } from '../../../../shared/ui/chart-colors';
@@ -42,7 +44,10 @@ const iso = (d: Date) =>
 export class ReportsComponent {
   private api = inject(ApiService);
   private router = inject(Router);
+  private auth = inject(AuthService);
   readonly i18n = inject(I18nService);
+
+  readonly showFinancials = computed(() => seesFinancials(this.auth.user()));
 
   readonly tabs = [
     { key: 'production', label: 'rep_production' },
