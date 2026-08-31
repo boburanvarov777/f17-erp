@@ -8,6 +8,15 @@ import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorator
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
 import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { StorageService } from '../../common/storage/storage.service';
+import {
+  deleteStoredUrl,
+  FILE_MIMES,
+  MAX_FILE_BYTES,
+  MAX_PHOTO_BYTES,
+  PHOTO_MIMES,
+  storeUpload,
+} from '../../common/storage/upload';
 import { buildOrderBy } from '../../common/utils/order-by';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 
@@ -55,17 +64,14 @@ export class QueryModelsDto extends PaginationDto {
 }
 
 const SORTABLE = ['code', 'name', 'category', 'season', 'status', 'createdAt'];
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-
-function toPhotoDataUrl(file: { mimetype: string; size: number; buffer: Buffer }): string {
-  if (!file.mimetype.startsWith('image/')) throw badRequest('err_image_type');
-  if (file.size > MAX_PHOTO_BYTES) throw badRequest('err_image_size');
-  return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
-}
 
 @Injectable()
 export class ModelsService {
-  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    private storage: StorageService,
+  ) {}
 
   async findAll(dto: QueryModelsDto) {
     const where: Prisma.ProductModelWhereInput = { archivedAt: null };
@@ -175,17 +181,22 @@ export class ModelsService {
     await this.prisma.productModel.update({ where: { id: modelId }, data: { photo: first?.url ?? null } });
   }
 
-  async addPhoto(modelId: string, file: { mimetype: string; size: number; buffer: Buffer }) {
+  async addPhoto(modelId: string, file: { mimetype: string; size: number; buffer: Buffer; originalname?: string }) {
     await this.prisma.productModel.findUniqueOrThrow({ where: { id: modelId } });
-    const url = toPhotoDataUrl(file);
+    const stored = await storeUpload(this.storage, file, `models/${modelId}/photos`, {
+      maxBytes: MAX_PHOTO_BYTES,
+      allowed: PHOTO_MIMES,
+      kind: 'photo',
+    });
     const count = await this.prisma.modelPhoto.count({ where: { modelId } });
-    const photo = await this.prisma.modelPhoto.create({ data: { modelId, url, sortOrder: count } });
-    if (count === 0) await this.prisma.productModel.update({ where: { id: modelId }, data: { photo: url } });
+    const photo = await this.prisma.modelPhoto.create({ data: { modelId, url: stored.url, sortOrder: count } });
+    if (count === 0) await this.prisma.productModel.update({ where: { id: modelId }, data: { photo: stored.url } });
     return photo;
   }
 
   async removePhoto(photoId: string) {
     const photo = await this.prisma.modelPhoto.delete({ where: { id: photoId } });
+    await deleteStoredUrl(this.storage, photo.url);
     await this.syncCoverPhoto(photo.modelId);
     return { success: true };
   }
@@ -210,13 +221,34 @@ export class ModelsService {
     return { success: true, ordersLinked: model._count.orders };
   }
 
-  async addFile(id: string, body: { name: string; url: string; mime?: string; size?: number }) {
-    return this.prisma.modelFile.create({ data: { modelId: id, ...body } });
+  async addFile(
+    id: string,
+    file: { mimetype: string; size: number; buffer: Buffer; originalname?: string },
+  ) {
+    await this.prisma.productModel.findUniqueOrThrow({ where: { id } });
+    const stored = await storeUpload(this.storage, file, `models/${id}/files`, {
+      maxBytes: MAX_FILE_BYTES,
+      allowed: FILE_MIMES,
+      kind: 'file',
+    });
+    return this.prisma.modelFile.create({
+      data: { modelId: id, name: stored.name, url: stored.url, mime: stored.mime, size: stored.size },
+    });
   }
 
   async removeFile(fileId: string) {
+    const file = await this.prisma.modelFile.findUniqueOrThrow({ where: { id: fileId } });
+    await deleteStoredUrl(this.storage, file.url);
     await this.prisma.modelFile.delete({ where: { id: fileId } });
     return { success: true };
+  }
+
+  uploadTempPhoto(file: { mimetype: string; size: number; buffer: Buffer; originalname?: string }) {
+    return storeUpload(this.storage, file, 'models/temp/photos', {
+      maxBytes: MAX_PHOTO_BYTES,
+      allowed: PHOTO_MIMES,
+      kind: 'photo',
+    });
   }
 }
 
@@ -231,11 +263,12 @@ export class ModelsController {
 
   @Post('upload-photo')
   @RequirePermissions('models.create', 'models.update')
-  @ApiOperation({ summary: 'Upload model photo (legacy) — prefer POST /models/:id/photos' })
+  @ApiOperation({ summary: 'Upload model photo — stored in bucket when configured' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PHOTO_BYTES } }))
-  uploadPhoto(@UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer }) {
+  async uploadPhoto(@UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer; originalname?: string }) {
     if (!file) throw badRequest('err_no_image');
-    return { photo: toPhotoDataUrl(file) };
+    const stored = await this.service.uploadTempPhoto(file);
+    return { photo: stored.url };
   }
 
   @Post(':id/photos')
@@ -265,10 +298,13 @@ export class ModelsController {
   @ApiOperation({ summary: 'Archive model (physical delete only when no order references it)' })
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) { return this.service.archive(id, actor); }
 
-  @Post(':id/files') @RequirePermissions('models.update')
-  addFile(@Param('id') id: string, @Body() body: { name: string; url: string; mime?: string; size?: number }) {
-    if (!body?.url) throw badRequest('err_url_required');
-    return this.service.addFile(id, body);
+  @Post(':id/files')
+  @RequirePermissions('models.update')
+  @ApiOperation({ summary: 'Upload model file (PDF, Word, Excel, ZIP, images — max 25 MB)' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES } }))
+  uploadFile(@Param('id') id: string, @UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer; originalname?: string }) {
+    if (!file) throw badRequest('err_no_file');
+    return this.service.addFile(id, file);
   }
 
   @Delete('files/:fileId') @RequirePermissions('models.update')

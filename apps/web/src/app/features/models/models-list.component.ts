@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of, switchMap, catchError, map } from 'rxjs';
-import type { Accessory, Client, ModelColor, ModelPhoto, ModelSize, Paginated, ProductModel } from '../../core/models';
+import type { Accessory, Client, ModelColor, ModelFile, ModelPhoto, ModelSize, Paginated, ProductModel } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -192,6 +192,29 @@ import { SizeRowFieldsComponent } from '../../shared/components/size-row-fields.
               <div class="tiny text-3">{{ 'photo_hint' | t }}</div>
             </div>
           </div>
+          @if (editing()?.id) {
+            <div class="field full">
+              <label class="label">{{ 'files' | t }}</label>
+              <input #fileInput type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,image/jpeg,image/png,image/webp" multiple hidden (change)="onFileSelected($event)" />
+              <div class="file-list">
+                @for (f of existingFiles(); track f.id) {
+                  <div class="file-row">
+                    <a class="file-name" [href]="f.url" target="_blank" rel="noopener">{{ f.name }}</a>
+                    <span class="tiny text-3">{{ formatSize(f.size) }}</span>
+                    <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeFile(f.id)" [attr.data-tip]="'delete' | t">
+                      <ui-icon name="x" [size]="14" />
+                    </button>
+                  </div>
+                }
+                <button class="btn btn-sm" type="button" (click)="fileInput.click()" [disabled]="fileUploading()">
+                  @if (fileUploading()) { <span class="spinner sm"></span> }
+                  <ui-icon name="paperclip" [size]="14" />
+                  <span>{{ 'upload_file' | t }}</span>
+                </button>
+              </div>
+              <div class="tiny text-3">{{ 'file_hint' | t }}</div>
+            </div>
+          }
           <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
         </div>
 
@@ -321,6 +344,10 @@ import { SizeRowFieldsComponent } from '../../shared/components/size-row-fields.
     }
     .photo-add:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
     .photo-add:disabled { opacity: .6; cursor: wait; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface-2); border-radius: var(--radius-sm); }
+    .file-name { flex: 1; font-size: 13px; color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-name:hover { text-decoration: underline; }
   `],
 })
 export class ModelsListComponent {
@@ -343,9 +370,11 @@ export class ModelsListComponent {
   readonly colors = signal<{ name: string; hex: string }[]>([]);
   readonly accessories = signal<{ name: string; color: string; size: string; code: string; qty: number | null }[]>([]);
   readonly existingPhotos = signal<ModelPhoto[]>([]);
+  readonly existingFiles = signal<ModelFile[]>([]);
   readonly pendingPreviews = signal<{ key: string; url: string; file: File; uploading?: boolean }[]>([]);
   readonly removedPhotoIds = signal<string[]>([]);
   readonly photoUploading = signal(false);
+  readonly fileUploading = signal(false);
   readonly photoCount = computed(() => this.existingPhotos().length + this.pendingPreviews().length);
   readonly fe = new FieldErrorsState();
 
@@ -385,6 +414,8 @@ export class ModelsListComponent {
     this.revokePendingPreviews();
     this.removedPhotoIds.set([]);
     this.photoUploading.set(false);
+    this.fileUploading.set(false);
+    this.existingFiles.set([]);
     this.sizes.set([]);
     this.colors.set([]);
     this.accessories.set([]);
@@ -393,6 +424,7 @@ export class ModelsListComponent {
       this.api.get<ProductModel>(`/models/${m.id}`).subscribe({
         next: (full) => {
           this.existingPhotos.set(full.photos ?? []);
+          this.existingFiles.set(full.files ?? []);
           this.sizes.set((full.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
           this.colors.set((full.colors ?? []).map((c) => ({ name: c.name, hex: c.hex || '#cccccc' })));
           this.accessories.set((full.accessories ?? []).map((a) => ({
@@ -406,7 +438,36 @@ export class ModelsListComponent {
       });
     } else {
       this.existingPhotos.set([]);
+      this.existingFiles.set([]);
     }
+  }
+
+  onFileSelected(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const modelId = this.editing()?.id;
+    if (!modelId || !files.length) return;
+    this.fileUploading.set(true);
+    forkJoin(files.map((f) => this.api.upload<ModelFile>(`/models/${modelId}/files`, f).pipe(catchError(() => of(null))))).subscribe({
+      next: (uploaded) => {
+        this.existingFiles.update((list) => [...list, ...uploaded.filter(Boolean) as ModelFile[]]);
+        this.fileUploading.set(false);
+      },
+      error: () => { this.fileUploading.set(false); this.toast.error(this.i18n.t('error')); },
+    });
+  }
+
+  removeFile(id: string): void {
+    this.existingFiles.update((f) => f.filter((x) => x.id !== id));
+    this.api.delete(`/models/files/${id}`).subscribe({ error: () => this.toast.error(this.i18n.t('error')) });
+  }
+
+  formatSize(bytes?: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   onPhotoSelected(e: Event): void {

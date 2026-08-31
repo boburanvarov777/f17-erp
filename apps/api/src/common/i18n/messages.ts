@@ -55,6 +55,10 @@ const uz = {
   // models & files
   err_image_type: 'Faqat rasm fayli yuklash mumkin (JPG, PNG, WebP)',
   err_image_size: 'Rasm hajmi 2 MB dan oshmasin',
+  err_file_type: 'Fayl turi ruxsat etilmagan (PDF, Word, Excel, ZIP, rasm)',
+  err_file_size: 'Fayl hajmi 25 MB dan oshmasin',
+  err_no_file: 'Fayl tanlanmadi',
+  err_storage_required: 'Fayl yuklash uchun bucket sozlanmagan',
   err_photo_after_create: 'Rasmni model yaratilgandan keyin alohida yuklang',
   err_photo_separate: 'Rasmni alohida yuklang',
   err_no_image: 'Rasm tanlanmadi',
@@ -217,6 +221,10 @@ const ru: Record<MessageKey, string> = {
 
   err_image_type: 'Можно загружать только изображения (JPG, PNG, WebP)',
   err_image_size: 'Размер изображения не должен превышать 2 МБ',
+  err_file_type: 'Недопустимый тип файла (PDF, Word, Excel, ZIP, изображение)',
+  err_file_size: 'Размер файла не должен превышать 25 МБ',
+  err_no_file: 'Файл не выбран',
+  err_storage_required: 'Bucket не настроен для загрузки файлов',
   err_photo_after_create: 'Загрузите изображение отдельно после создания модели',
   err_photo_separate: 'Загрузите изображение отдельно',
   err_no_image: 'Изображение не выбрано',
@@ -370,6 +378,10 @@ const en: Record<MessageKey, string> = {
 
   err_image_type: 'Only image files can be uploaded (JPG, PNG, WebP)',
   err_image_size: 'Image size must not exceed 2 MB',
+  err_file_type: 'File type not allowed (PDF, Word, Excel, ZIP, image)',
+  err_file_size: 'File size must not exceed 25 MB',
+  err_no_file: 'No file selected',
+  err_storage_required: 'Bucket is not configured for file uploads',
   err_photo_after_create: 'Upload the image separately once the model is created',
   err_photo_separate: 'Upload the image separately',
   err_no_image: 'No image selected',
