@@ -164,6 +164,12 @@ async function main() {
   const userByLogin = Object.fromEntries((await prisma.user.findMany()).map((u) => [u.login, u]));
   console.log(`  users: ${users.length} (super admin: ${users[0].login} / ${superPassword})`);
 
+  if (process.env.NODE_ENV === 'production') {
+    console.log('  production: demo clients/models/orders skipped');
+    console.log('✔ Seed complete.');
+    return;
+  }
+
   // ─── Clients ───
   const clients = [
     { code: 'ZARINA', name: 'ZARINA (Melon Fashion Group)', contact: 'Melon Fashion Group, Sankt-Peterburg', phone: '+7 812 000 0000' },

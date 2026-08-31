@@ -25,6 +25,11 @@ printf '%s\n' 'ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "phone" TEXT;' 
   | npx --workspace apps/api prisma db execute --schema prisma/schema.prisma --stdin \
   || echo "⚠ audit_logs.phone column ensure skipped"
 
+if [ "$CLEAN_DB" = "1" ]; then
+  echo "▸ Cleaning business data (keeping users, roles, departments)…"
+  node apps/api/prisma/compiled/prisma/clean-db.js || echo "⚠ clean-db failed"
+fi
+
 echo "▸ Syncing seed data (roles, users, demo)…"
 node apps/api/prisma/compiled/prisma/seed.js || echo "⚠ seed skipped"
 
