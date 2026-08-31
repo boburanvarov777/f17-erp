@@ -6,7 +6,7 @@ import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorator
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
 import { badRequest } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { buildOrderBy } from '../../common/utils/order-by';
+import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -68,7 +68,8 @@ export class WarehouseService {
       if (status) rows = rows.filter((m) => m.status === status);
       const total = rows.length;
       const items = rows.slice(dto.skip, dto.skip + dto.limit);
-      return { ...paginate(items, total, dto), asOf: asOf!.trim() };
+      const dated = await this.attachLastTxDates(items, end!);
+      return { ...paginate(dated, total, dto), asOf: asOf!.trim() };
     }
 
     if (status) where.status = status as any;
@@ -79,7 +80,19 @@ export class WarehouseService {
       }),
       this.prisma.material.count({ where }),
     ]);
-    return paginate(items.map((m) => this.decorate(m)), total, dto);
+    return paginate(await this.attachLastTxDates(items.map((m) => this.decorate(m))), total, dto);
+  }
+
+  private async attachLastTxDates<T extends { id: string }>(items: T[], before?: Date): Promise<(T & { lastTxAt: string | null })[]> {
+    if (!items.length) return [];
+    const ids = items.map((m) => m.id);
+    const grouped = await this.prisma.stockTransaction.groupBy({
+      by: ['materialId'],
+      where: { materialId: { in: ids }, ...(before ? { createdAt: { lte: before } } : {}) },
+      _max: { createdAt: true },
+    });
+    const map = new Map(grouped.map((g) => [g.materialId, g._max.createdAt?.toISOString() ?? null]));
+    return items.map((m) => ({ ...m, lastTxAt: map.get(m.id) ?? null }));
   }
 
   private decorate(m: any, snap?: { stock: number; reserved: number }) {
@@ -283,9 +296,13 @@ export class WarehouseService {
     return this.decorate(result.material);
   }
 
-  async transactions(materialId?: string, dto?: PaginationDto) {
+  async transactions(materialId?: string, dto?: PaginationDto, from?: string, to?: string) {
     const p = dto ?? Object.assign(new PaginationDto(), { page: 1, limit: 50, sortOrder: 'desc' as const });
-    const where: Prisma.StockTransactionWhereInput = materialId ? { materialId } : {};
+    const range = dateRange(from, to);
+    const where: Prisma.StockTransactionWhereInput = {
+      ...(materialId ? { materialId } : {}),
+      ...(range ? { createdAt: range } : {}),
+    };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.stockTransaction.findMany({
         where, skip: p.skip, take: p.limit, orderBy: { createdAt: 'desc' },
@@ -362,8 +379,13 @@ export class WarehouseController {
   }
 
   @Get('transactions') @RequirePermissions('warehouse.read')
-  transactions(@Query('materialId') materialId?: string, @Query() dto?: PaginationDto) {
-    return this.service.transactions(materialId, dto);
+  transactions(
+    @Query('materialId') materialId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query() dto?: PaginationDto,
+  ) {
+    return this.service.transactions(materialId, dto, from, to);
   }
 
   @Patch('transactions/:txId')

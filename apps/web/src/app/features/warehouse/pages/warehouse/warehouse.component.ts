@@ -39,14 +39,17 @@ export class WarehouseComponent {
 
   readonly ops = OPS;
   search = ''; category = ''; status = ''; asOfDate = '';
+  txFrom = ''; txTo = '';
   readonly tab = signal<'stock' | 'tx'>('stock');
   readonly txMaterial = signal<Material | null>(null);
   readonly snapshotAsOf = signal<string | null>(null);
+  readonly txViewKey = signal<string | null>(null);
   readonly page = signal(1);
   readonly limit = signal(10);
   readonly data = signal<Paginated<Material> | null>(null);
   readonly transactions = signal<StockTransaction[]>([]);
   readonly loading = signal(false);
+  readonly txLoading = signal(false);
   readonly busy = signal(false);
   readonly opModal = signal<Material | null>(null);
   readonly materialModal = signal<Partial<Material> | null>(null);
@@ -78,7 +81,6 @@ export class WarehouseComponent {
     const qp = new URLSearchParams(location.search);
     this.search = qp.get('search') ?? '';
     this.reload();
-    this.loadTx();
   }
 
   onSearch(): void { clearTimeout(this.timer); this.timer = setTimeout(() => this.reload(), 320); }
@@ -114,18 +116,47 @@ export class WarehouseComponent {
 
   loadTx(materialId?: string): void {
     const mid = materialId ?? this.txMaterial()?.id;
-    this.api.get<Paginated<StockTransaction>>('/warehouse/transactions', { materialId: mid, limit: 100 }).subscribe({
-      next: (d) => this.transactions.set(d.items), error: () => void 0,
+    const viewKey = mid ?? 'all';
+    this.txViewKey.set(viewKey);
+    this.txLoading.set(true);
+    this.transactions.set([]);
+
+    const params: Record<string, string | number> = { materialId: mid ?? '', limit: 100 };
+    if (this.txFrom) params['from'] = this.txFrom;
+    if (this.txTo) params['to'] = this.txTo;
+    if (!mid) delete params['materialId'];
+
+    this.api.get<Paginated<StockTransaction>>('/warehouse/transactions', params).subscribe({
+      next: (d) => {
+        if (this.txViewKey() !== viewKey) return;
+        this.transactions.set(d.items);
+        this.txLoading.set(false);
+      },
+      error: () => {
+        if (this.txViewKey() === viewKey) this.txLoading.set(false);
+      },
     });
   }
 
+  onTxDateChange(): void { this.loadTx(); }
+
+  clearTxDates(): void {
+    this.txFrom = '';
+    this.txTo = '';
+    this.loadTx();
+  }
+
   showTx(m: Material): void {
+    this.transactions.set([]);
+    this.txLoading.set(true);
     this.txMaterial.set(m);
-    this.loadTx(m.id);
     this.tab.set('tx');
+    this.loadTx(m.id);
   }
 
   openAllTx(): void {
+    this.transactions.set([]);
+    this.txLoading.set(true);
     this.txMaterial.set(null);
     this.tab.set('tx');
     this.loadTx();
@@ -133,6 +164,8 @@ export class WarehouseComponent {
 
   backToStock(): void {
     this.txMaterial.set(null);
+    this.txViewKey.set(null);
+    this.transactions.set([]);
     this.tab.set('stock');
   }
 

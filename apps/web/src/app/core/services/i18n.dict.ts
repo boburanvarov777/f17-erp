@@ -313,6 +313,7 @@ const uz = {
   warehouse_as_of: 'Qoldiq sanasi',
   warehouse_as_of_hint: '{date} holatidagi qoldiq',
   warehouse_as_of_clear: 'Bugungi holat',
+  last_operation: 'Oxirgi operatsiya',
   tx_edit_title: 'Operatsiyani tahrirlash',
   tx_delete_confirm: '«{name}» operatsiyasini o‘chirasizmi? Qoldiq qayta hisoblanadi.',
 
@@ -943,6 +944,7 @@ const ru: typeof uz = {
   warehouse_as_of: 'Дата остатка',
   warehouse_as_of_hint: 'Остаток на {date}',
   warehouse_as_of_clear: 'Сегодня',
+  last_operation: 'Последняя операция',
   tx_edit_title: 'Редактировать операцию',
   tx_delete_confirm: 'Удалить операцию «{name}»? Остаток будет пересчитан.',
 
@@ -1564,6 +1566,7 @@ const en: typeof uz = {
   warehouse_as_of: 'Balance date',
   warehouse_as_of_hint: 'Stock as of {date}',
   warehouse_as_of_clear: 'Today',
+  last_operation: 'Last operation',
   tx_edit_title: 'Edit operation',
   tx_delete_confirm: 'Delete operation «{name}»? Stock will be recalculated.',
 

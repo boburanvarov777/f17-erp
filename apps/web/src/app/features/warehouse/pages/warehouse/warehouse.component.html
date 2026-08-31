@@ -95,7 +95,7 @@
                   <thead><tr>
                     <th>{{ 'code' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'category' | t }}</th><th>{{ 'unit' | t }}</th>
                     <th class="num">{{ 'current_stock' | t }}</th><th class="num">{{ 'reserved' | t }}</th><th class="num">{{ 'available' | t }}</th>
-                    <th class="num">{{ 'min_stock' | t }}</th><th>{{ 'supplier' | t }}</th><th>{{ 'status' | t }}</th><th class="actions"></th>
+                    <th class="num">{{ 'min_stock' | t }}</th><th>{{ 'supplier' | t }}</th><th>{{ 'last_operation' | t }}</th><th>{{ 'status' | t }}</th><th class="actions"></th>
                   </tr></thead>
                   <tbody>
                     @for (m of d.items; track m.id) {
@@ -109,6 +109,7 @@
                         <td class="num">{{ m.available | num: 2 }}</td>
                         <td class="num text-3">{{ m.minStock | num: 2 }}</td>
                         <td class="small">{{ m.supplier || '—' }}</td>
+                        <td class="small nowrap">{{ m.lastTxAt ? (m.lastTxAt | shortDate: true) : '—' }}</td>
                         <td><ui-status [value]="m.status" /></td>
                         <td class="actions">
                           @if (canManage() && !historicalView()) {
@@ -128,12 +129,16 @@
             } @else { <ui-empty icon="boxes" [title]="'no_data' | t" /> }
           }
         } @else {
-          <div class="card-head row-between">
-            <h3>{{ 'transactions' | t }}</h3>
-            <button class="btn btn-ghost btn-sm" type="button" (click)="backToStock()">
-              <ui-icon name="arrow-left" [size]="14" /> {{ 'back' | t }}
-            </button>
+          <div class="card-head"><h3>{{ 'transactions' | t }}</h3></div>
+          <div class="toolbar">
+            <ui-date-input style="width:148px" size="sm" [(ngModel)]="txFrom" (ngModelChange)="onTxDateChange()" [placeholder]="'from' | t" />
+            <ui-date-input style="width:148px" size="sm" [(ngModel)]="txTo" (ngModelChange)="onTxDateChange()" [placeholder]="'to' | t" />
+            @if (txFrom || txTo) {
+              <button class="btn btn-sm" type="button" (click)="clearTxDates()">{{ 'clear' | t }}</button>
+            }
           </div>
+          @if (txLoading()) { <ui-loading /> }
+          @else {
           <div class="table-wrap">
             <table class="data">
               <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'operation_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'balance' | t }}</th><th>{{ 'order' | t }}</th><th>{{ 'who' | t }}</th><th>{{ 'note' | t }}</th>@if (canManage()) { <th class="actions"></th> }</tr></thead>
@@ -159,6 +164,7 @@
               </tbody>
             </table>
           </div>
+          }
         }
       </div>
     </div>

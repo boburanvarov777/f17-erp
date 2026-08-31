@@ -110,6 +110,7 @@ export interface Material {
   id: string; code: string; name: string; category?: string; unit: string;
   stock: number; reserved: number; available: number; minStock: number;
   supplier?: string; price?: number | null; status: 'OK' | 'LOW' | 'OUT';
+  lastTxAt?: string | null;
 }
 
 export interface StockTransaction {
