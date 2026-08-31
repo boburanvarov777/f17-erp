@@ -47,4 +47,4 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - run: echo "✅ Build passed — Railway will deploy this commit."
+      - run: echo "✅ Build passed — deploy via Railway (paid) or Oracle VM (see deploy/oracle/README.md)."

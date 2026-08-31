@@ -1,0 +1,50 @@
+# Production stack for a single VM (Oracle Cloud Always Free, Hetzner, etc.)
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: f17-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-f17erp}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [f17]
+
+  app:
+    build: .
+    container_name: f17-erp
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-f17erp}?schema=public
+      NODE_ENV: production
+      PORT: 3000
+      APP_URL: ${APP_URL:?Set APP_URL in .env (https://your-domain)}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_USE_POLLING: ${TELEGRAM_USE_POLLING:-true}
+      TELEGRAM_MINIAPP_URL: ${TELEGRAM_MINIAPP_URL:-}
+      SEED_OWNER_PHONE: ${SEED_OWNER_PHONE:-}
+      SEED_SUPERADMIN_LOGIN: ${SEED_SUPERADMIN_LOGIN:-bobur}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-}
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    networks: [f17]
+
+volumes:
+  pg-data:
+
+networks:
+  f17:

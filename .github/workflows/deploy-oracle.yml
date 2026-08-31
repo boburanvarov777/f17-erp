@@ -1,0 +1,41 @@
+# Deploy to Oracle Cloud (or any Linux VM) on push to main.
+# Required GitHub repo secrets:
+#   ORACLE_HOST      — public IP or domain
+#   ORACLE_USER      — e.g. ubuntu (Oracle) or opc
+#   ORACLE_SSH_KEY   — private key (PEM)
+# Optional:
+#   ORACLE_APP_DIR   — default /opt/f17-erp
+
+name: Deploy Oracle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-oracle-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: vars.ORACLE_DEPLOY_ENABLED == 'true'
+    timeout-minutes: 20
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            APP_DIR="${{ secrets.ORACLE_APP_DIR || '/opt/f17-erp' }}"
+            cd "$APP_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            docker image prune -f
+            echo "Deployed $(git rev-parse --short HEAD)"
