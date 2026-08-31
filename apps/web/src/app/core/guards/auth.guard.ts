@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { isSuperProAdmin, isTopAdmin } from '../role.util';
+import { isSuperProAdmin, isTopAdmin } from '../utils/role.util';
 import { AuthService } from '../services/auth.service';
 
 export const authGuard: CanActivateFn = (_route, state) => {

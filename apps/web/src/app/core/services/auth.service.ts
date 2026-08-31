@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import type { AuthResponse, CurrentUser } from '../models';
-import { isSuperProAdmin } from '../role.util';
+import { isSuperProAdmin } from '../utils/role.util';
 import { ApiService } from './api.service';
 
 const ACCESS = 'f17_access';

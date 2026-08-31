@@ -7,7 +7,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { GroupedNumberDirective } from '../directives/grouped-number.directive';
 import { NumPipe } from '../pipes/format.pipe';
 import { TPipe } from '../pipes/t.pipe';
-import { LoadingComponent } from '../ui/empty.component';
+import { LoadingComponent } from '../ui/loading/loading.component';
 import { FieldErrorsState, runValidation } from '../utils/form-validate';
 
 interface LineDraft {

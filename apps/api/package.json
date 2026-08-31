@@ -12,6 +12,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "seed": "ts-node --transpile-only --project tsconfig.seed.json prisma/seed.ts",
+    "clean-db": "ts-node --transpile-only --project tsconfig.seed.json prisma/clean-db.ts",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
     "test": "jest --passWithNoTests",
     "test:e2e": "jest --config test/jest-e2e.json --passWithNoTests"

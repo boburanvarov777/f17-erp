@@ -224,13 +224,14 @@ export class ModelsService {
   async addFile(
     id: string,
     file: { mimetype: string; size: number; buffer: Buffer; originalname?: string },
+    displayName?: string,
   ) {
     await this.prisma.productModel.findUniqueOrThrow({ where: { id } });
     const stored = await storeUpload(this.storage, file, `models/${id}/files`, {
       maxBytes: MAX_FILE_BYTES,
       allowed: FILE_MIMES,
       kind: 'file',
-    });
+    }, displayName);
     return this.prisma.modelFile.create({
       data: { modelId: id, name: stored.name, url: stored.url, mime: stored.mime, size: stored.size },
     });
@@ -299,12 +300,12 @@ export class ModelsController {
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) { return this.service.archive(id, actor); }
 
   @Post(':id/files')
-  @RequirePermissions('models.update')
+  @RequirePermissions('models.create', 'models.update')
   @ApiOperation({ summary: 'Upload model file (PDF, Word, Excel, ZIP, images — max 25 MB)' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES } }))
-  uploadFile(@Param('id') id: string, @UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer; originalname?: string }) {
+  uploadFile(@Param('id') id: string, @UploadedFile() file?: { mimetype: string; size: number; buffer: Buffer; originalname?: string }, @Body('displayName') displayName?: string) {
     if (!file) throw badRequest('err_no_file');
-    return this.service.addFile(id, file);
+    return this.service.addFile(id, file, displayName);
   }
 
   @Delete('files/:fileId') @RequirePermissions('models.update')

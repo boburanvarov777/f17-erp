@@ -1,6 +1,7 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpEventType, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export type Params = Record<string, string | number | boolean | undefined | null>;
@@ -47,7 +48,27 @@ export class ApiService {
 
   upload<T>(path: string, file: File, field = 'file'): Observable<T> {
     const body = new FormData();
-    body.append(field, file);
+    body.append(field, file, file.name);
+    body.append('displayName', file.name);
     return this.http.post<T>(`${this.base}${path}`, body);
+  }
+
+  /** Multipart upload with byte progress (0–100). */
+  uploadWithProgress<T>(path: string, file: File, field = 'file'): Observable<{ progress: number; result?: T }> {
+    const body = new FormData();
+    body.append(field, file, file.name);
+    body.append('displayName', file.name);
+    return this.http.post<T>(`${this.base}${path}`, body, { reportProgress: true, observe: 'events' }).pipe(
+      map((ev: HttpEvent<T>) => {
+        if (ev.type === HttpEventType.UploadProgress) {
+          const total = ev.total ?? file.size;
+          const progress = total ? Math.min(99, Math.max(1, Math.round((ev.loaded / total) * 100))) : 1;
+          return { progress };
+        }
+        if (ev.type === HttpEventType.Response) return { progress: 100, result: ev.body ?? undefined };
+        return { progress: 0 };
+      }),
+      filter((x) => x.progress > 0),
+    );
   }
 }

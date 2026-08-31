@@ -14,7 +14,6 @@ export class StorageController {
   @Get('*')
   @ApiOperation({ summary: 'Stream object from Railway bucket' })
   async getObject(@Req() req: Request, @Res() res: Response) {
-    if (!this.storage.enabled) throw new NotFoundException();
     const prefix = '/api/storage/';
     const path = req.path;
     if (!path.startsWith(prefix)) throw new NotFoundException();

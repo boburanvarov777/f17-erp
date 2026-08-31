@@ -36,6 +36,24 @@ function extFromMime(mime: string): string {
   return map[mime] ?? extname('file.bin');
 }
 
+/** Multer decodes multipart filenames as latin1 — re-decode to UTF-8 for Cyrillic/Uzbek names. */
+export function decodeUploadFilename(name?: string): string | undefined {
+  if (!name) return undefined;
+  try {
+    return Buffer.from(name, 'latin1').toString('utf8');
+  } catch {
+    return name;
+  }
+}
+
+/** Keep original display name (Cyrillic/Uzbek OK); storage keys stay UUID-based. */
+function safeDisplayName(original?: string, mime?: string, alreadyUtf8 = false): string {
+  const source = alreadyUtf8 ? original : decodeUploadFilename(original);
+  const base = source?.replace(/^.*[\\/]/, '').replace(/[\x00-\x1f\x7f]/g, '').trim();
+  if (base) return base.slice(0, 255);
+  return `upload${extFromMime(mime ?? 'application/octet-stream')}`;
+}
+
 export function toPhotoDataUrl(file: { mimetype: string; size: number; buffer: Buffer }): string {
   if (!PHOTO_MIMES.has(file.mimetype)) throw badRequest('err_image_type');
   if (file.size > MAX_PHOTO_BYTES) throw badRequest('err_image_size');
@@ -47,6 +65,7 @@ export async function storeUpload(
   file: { mimetype: string; size: number; buffer: Buffer; originalname?: string },
   keyPrefix: string,
   opts: { maxBytes: number; allowed: Set<string>; kind: 'photo' | 'file' },
+  displayName?: string,
 ): Promise<{ url: string; mime: string; size: number; name: string }> {
   if (!opts.allowed.has(file.mimetype)) {
     throw badRequest(opts.kind === 'photo' ? 'err_image_type' : 'err_file_type');
@@ -55,16 +74,17 @@ export async function storeUpload(
     throw badRequest(opts.kind === 'photo' ? 'err_image_size' : 'err_file_size');
   }
 
-  const name = file.originalname?.replace(/[^\w.\-()+ ]/g, '_') || `upload${extFromMime(file.mimetype)}`;
+  const name = displayName?.trim()
+    ? safeDisplayName(displayName.trim(), file.mimetype, true)
+    : safeDisplayName(file.originalname, file.mimetype);
 
-  if (storage.enabled) {
+  if (storage.enabled || opts.kind === 'file') {
     const ext = extFromMime(file.mimetype);
     const key = `${keyPrefix}/${randomUUID()}${ext}`;
     await storage.putObject(key, file.buffer, file.mimetype);
     return { url: storage.toPublicUrl(key), mime: file.mimetype, size: file.size, name };
   }
 
-  if (opts.kind !== 'photo') throw badRequest('err_storage_required');
   return { url: toPhotoDataUrl(file), mime: file.mimetype, size: file.size, name };
 }
 

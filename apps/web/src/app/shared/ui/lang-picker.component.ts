@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { LANG_OPTIONS } from '../../core/lang-options';
+import { LANG_OPTIONS } from '../../core/config/lang-options';
 import type { Lang } from '../../core/models';
 import { TPipe } from '../pipes/t.pipe';
 import { LangFlagComponent } from './lang-flag.component';

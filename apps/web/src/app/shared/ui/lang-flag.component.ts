@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { flagAsset } from '../../core/lang-options';
+import { flagAsset } from '../../core/config/lang-options';
 import type { Lang } from '../../core/models';
 
 @Component({

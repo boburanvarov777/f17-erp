@@ -4,7 +4,7 @@ import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from 
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { langInterceptor } from './core/interceptors/lang.interceptor';
-import { startTooltipSync } from './core/tooltip-sync';
+import { startTooltipSync } from './core/utils/tooltip-sync';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {

@@ -1,0 +1,90 @@
+<div class="fp" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
+  <input
+    #fileInput
+    type="file"
+    class="fp-input"
+    [accept]="'.pdf,.doc,.docx,.xls,.xlsx'"
+    multiple
+    hidden
+    [disabled]="disabled() || uploading()"
+    (change)="onInput($event)"
+  />
+
+  @if (items().length) {
+    <div class="fp-grid">
+      @for (item of items(); track itemKey(item)) {
+        <div
+          class="fp-card"
+          [class.uploading]="showProgress(item)"
+          [class.done]="item.uploadDone"
+          [class.failed]="item.uploadFailed"
+        >
+          @if (item.uploadDone) {
+            <div class="fp-card-inner fp-card-inner--success">
+              <ui-icon name="check-circle" [size]="32" class="fp-success-icon" />
+              <span class="fp-name">{{ item.name }}</span>
+            </div>
+          } @else if (item.uploadFailed) {
+            <div class="fp-card-inner fp-card-inner--fail">
+              <ui-icon name="alert-circle" [size]="28" class="fp-fail-icon" />
+              <span class="fp-name">{{ item.name }}</span>
+            </div>
+            @if (item.progress != null) {
+              <div class="fp-progress fp-progress--fail">
+                <div class="fp-progress-fill" [style.width.%]="item.progress"></div>
+              </div>
+            }
+          } @else {
+            <div class="fp-card-inner">
+              <span class="fp-icon" [class]="'fp-icon--' + kind(item)">
+                <ui-icon [name]="icon(item)" [size]="26" />
+              </span>
+              <span class="fp-name" [title]="item.name">{{ item.name }}</span>
+              @if (item.size) {
+                <span class="fp-size">{{ formatSize(item.size) }}</span>
+              }
+            </div>
+            @if (showProgress(item)) {
+              <div class="fp-progress">
+                <div class="fp-progress-fill" [style.width.%]="item.progress ?? 1"></div>
+                <span class="fp-progress-label">{{ item.progress ?? 1 }}%</span>
+              </div>
+            }
+            @if (canDownload(item)) {
+              <a
+                class="fp-dl"
+                [href]="resolveUrl(item.url!)"
+                [download]="item.name"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.data-tip]="'file_download' | t"
+              >
+                <ui-icon name="download" [size]="13" />
+                <span>{{ 'file_download' | t }}</span>
+              </a>
+            }
+          }
+          @if (!readonly() && !showProgress(item) && !item.uploadDone && !item.uploadFailed) {
+            <button
+              class="fp-del"
+              type="button"
+              [disabled]="disabled()"
+              [attr.data-tip]="'delete' | t"
+              (click)="removeItem.emit({ id: item.id, key: item.key })"
+            >
+              <ui-icon name="x" [size]="14" />
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (!readonly()) {
+    <button type="button" class="fp-add" [disabled]="disabled() || uploading()" (click)="fileInput.click()">
+      <ui-icon name="upload" [size]="18" />
+      <span>{{ 'upload_file' | t }}</span>
+    </button>
+    <div class="fp-hint tiny text-3">{{ 'file_hint' | t }}</div>
+  }
+</div>

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inj
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
-import { filterNavGroupsForUser } from '../core/nav-filter';
+import { filterNavGroupsForUser } from '../core/utils/nav-filter';
 import { AuthService } from '../core/services/auth.service';
 import { I18nService } from '../core/services/i18n.service';
 import { NotificationService } from '../core/services/notification.service';
