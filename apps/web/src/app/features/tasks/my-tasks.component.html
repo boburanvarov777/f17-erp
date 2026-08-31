@@ -1,0 +1,106 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="title">{{ 'tasks_title' | t }}</div>
+          <div class="sub">{{ auth.user()?.fullName }} · {{ auth.user()?.department?.name || auth.user()?.position }}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_task' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_task' | t }}</button>
+      </div>
+
+      <div class="grid three mb-6">
+        @for (p of periods; track p.key) {
+          <div class="card card-pad">
+            <div class="row-between mb-3">
+              <b style="font-size:13.5px">{{ p.label | t }}</b>
+              <span class="badge badge-neutral">{{ plan(p.key)?.producedQty || 0 | num }} / {{ plan(p.key)?.targetQty || 0 | num }}</span>
+            </div>
+            <ui-progress [value]="plan(p.key)?.producedQty || 0" [max]="plan(p.key)?.targetQty || 1" [showLabel]="false" />
+            <div class="row-between mt-3 small text-3">
+              <span>{{ 'produced' | t }}: <b class="text-2">{{ plan(p.key)?.producedQty || 0 | num }}</b></span>
+              @if ((plan(p.key)?.overdue || 0) > 0) {
+                <span style="color:var(--danger)">{{ 'overdue' | t }}: {{ plan(p.key)?.overdue }}</span>
+              }
+            </div>
+            @if (p.key === 'DAILY' && (plan('DAILY')?.lines?.length || plan('DAILY')?.byModel?.length)) {
+              <div class="breakdown mt-3">
+                <div class="tiny text-3 mb-2">{{ 'daily_by_model' | t }}</div>
+                @for (m of (plan('DAILY')!.lines?.length ? plan('DAILY')!.lines! : plan('DAILY')!.byModel!); track m.orderId + m.stage) {
+                  <div class="break-row row-between">
+                    <span class="tiny"><span class="mono">{{ m.orderNumber }}</span> · {{ m.modelCode }}</span>
+                    <span class="tiny bold">{{ lineQty(m) }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="tabs" style="border:none">
+            @for (f of filters; track f.key) {
+              <button type="button" [class.active]="filter() === f.key" (click)="filter.set(f.key)">{{ f.label | t }}</button>
+            }
+          </div>
+        </div>
+
+        @if (loading()) { <ui-loading /> }
+        @else if (visible().length) {
+          <div class="tlist">
+            @for (t of visible(); track t.id) {
+              <div class="titem" [class.done]="t.status === 'DONE'">
+                <button class="tcheck" type="button" (click)="toggle(t)" [class.on]="t.status === 'DONE'">
+                  @if (t.status === 'DONE') { <ui-icon name="check" [size]="13" /> }
+                </button>
+                <div class="grow" style="min-width:0">
+                  <div class="row gap-2 wrap">
+                    <b class="small">{{ t.title }}</b>
+                    @if (t.order) { <span class="badge badge-neutral mono">{{ t.order.number }}</span> }
+                    @if (t.stage) { <ui-status [value]="t.stage" prefix="stage_" /> }
+                  </div>
+                  @if (t.description) { <div class="tiny text-3">{{ t.description }}</div> }
+                  <div class="tiny text-3">{{ t.date | shortDate }}@if (t.finishedAt) { · {{ 'finished_at' | t }}: {{ t.finishedAt | shortDate: true }} }</div>
+                </div>
+                <select class="select btn-sm" style="width:auto;height:30px" [ngModel]="t.status" (ngModelChange)="setStatus(t, $event)">
+                  @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+                </select>
+                <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(t)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="14" /></button>
+              </div>
+            }
+          </div>
+        } @else { <ui-empty icon="list-checks" [title]="'no_data' | t" /> }
+      </div>
+    </div>
+
+    @if (editing(); as t) {
+      <ui-modal size="lg" [title]="t.id ? ('edit' | t) : ('new_task' | t)" (closed)="editing.set(null)">
+        <div class="form-grid">
+          <div class="field full" [class.field-invalid]="fe.has('title')">
+            <label class="label">{{ 'task_title' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.title" (ngModelChange)="fe.clear('title')" />
+            @if (fe.get('title'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field full"><label class="label">{{ 'description' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="form.description"></textarea></div>
+          <div class="field" [class.field-invalid]="fe.has('date')">
+            <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
+            <ui-date-input [(ngModel)]="form.date" (ngModelChange)="fe.clear('date')" />
+            @if (fe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field">
+            <label class="label">{{ 'status' | t }}</label>
+            <select class="select" [(ngModel)]="form.status" (ngModelChange)="fe.clear('status')">
+              <option value="" disabled>{{ 'select_status' | t }}</option>
+              @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+            </select>
+          </div>
+          <div class="field"><label class="label">{{ 'started_at' | t }}</label><ui-date-input mode="datetime" [(ngModel)]="form.startedAt" /></div>
+          <div class="field"><label class="label">{{ 'finished_at' | t }}</label><ui-date-input mode="datetime" [(ngModel)]="form.finishedAt" /></div>
+          <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="form.note" /></div>
+        </div>
+        <div footer>
+          <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }

@@ -7,42 +7,10 @@ import { LangFlagComponent } from './lang-flag.component';
 
 @Component({
   selector: 'ui-lang-select',
+  templateUrl: './lang-select.component.html',
   standalone: true,
   imports: [TPipe, IconComponent, LangFlagComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="lang-select" [class.open]="open()">
-      <button
-        type="button"
-        class="lang-select-trigger"
-        [attr.aria-expanded]="open()"
-        [attr.aria-haspopup]="'listbox'"
-        (click)="toggle()"
-      >
-        <ui-lang-flag [code]="current()" />
-        <ui-icon name="chevron-down" [size]="14" class="lang-select-chevron" />
-      </button>
-
-      @if (open()) {
-        <div class="lang-select-menu" role="listbox" [attr.aria-label]="'language' | t">
-          @for (l of langs; track l.code) {
-            <button
-              type="button"
-              class="lang-select-item"
-              role="option"
-              [class.active]="current() === l.code"
-              [attr.aria-selected]="current() === l.code"
-              (click)="pick(l.code)"
-            >
-              <ui-lang-flag [code]="l.code" />
-              <span class="grow">{{ ('lang_' + l.code) | t }}</span>
-              @if (current() === l.code) { <ui-icon name="check" [size]="14" /> }
-            </button>
-          }
-        </div>
-      }
-    </div>
-  `,
 })
 export class LangSelectComponent {
   readonly current = input.required<Lang>();

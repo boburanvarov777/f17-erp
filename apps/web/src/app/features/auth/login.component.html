@@ -1,0 +1,68 @@
+    <div class="auth">
+      <!-- brand panel -->
+      <div class="panel">
+        <div class="panel-inner">
+          <div class="mark">F17</div>
+          <h1 class="wordmark">F17 JEANS<br /><span>&amp; ZARINA DENIM</span></h1>
+          <p class="tag">{{ 'login_tagline' | t }}</p>
+
+          <ul class="feats">
+            <li><ui-icon name="clipboard-list" [size]="16" /> {{ 'login_feat_orders' | t }}</li>
+            <li><ui-icon name="scissors" [size]="16" /> {{ 'login_feat_stages' | t }}</li>
+            <li><ui-icon name="boxes" [size]="16" /> {{ 'login_feat_warehouse' | t }}</li>
+            <li><ui-icon name="send" [size]="16" /> {{ 'login_feat_bot' | t }}</li>
+          </ul>
+        </div>
+        <div class="panel-foot">© {{ year }} F17 Jeans · Melon Fashion Group</div>
+      </div>
+
+      <!-- form -->
+      <div class="form-side">
+        <div class="topline">
+          <ui-lang-picker variant="segment" [current]="i18n.lang()" (changed)="setLang($event)" />
+          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
+            <ui-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="15" />
+          </button>
+        </div>
+
+        <form class="form" (ngSubmit)="submit()">
+          <div class="mark small-mark">F17</div>
+          <h2>{{ 'login_title' | t }}</h2>
+          <p class="text-3 small mb-6">{{ 'login_subtitle' | t }}</p>
+
+          <div class="field mb-4" [class.field-invalid]="fe.has('login')">
+            <label class="label" for="login">{{ 'login' | t }}</label>
+            <input id="login" class="input" name="login" [(ngModel)]="login" autocomplete="username"
+                   autofocus [disabled]="busy()" (ngModelChange)="fe.clear('login')" />
+            @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+
+          <div class="field mb-4" [class.field-invalid]="fe.has('password')">
+            <label class="label" for="password">{{ 'password' | t }}</label>
+            <div class="pass-wrap">
+              <input id="password" class="input" name="password" [type]="show() ? 'text' : 'password'"
+                     [(ngModel)]="password" autocomplete="current-password" [disabled]="busy()" (ngModelChange)="fe.clear('password')" />
+              <button type="button" class="peek" (click)="show.set(!show())" tabindex="-1" [attr.aria-label]="show() ? ('hide_password' | t) : ('show_password' | t)">
+                <ui-icon [name]="show() ? 'eye-off' : 'eye'" [size]="16" />
+              </button>
+            </div>
+            @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+
+          @if (errorKey()) {
+            <div class="badge badge-danger mb-4" style="width:100%;justify-content:flex-start;padding:9px 12px;border-radius:var(--r)">
+              <ui-icon name="alert-circle" [size]="15" /> {{ error() }}
+            </div>
+          }
+
+          <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy()">
+            @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'sign_in' | t }} }
+          </button>
+
+          <div class="hint">
+            <ui-icon name="info" [size]="14" />
+            <span>{{ 'login_admin_hint' | t }}</span>
+          </div>
+        </form>
+      </div>
+    </div>

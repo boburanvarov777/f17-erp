@@ -48,6 +48,7 @@ const ICONS: Record<string, string> = {
   eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
   'eye-off': '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
   printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect width="12" height="8" x="6" y="14" rx="1"/>',
   filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
   'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
@@ -80,21 +81,10 @@ const ICONS: Record<string, string> = {
 
 @Component({
   selector: 'ui-icon',
+  templateUrl: './icon.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<svg
-    xmlns="http://www.w3.org/2000/svg"
-    [attr.width]="size()"
-    [attr.height]="size()"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    [attr.stroke-width]="stroke()"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    [innerHTML]="path()"
-  ></svg>`,
-  styles: [':host { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }'],
+  styleUrl: './icon.component.scss',
 })
 export class IconComponent {
   private sanitizer = inject(DomSanitizer);

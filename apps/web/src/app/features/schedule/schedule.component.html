@@ -1,0 +1,66 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="title">{{ 'schedule_title' | t }}</div>
+          <div class="sub">{{ i18n.t('schedule_count_sub', { n: rows().length, from, to }) }}</div>
+        </div>
+        <div class="page-actions">
+          <div class="seg">
+            @for (v of views; track v.key) {
+              <button type="button" [class.on]="view() === v.key" (click)="setView(v.key)">{{ v.label | t }}</button>
+            }
+          </div>
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="load()" />
+          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="load()" />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="legend">
+          @for (s of stages; track s) {
+            <span class="lg"><i [style.background]="color(s)"></i>{{ 'stage_' + s | t }}</span>
+          }
+        </div>
+
+        @if (loading()) { <ui-loading [count]="8" [height]="34" /> }
+        @else if (!rows().length) { <ui-empty icon="calendar-range" [title]="'no_orders' | t" /> }
+        @else {
+          <div class="gantt">
+            <div class="g-head">
+              <div class="g-left">{{ 'order' | t }}</div>
+              <div class="g-track">
+                @for (t of ticks(); track t.left) {
+                  <span class="tick" [class.major]="t.major" [style.left.%]="t.left">{{ t.label }}</span>
+                }
+                <span class="nowline" [style.left.%]="nowLeft()"></span>
+              </div>
+            </div>
+
+            @for (r of rows(); track r.id) {
+              <div class="g-row">
+                <div class="g-left">
+                  <a class="mono bold small" [routerLink]="['/orders', r.id]">{{ r.number }}</a>
+                  <div class="tiny text-3 truncate">{{ r.model || r.client }}</div>
+                  <div class="row gap-2 mt-2"><ui-status [value]="r.status" /></div>
+                </div>
+                <div class="g-track">
+                  @for (t of ticks(); track t.left) { <span class="grid-line" [class.major]="t.major" [style.left.%]="t.left"></span> }
+                  <span class="nowline" [style.left.%]="nowLeft()"></span>
+                  @for (b of r.bars; track b.stage) {
+                    <div class="bar"
+                         [style.left.%]="left(b.start)"
+                         [style.width.%]="width(b.start, b.end)"
+                         [style.background]="color(b.stage)"
+                         [style.opacity]="b.status === 'NOT_STARTED' ? .35 : 1"
+                         [attr.data-tip]="('stage_' + b.stage | t) + ' — ' + b.doneQty + '/' + b.planQty + ' (' + b.progress + '%)'">
+                      <span class="bar-fill" [style.width.%]="b.progress"></span>
+                      <span class="bar-label">{{ 'stage_' + b.stage | t }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>

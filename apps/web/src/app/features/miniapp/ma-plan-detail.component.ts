@@ -20,67 +20,11 @@ const PERIOD_LABELS: Record<PeriodKey, string> = {
 
 @Component({
   selector: 'app-ma-plan-detail',
+  templateUrl: './ma-plan-detail.component.html',
+  styleUrl: './ma-plan-detail.component.scss',
   standalone: true,
   imports: [IconComponent, LoadingComponent, EmptyComponent, TPipe, NumPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="head row gap-2 mb-3">
-      <button class="btn btn-ghost btn-icon btn-sm back" type="button" (click)="back()" [attr.data-tip]="'back' | t">
-        <ui-icon name="arrow-left" [size]="18" />
-      </button>
-      <h2 style="font-size:17px;margin:0">{{ titleKey() | t }}</h2>
-    </div>
-
-    @if (loading()) {
-      <ui-loading [count]="4" [height]="64" />
-    } @else if (plan(); as p) {
-      <div class="summary card card-pad mb-3">
-        <div class="row-between">
-          <div>
-            <div class="tiny text-3">{{ 'ma_plan_total_done' | t }}</div>
-            <div class="summary-qty">{{ p.producedQty | num }}</div>
-            <div class="tiny text-3">{{ 'pieces' | t }}</div>
-          </div>
-          @if (totalDefect() > 0) {
-            <span class="badge badge-danger">{{ 'defect_label' | t }} {{ totalDefect() | num }}</span>
-          }
-        </div>
-      </div>
-
-      <div class="tiny text-3 mb-2">{{ 'ma_plan_by_order' | t }}</div>
-
-      @if (rows().length) {
-        <div class="col gap-2">
-          @for (r of rows(); track r.orderId) {
-            <div class="row-card card card-pad">
-              <div class="grow" style="min-width:0">
-                <div class="mono bold small">{{ r.orderNumber }}</div>
-                <div class="tiny text-3 truncate">{{ r.modelCode }}@if (r.modelName) { · {{ r.modelName }} }</div>
-              </div>
-              <div class="stats">
-                <div class="stat-qty">{{ r.qty | num }}</div>
-                <div class="tiny text-3">{{ 'pieces' | t }}</div>
-                @if (r.defectQty > 0) {
-                  <span class="badge badge-danger stat-defect">{{ 'defect_label' | t }} {{ r.defectQty | num }}</span>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      } @else {
-        <ui-empty icon="clipboard-list" [title]="'ma_no_work_period' | t" />
-      }
-    }
-  `,
-  styles: [`
-    .head { align-items: center; }
-    .back { flex: 0 0 auto; margin-left: -4px; }
-    .summary-qty { font-size: 32px; font-weight: 700; line-height: 1.05; color: var(--primary-600); font-variant-numeric: tabular-nums; }
-    .row-card { display: flex; align-items: center; gap: 12px; }
-    .stats { text-align: right; flex: 0 0 auto; }
-    .stat-qty { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
-    .stat-defect { margin-top: 4px; font-size: 10px; padding: 2px 7px; border-radius: 999px; }
-  `],
 })
 export class MaPlanDetailComponent {
   private api = inject(ApiService);

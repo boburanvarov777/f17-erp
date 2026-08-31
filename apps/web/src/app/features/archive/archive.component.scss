@@ -1,0 +1,40 @@
+.mod-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mod-tab {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-lg);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .mod-tab.on {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .cnt {
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+    }
+    .mod-tab:not(.on) .cnt {
+      background: var(--surface-3);
+      color: var(--text-2);
+    }

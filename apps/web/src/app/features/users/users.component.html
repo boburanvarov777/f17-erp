@@ -1,0 +1,239 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="title">{{ 'users_title' | t }}</div>
+          <div class="sub">{{ i18n.t('employees_count', { n: data()?.total || 0 }) }}</div>
+        </div>
+        @if (auth.can('users.create')) {
+          <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_user' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_user' | t }}</button>
+        }
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="search-box">
+            <ui-icon name="search" [size]="15" />
+            <input class="input" [(ngModel)]="search" (ngModelChange)="onSearch()" [placeholder]="'search' | t" />
+          </div>
+          <select class="select" style="width:auto;min-width:160px" [(ngModel)]="departmentId" (ngModelChange)="reload()">
+            <option value="">{{ 'department' | t }}: {{ 'all' | t }}</option>
+            @for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }
+          </select>
+          <select class="select" style="width:auto;min-width:150px" [(ngModel)]="roleId" (ngModelChange)="reload()">
+            <option value="">{{ 'role' | t }}: {{ 'all' | t }}</option>
+            @for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }
+          </select>
+          <select class="select" style="width:auto;min-width:140px" [(ngModel)]="status" (ngModelChange)="reload()">
+            <option value="">{{ 'status' | t }}: {{ 'all' | t }}</option>
+            <option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option>
+            <option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option>
+          </select>
+        </div>
+
+        @if (loading()) { <ui-loading /> }
+        @else if (data(); as d) {
+          @if (d.items.length) {
+            <div class="table-wrap">
+              <table class="data">
+                <thead><tr>
+                  <th>{{ 'full_name' | t }}</th><th>{{ 'phone' | t }}</th><th>{{ 'login' | t }}</th>
+                  @if (auth.isSuperProAdmin()) { <th>{{ 'current_password' | t }}</th> }
+                  <th>{{ 'department' | t }}</th><th>{{ 'position' | t }}</th><th>{{ 'role' | t }}</th>
+                  <th>{{ 'status' | t }}</th><th>{{ 'telegram' | t }}</th><th>{{ 'last_login' | t }}</th><th class="actions"></th>
+                </tr></thead>
+                <tbody>
+                  @for (u of d.items; track u.id) {
+                    <tr>
+                      <td>
+                        <div class="row gap-3">
+                          <span class="avatar sm">{{ u.firstName | initials: u.lastName }}</span>
+                          <span class="small bold">{{ u.lastName }} {{ u.firstName }}</span>
+                        </div>
+                      </td>
+                      <td class="mono small">{{ u.phone }}</td>
+                      <td class="mono small">{{ u.login }}</td>
+                      @if (auth.isSuperProAdmin()) {
+                        <td class="mono small">{{ u.currentPassword || '—' }}</td>
+                      }
+                      <td class="small">{{ u.department ? deptName(u.department) : '—' }}</td>
+                      <td class="small">{{ u.position || '—' }}</td>
+                      <td><span class="badge badge-neutral">{{ u.role?.name }}</span></td>
+                      <td><ui-status [value]="u.status === 'BLOCKED' ? 'BLOCKED_ACCOUNT' : u.status" /></td>
+                      <td>
+                        @if (u.telegramId) { <span class="badge badge-info"><ui-icon name="send" [size]="11" /> {{ u.telegramUsername ? '@' + u.telegramUsername : ('linked_short' | t) }}</span> }
+                        @else { <span class="tiny text-3">{{ 'not_linked' | t }}</span> }
+                      </td>
+                      <td class="small nowrap">{{ u.lastLoginAt ? (u.lastLoginAt | shortDate: true) : ('never' | t) }}</td>
+                      <td class="actions">
+                        @if (auth.can('users.update') && !isProtectedUser(u)) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openPassword(u)" [attr.data-tip]="'reset_password' | t"><ui-icon name="key-round" [size]="15" /></button>
+                          @if (u.status === 'ACTIVE') {
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'block')" [attr.data-tip]="'block' | t"><ui-icon name="ban" [size]="15" /></button>
+                          } @else {
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="setStatus(u, 'activate')" [attr.data-tip]="'activate' | t"><ui-icon name="check-circle" [size]="15" /></button>
+                          }
+                        } @else if (auth.can('users.update')) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(u)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                        }
+                        @if (canArchiveUser(u)) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(u)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
+                        }
+                        @if (canDeleteUser(u)) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="deleting.set(u)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                        }
+                        @if (auth.isSuperProAdmin()) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openAccessLog(u)" [attr.data-tip]="'access_log' | t"><ui-icon name="eye" [size]="15" /></button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
+          } @else { <ui-empty icon="users" [title]="'no_data' | t" /> }
+        }
+      </div>
+    </div>
+
+    @if (editing(); as u) {
+      <ui-modal size="lg" [title]="u.id ? ('edit_user' | t) : ('new_user' | t)" (closed)="editing.set(null)">
+        <div class="form-grid">
+          <div class="field" [class.field-invalid]="fe.has('lastName')">
+            <label class="label">{{ 'last_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.lastName" (ngModelChange)="fe.clear('lastName')" />
+            @if (fe.get('lastName'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('firstName')">
+            <label class="label">{{ 'first_name' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="form.firstName" (ngModelChange)="fe.clear('firstName')" />
+            @if (fe.get('firstName'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('phone')">
+            <label class="label">{{ 'phone' | t }} <span class="req">*</span></label>
+            <input class="input mono" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="form.phone" [placeholder]="'phone_placeholder' | t" (ngModelChange)="fe.clear('phone')" />
+            @if (fe.get('phone'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field"><label class="label">{{ 'email' | t }}</label><input class="input" type="email" [(ngModel)]="form.email" /></div>
+          <div class="field" [class.field-invalid]="fe.has('login')">
+            <label class="label">{{ 'login' | t }} <span class="req">*</span></label>
+            <input class="input mono" [(ngModel)]="form.login" (ngModelChange)="fe.clear('login')" />
+            @if (fe.get('login'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="fe.has('password')">
+            <label class="label">{{ 'password' | t }} @if (!u.id) { <span class="req">*</span> } @else { <span class="text-3">({{ 'optional' | t }})</span> }</label>
+            <input class="input" type="text" [(ngModel)]="form.password" (ngModelChange)="fe.clear('password')" />
+            @if (fe.get('password'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          @if (u.id && auth.isSuperProAdmin()) {
+            <div class="field">
+              <label class="label">{{ 'current_password' | t }}</label>
+              <input class="input mono" [ngModel]="u.currentPassword || '—'" disabled />
+            </div>
+          }
+          <div class="field">
+            <label class="label">{{ 'department' | t }}</label>
+            <select class="select" [(ngModel)]="form.departmentId"><option value="" disabled>{{ 'select_department' | t }}</option>@for (d of departments(); track d.id) { <option [value]="d.id">{{ deptName(d) }}</option> }</select>
+          </div>
+          <div class="field"><label class="label">{{ 'position' | t }}</label><input class="input" [(ngModel)]="form.position" /></div>
+          <div class="field" [class.field-invalid]="fe.has('roleId')">
+            <label class="label">{{ 'role' | t }} <span class="req">*</span></label>
+            <select class="select" [(ngModel)]="form.roleId" (ngModelChange)="fe.clear('roleId')"><option value="" disabled>{{ 'select_role' | t }}</option>@for (r of roles(); track r.id) { <option [value]="r.id">{{ r.name }}</option> }</select>
+            @if (fe.get('roleId'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field">
+            <label class="label">{{ 'status' | t }}</label>
+            <select class="select" [(ngModel)]="form.status">
+              <option value="" disabled>{{ 'select_status' | t }}</option>
+              <option value="ACTIVE">{{ 'st_ACTIVE' | t }}</option>
+              <option value="BLOCKED">{{ 'st_BLOCKED_ACCOUNT' | t }}</option>
+            </select>
+          </div>
+          <div class="field"><label class="label">{{ 'employee_id' | t }}</label><input class="input" [(ngModel)]="form.employeeId" /></div>
+          <div class="field">
+            <label class="label">{{ 'language' | t }}</label>
+            <select class="select" [(ngModel)]="form.lang">
+              <option value="" disabled>{{ 'select_lang' | t }}</option>
+              <option value="UZ">{{ 'lang_uz' | t }}</option>
+              <option value="RU">{{ 'lang_ru' | t }}</option>
+              <option value="EN">{{ 'lang_en' | t }}</option>
+            </select>
+          </div>
+          <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="form.note" /></div>
+        </div>
+        @if (u.id && u.telegramId) {
+          <div class="divider"></div>
+          <div class="row-between">
+            <span class="small">{{ 'telegram' | t }}: <b>{{ u.telegramUsername ? '@' + u.telegramUsername : u.telegramId }}</b></span>
+            <button class="btn btn-sm" type="button" (click)="unlinkTelegram(u)">{{ 'unlink_telegram' | t }}</button>
+          </div>
+        }
+        @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
+        <div footer>
+          <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
+
+    @if (passwordFor(); as u) {
+      <ui-modal [title]="'reset_password' | t" [subtitle]="u.lastName + ' ' + u.firstName" (closed)="passwordFor.set(null)">
+        <div class="field" [class.field-invalid]="pwdFe.has('newPassword')">
+          <label class="label">{{ 'new_password' | t }} <span class="req">*</span></label>
+          <input class="input" [(ngModel)]="newPassword" (ngModelChange)="pwdFe.clear('newPassword')" />
+          @if (pwdFe.get('newPassword'); as msg) { <div class="field-error">{{ msg }}</div> }
+        </div>
+        <div class="small text-3 mt-3">{{ 'password_sessions_note' | t }}</div>
+        <div footer>
+          <button class="btn" type="button" (click)="passwordFor.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="resetPassword(u)">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
+
+    @if (archiving(); as u) {
+      <ui-confirm [title]="'archive' | t" [message]="i18n.t('user_archive_confirm', { name: u.lastName + ' ' + u.firstName })"
+                  [note]="'user_archive_note' | t" [confirmLabel]="'archive' | t"
+                  (confirmed)="archiveUser(u)" (cancelled)="archiving.set(null)" />
+    }
+
+    @if (deleting(); as u) {
+      <ui-confirm [title]="'delete' | t" [message]="i18n.t('user_delete_confirm', { name: u.lastName + ' ' + u.firstName })"
+                  [note]="'user_delete_note' | t" [confirmLabel]="'delete' | t"
+                  (confirmed)="deleteUser(u)" (cancelled)="deleting.set(null)" />
+    }
+
+    @if (accessLogFor(); as u) {
+      <ui-modal size="lg" [title]="'access_log' | t" [subtitle]="u.lastName + ' ' + u.firstName" (closed)="closeAccessLog()">
+        @if (accessLogLoading()) { <ui-loading [count]="3" [height]="48" /> }
+        @else if (accessLogItems().length) {
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr>
+                <th>{{ 'when' | t }}</th><th>{{ 'what' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'phone' | t }}</th><th>{{ 'ip' | t }}</th>
+              </tr></thead>
+              <tbody>
+                @for (l of accessLogItems(); track l.id) {
+                  <tr>
+                    <td class="small nowrap">{{ l.at | shortDate: true }}</td>
+                    <td><span class="badge" [class.badge-success]="l.action === 'LOGIN'" [class.badge-neutral]="l.action === 'LOGOUT'">{{ (l.action === 'LOGIN' ? 'access_log_in' : 'access_log_out') | t }}</span></td>
+                    <td>
+                      @if (l.telegramUsername) {
+                        <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ l.telegramUsername }}</span>
+                      } @else {
+                        <span class="badge badge-neutral">{{ 'source_web' | t }}</span>
+                      }
+                    </td>
+                    <td class="mono small">{{ l.phone || '—' }}</td>
+                    <td class="tiny text-3">{{ l.ip || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else { <ui-empty icon="history" [title]="'no_data' | t" /> }
+        <div footer><button class="btn" type="button" (click)="closeAccessLog()">{{ 'close' | t }}</button></div>
+      </ui-modal>
+    }

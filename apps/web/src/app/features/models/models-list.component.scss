@@ -1,0 +1,62 @@
+.seg { display: flex; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; }
+    .seg button { border: none; background: var(--surface); padding: 7px 11px; cursor: pointer; color: var(--text-3); }
+    .seg button.on { background: var(--primary); color: #fff; }
+    .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; padding: 16px; }
+    .mcard { position: relative; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); transition: box-shadow .15s ease, transform .15s ease; }
+    .mcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+    .mcard-link { display: block; text-decoration: none; color: inherit; }
+    .mcard-link:hover { text-decoration: none; }
+    .mcard-edit {
+      position: absolute; top: 8px; right: 8px; z-index: 2;
+      width: 32px; height: 32px; border: none; border-radius: 50%;
+      background: var(--surface); color: var(--text-2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18); transition: background .12s ease, color .12s ease, transform .12s ease;
+    }
+    .mcard-edit:hover { background: var(--primary); color: #fff; transform: scale(1.05); }
+    .mphoto { height: 148px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+    .mphoto img { width: 100%; height: 100%; object-fit: cover; }
+    .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .size-list { display: flex; flex-direction: column; gap: 10px; }
+    .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .acc-grid { display: flex; flex-direction: column; gap: 8px; }
+    .acc-row { display: grid; grid-template-columns: 1.2fr 1fr 64px 1fr 72px 32px; gap: 6px; align-items: center; }
+    @media (max-width: 720px) { .acc-row { grid-template-columns: 1fr 1fr; } }
+    .photo-count { margin-left: 6px; font-weight: 500; color: var(--text-3); font-size: 12px; }
+    .photo-zone { display: flex; flex-direction: column; gap: 8px; }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+    .photo-card {
+      position: relative; aspect-ratio: 1; border-radius: var(--r); border: 1px solid var(--border-strong);
+      background: var(--surface-3); overflow: hidden;
+    }
+    .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-card.pending { box-shadow: 0 0 0 2px var(--primary-bg); }
+    .photo-loading {
+      position: absolute; inset: 0; background: rgba(255,255,255,.72);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .photo-del {
+      position: absolute; bottom: 6px; right: 6px; width: 28px; height: 28px; border: none; border-radius: var(--r);
+      background: var(--danger); color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: filter .12s ease;
+    }
+    .photo-del:hover:not(:disabled) { filter: brightness(1.1); }
+    .photo-del:disabled { opacity: .55; cursor: not-allowed; }
+    .photo-add {
+      aspect-ratio: 1; min-height: 108px; border: 2px dashed var(--border-strong); border-radius: var(--r);
+      background: var(--surface-2); color: var(--text-3); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      font-size: 11px; line-height: 1.2; padding: 8px; transition: border-color .12s ease, color .12s ease;
+    }
+    .photo-add:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .photo-add:disabled { opacity: .6; cursor: wait; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface-2); border-radius: var(--radius-sm); }
+    .file-name { flex: 1; font-size: 13px; color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-name:hover { text-decoration: underline; }

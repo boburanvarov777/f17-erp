@@ -24,56 +24,11 @@ interface StageCandidate {
 
 @Component({
   selector: 'app-plan-lines-form',
+  templateUrl: './plan-lines-form.component.html',
+  styleUrl: './plan-lines-form.component.scss',
   standalone: true,
   imports: [FormsModule, TPipe, NumPipe, GroupedNumberDirective, LoadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    @if (loading()) {
-      <ui-loading [count]="3" [height]="44" />
-    } @else {
-      <div class="tiny text-3 mb-3">{{ 'plan_lines_hint' | t }}</div>
-      @if (rows().length) {
-        <div class="col gap-2">
-          @for (r of rows(); track r.orderId) {
-            <label class="plan-line-row" [class.on]="qtyVal(r) > 0">
-              <input type="checkbox" [checked]="qtyVal(r) > 0" (change)="toggle(r, $event)" />
-              <span class="grow">
-                <span class="mono small bold">{{ r.orderNumber }}</span>
-                <span class="tiny text-3"> · {{ r.modelCode }}</span>
-              </span>
-              <input
-                class="input qty-in"
-                type="tel"
-                inputmode="numeric"
-                groupedNumber
-                [(ngModel)]="r.targetQty"
-                (ngModelChange)="onQtyChange(r)"
-                [placeholder]="'plan_done_placeholder' | t"
-              />
-            </label>
-          }
-        </div>
-        <div class="row-between mt-4 small">
-          <span class="text-3">{{ 'plan_total' | t }}</span>
-          <b class="mono">{{ total() | num }} {{ 'pieces' | t }}</b>
-        </div>
-      } @else {
-        <div class="tiny text-3">{{ 'plan_no_orders' | t }}</div>
-      }
-      @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
-      @if (fe.get('lines'); as msg) { <div class="field-error mt-3">{{ msg }}</div> }
-    }
-  `,
-  styles: [`
-    .plan-line-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r);
-      background: var(--surface); cursor: pointer;
-    }
-    .plan-line-row.on { border-color: var(--primary-500); background: var(--primary-50); }
-    .plan-line-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0; }
-    .qty-in { width: 88px; height: 34px; text-align: center; padding: 0 8px; }
-  `],
 })
 export class PlanLinesFormComponent {
   private api = inject(ApiService);

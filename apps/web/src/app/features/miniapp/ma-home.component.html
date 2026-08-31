@@ -1,0 +1,75 @@
+    <h2 class="mb-3" style="font-size:17px">{{ 'ma_plans' | t }}</h2>
+
+    @if (loading()) {
+      <ui-loading [count]="2" [height]="120" />
+    } @else {
+      <div class="today card card-pad">
+        <div class="tiny text-3 mb-2">{{ 'ma_today_done' | t }}</div>
+        <div class="today-qty">{{ produced('DAILY') | num }}</div>
+        <div class="tiny text-3">{{ 'pieces' | t }}</div>
+        @if (defect('DAILY') > 0) {
+          <span class="badge badge-danger today-defect mt-2">{{ 'defect_label' | t }} {{ defect('DAILY') | num }}</span>
+        }
+        <button class="btn btn-primary btn-lg btn-block mt-4" type="button" (click)="openEntry()">
+          <ui-icon name="plus" [size]="16" /> {{ 'ma_add_work' | t }}
+        </button>
+      </div>
+
+      <div class="period-grid mt-4">
+        @for (p of periods; track p.key) {
+          <a class="period card card-pad" [routerLink]="['/miniapp/home', p.key.toLowerCase()]">
+            <div class="tiny text-3">{{ p.label | t }}</div>
+            <div class="period-qty">{{ produced(p.key) | num }}</div>
+            @if (defect(p.key) > 0) {
+              <span class="badge badge-danger period-defect">{{ defect(p.key) | num }}</span>
+            }
+          </a>
+        }
+      </div>
+    }
+
+    @if (entryModal()) {
+      <ui-modal [title]="'ma_add_work' | t" (closed)="closeEntry()">
+        @if (entryOrders().length) {
+          <div class="field" [class.field-invalid]="entryFe.has('orderId')">
+            <label class="label">{{ 'ma_select_order' | t }}</label>
+            <select class="select" [(ngModel)]="entryOrderId" (ngModelChange)="entryFe.clear('orderId')">
+              <option value="" disabled>{{ 'ma_select_order' | t }}</option>
+              @for (o of entryOrders(); track o.orderId) {
+                <option [value]="o.orderId">{{ orderLabel(o) }}</option>
+              }
+            </select>
+            @if (entryFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field mt-3" [class.field-invalid]="entryFe.has('qty')">
+            <label class="label">{{ 'quantity' | t }}</label>
+            <input class="input" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="entryQty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
+            @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="quick mt-2">
+            @for (n of quick; track n) {
+              <button type="button" (click)="entryQty = n">{{ n }}</button>
+            }
+          </div>
+          <div class="field mt-3">
+            <label class="label">{{ 'defect_qty' | t }}</label>
+            <input class="input" type="tel" inputmode="numeric" groupedNumber [(ngModel)]="entryDefect" [placeholder]="'defect_qty_placeholder' | t" />
+          </div>
+          @if (isPacking()) {
+            <div class="field mt-3">
+              <label class="label">{{ 'note' | t }}</label>
+              <input class="input" [(ngModel)]="entryNote" [placeholder]="'note_optional' | t" />
+            </div>
+          }
+        } @else {
+          <div class="tiny text-3">{{ 'ma_no_active_orders_msg' | t }}</div>
+        }
+        @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
+        <div footer class="ma-modal-foot">
+          <button class="btn" type="button" (click)="closeEntry()">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="entryBusy()">
+            @if (entryBusy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
+          </button>
+        </div>
+      </ui-modal>
+    }

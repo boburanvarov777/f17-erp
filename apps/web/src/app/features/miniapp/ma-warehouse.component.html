@@ -1,0 +1,168 @@
+    <div class="wh-head row-between mb-3">
+      <div>
+        <h2 style="font-size:17px;margin:0">{{ 'ma_wh_title' | t }}</h2>
+        <div class="tiny text-3">{{ i18n.t('warehouse_positions_count', { n: data()?.total || 0 }) }}</div>
+      </div>
+      @if (ma.can('warehouse.create') && view() === 'stock') {
+        <button class="btn btn-primary btn-sm" type="button" (click)="openMaterial({})">
+          <ui-icon name="plus" [size]="15" />
+        </button>
+      }
+    </div>
+
+    <div class="kpi-grid mb-3">
+      <div class="kpi card card-pad">
+        <div class="tiny text-3">{{ 'total' | t }}</div>
+        <div class="kpi-v">{{ data()?.total || 0 }}</div>
+      </div>
+      <div class="kpi card card-pad warn">
+        <div class="tiny text-3">{{ 'st_LOW' | t }}</div>
+        <div class="kpi-v">{{ lowCount() }}</div>
+      </div>
+      <div class="kpi card card-pad danger">
+        <div class="tiny text-3">{{ 'st_OUT' | t }}</div>
+        <div class="kpi-v">{{ outCount() }}</div>
+      </div>
+    </div>
+
+    @if (view() === 'stock') {
+      <div class="search-box mb-3">
+        <ui-icon name="search" [size]="15" />
+        <input class="input" [(ngModel)]="search" (ngModelChange)="onSearch()" [placeholder]="'search' | t" />
+      </div>
+      <div class="chips mb-3">
+        @for (f of statusFilters; track f.value) {
+          <button type="button" class="chip" [class.on]="status === f.value" (click)="setStatus(f.value)">{{ f.label | t }}</button>
+        }
+      </div>
+    }
+
+    @if (loading()) {
+      <ui-loading [count]="5" [height]="68" />
+    } @else if (view() === 'tx') {
+      @if (transactions().length) {
+        <div class="col gap-2">
+          @for (t of transactions(); track t.id) {
+            <div class="tx card card-pad">
+              <div class="row-between mb-1">
+                <span class="badge" [class]="opTone(t.op)">{{ 'op_' + t.op | t }}</span>
+                <span class="tiny text-3">{{ t.createdAt | shortDate: true }}</span>
+              </div>
+              <div class="small bold">{{ t.material?.name }}</div>
+              <div class="tiny text-3 mono mb-2">{{ t.material?.code }}</div>
+              <div class="row-between">
+                <span class="mono bold">{{ t.qty | num: 2 }} {{ t.material?.unit }}</span>
+                <span class="tiny text-3">{{ 'balance' | t }}: {{ t.balance | num: 2 }}</span>
+              </div>
+              @if (t.note) { <div class="tiny text-3 mt-1">{{ t.note }}</div> }
+            </div>
+          }
+        </div>
+      } @else {
+        <ui-empty icon="history" [title]="'no_data' | t" />
+      }
+    } @else if (view() === 'alerts') {
+      @if (alertItems().length) {
+        <div class="col gap-2">
+          @for (m of alertItems(); track m.id) {
+            <button class="mcard card card-pad" type="button" (click)="openOp(m)">
+              <div class="row-between mb-1">
+                <span class="mono small bold">{{ m.code }}</span>
+                <ui-status [value]="m.status" />
+              </div>
+              <div class="small">{{ m.name }}</div>
+              <div class="row-between mt-2">
+                <span class="tiny text-3">{{ 'current_stock' | t }}</span>
+                <span class="mono bold" [class.text-danger]="m.status === 'OUT'">{{ m.stock | num: 2 }} {{ m.unit }}</span>
+              </div>
+              <div class="row-between">
+                <span class="tiny text-3">{{ 'min_stock' | t }}</span>
+                <span class="tiny">{{ m.minStock | num: 2 }} {{ m.unit }}</span>
+              </div>
+            </button>
+          }
+        </div>
+      } @else {
+        <ui-empty icon="check-circle" [title]="'ma_wh_no_alerts' | t" />
+      }
+    } @else if (items().length) {
+      <div class="col gap-2">
+        @for (m of items(); track m.id) {
+          <div class="mcard card card-pad">
+            <div class="row-between mb-1">
+              <span class="mono small bold">{{ m.code }}</span>
+              <ui-status [value]="m.status" />
+            </div>
+            <div class="small mb-2">{{ m.name }}</div>
+            <div class="row-between mb-2">
+              <div>
+                <div class="tiny text-3">{{ 'current_stock' | t }}</div>
+                <div class="mono bold">{{ m.stock | num: 2 }} <span class="tiny text-3">{{ m.unit }}</span></div>
+              </div>
+              <div class="text-right">
+                <div class="tiny text-3">{{ 'available' | t }}</div>
+                <div class="mono">{{ m.available | num: 2 }}</div>
+              </div>
+            </div>
+            @if (ma.can('warehouse.update')) {
+              <button class="btn btn-primary btn-sm btn-block" type="button" (click)="openOp(m)">
+                <ui-icon name="arrow-up-right" [size]="14" /> {{ 'stock_op' | t }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <ui-empty icon="boxes" [title]="'no_data' | t" />
+    }
+
+    @if (opModal(); as m) {
+      <ui-modal size="lg" [title]="'stock_op' | t" [subtitle]="m.name" (closed)="opModal.set(null)">
+        <div class="ops mb-3">
+          @for (o of ops; track o) {
+            <button class="op" type="button" [class.on]="op.op === o" (click)="op.op = o">{{ 'op_' + o | t }}</button>
+          }
+        </div>
+        <div class="field" [class.field-invalid]="opFe.has('qty')">
+          <label class="label">{{ 'quantity' | t }} ({{ m.unit }})</label>
+          <input class="input" style="height:44px;font-size:17px;text-align:center" groupedNumber [decimals]="3" [(ngModel)]="op.qty" (ngModelChange)="opFe.clear('qty')" />
+          @if (opFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+        </div>
+        <div class="field mt-3">
+          <label class="label">{{ 'note' | t }}</label>
+          <input class="input" [(ngModel)]="op.note" [placeholder]="'note_optional' | t" />
+        </div>
+        <div footer class="ma-modal-foot">
+          <button class="btn" type="button" (click)="opModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveOp(m)" [disabled]="busy()">
+            @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
+          </button>
+        </div>
+      </ui-modal>
+    }
+
+    @if (materialModal(); as m) {
+      <ui-modal size="lg" [title]="m.id ? ('edit' | t) : ('new_material' | t)" (closed)="materialModal.set(null)">
+        <div class="field" [class.field-invalid]="materialFe.has('code')">
+          <label class="label">{{ 'code' | t }}</label>
+          <input class="input mono" [(ngModel)]="form.code" (ngModelChange)="materialFe.clear('code')" />
+          @if (materialFe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
+        </div>
+        <div class="field mt-3" [class.field-invalid]="materialFe.has('name')">
+          <label class="label">{{ 'material' | t }}</label>
+          <input class="input" [(ngModel)]="form.name" (ngModelChange)="materialFe.clear('name')" />
+          @if (materialFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
+        </div>
+        <div class="field mt-3"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
+        <div class="field mt-3"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" /></div>
+        <div class="field mt-3"><label class="label">{{ 'min_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.minStock" /></div>
+        <div class="field mt-3"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>
+        @if (!m.id) {
+          <div class="field mt-3"><label class="label">{{ 'initial_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.quantity" /></div>
+        }
+        <div footer class="ma-modal-foot">
+          <button class="btn" type="button" (click)="materialModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveMaterial(m)" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }

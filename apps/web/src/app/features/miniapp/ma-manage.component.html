@@ -1,0 +1,85 @@
+    <h2 class="mb-3" style="font-size:17px">{{ 'ma_manage' | t }}</h2>
+
+    @if (ma.seesFullManage() && ma.can('dashboard.read')) {
+      @if (dashLoading()) { <ui-loading [count]="2" [height]="64" /> }
+      @else if (dash(); as d) {
+        <div class="kpi-grid mb-4">
+          <div class="kpi"><div class="k">{{ 'kpi_active_orders' | t }}</div><div class="v">{{ d.kpis.activeOrders | num }}</div></div>
+          <div class="kpi"><div class="k">{{ 'kpi_in_production' | t }}</div><div class="v">{{ d.kpis.inProductionQty | num }}</div></div>
+          <div class="kpi"><div class="k">{{ 'kpi_late' | t }}</div><div class="v" [style.color]="d.kpis.lateOrders ? 'var(--danger)' : ''">{{ d.kpis.lateOrders | num }}</div></div>
+          <div class="kpi"><div class="k">{{ 'kpi_defect_rate' | t }}</div><div class="v">{{ d.kpis.defectRate }}%</div></div>
+        </div>
+
+        <div class="small bold mb-2">{{ 'dash_stages' | t }}</div>
+        <div class="col gap-2 mb-4">
+          @for (s of d.stages; track s.stage) {
+            <div class="stage-row">
+              <span class="small">{{ 'stage_' + s.stage | t }}</span>
+              <ui-progress [value]="s.done" [max]="s.plan || 1" />
+              <span class="mono tiny">{{ s.progress }}%</span>
+            </div>
+          }
+        </div>
+      }
+    } @else if (ownStage(); as st) {
+      @if (dashLoading()) { <ui-loading [count]="1" [height]="64" /> }
+      @else if (ownStageStats(); as s) {
+        <div class="dept-card mb-4">
+          <div class="row-between mb-2">
+            <span class="small bold">{{ 'stage_' + s.stage | t }}</span>
+            <span class="mono tiny">{{ s.progress }}%</span>
+          </div>
+          <ui-progress [value]="s.done" [max]="s.plan || 1" />
+          <dl class="stats-kv mt-3">
+            <dt>{{ 'plan_label' | t }}</dt><dd>{{ s.plan | num }}</dd>
+            <dt>{{ 'actual_label' | t }}</dt><dd>{{ s.done | num }}</dd>
+            <dt>{{ 'remaining_label' | t }}</dt><dd>{{ s.remaining | num }}</dd>
+            <dt>{{ 'defect_label' | t }}</dt><dd [style.color]="s.defect ? 'var(--danger)' : ''">{{ s.defect | num }}</dd>
+          </dl>
+        </div>
+      }
+    }
+
+    @if (ma.seesFullManage() && ma.can('plans.update', 'users.read')) {
+      <div class="row-between mb-2">
+        <div class="small bold">{{ 'ma_team_plans' | t }}</div>
+        <span class="tiny text-3">{{ rows().length }} {{ 'employees' | t }}</span>
+      </div>
+
+      @if (loading()) { <ui-loading [count]="4" [height]="58" /> }
+      @else if (rows().length) {
+        <div class="col gap-2">
+          @for (r of rows(); track r.id) {
+            <div class="erow">
+              <div class="row gap-3">
+                <span class="avatar sm">{{ r.firstName | initials: r.lastName }}</span>
+                <div class="grow">
+                  <div class="small bold">{{ r.lastName }} {{ r.firstName }}</div>
+                  <div class="tiny text-3">{{ r.department ? deptName(r.department) : '—' }}</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="openPlan(r)" [disabled]="!ma.can('plans.update')">
+                  <ui-icon name="pencil" [size]="14" />
+                </button>
+              </div>
+              <div class="row-between mt-2 tiny">
+                <span>{{ 'daily_plan' | t }}</span>
+                <span class="mono">{{ r.dailyPlan.doneQty | num }} / {{ r.dailyPlan.targetQty | num }}</span>
+              </div>
+              <ui-progress [value]="r.dailyPlan.doneQty" [max]="r.dailyPlan.targetQty || 1" [showLabel]="false" />
+            </div>
+          }
+        </div>
+      } @else {
+        <ui-empty icon="users" [title]="'no_data' | t" />
+      }
+    }
+
+    @if (planModal(); as r) {
+      <ui-modal size="lg" [title]="'set_daily_norm' | t" [subtitle]="r.lastName + ' ' + r.firstName" (closed)="planModal.set(null)">
+        <app-plan-lines-form #planForm [userId]="r.id" (saved)="onPlanSaved()" (busy)="planBusy.set($event)" />
+        <div footer class="ma-modal-foot">
+          <button class="btn" type="button" (click)="planModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="planForm.submit()" [disabled]="planBusy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }

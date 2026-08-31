@@ -1,0 +1,13 @@
+.day-row { display: flex; align-items: center; gap: 6px; }
+    .day-row ui-date-input { flex: 1; min-width: 0; }
+
+    .totals { display: flex; align-items: center; gap: 14px; }
+    .t-main { flex: 1; min-width: 0; }
+    .t-val { font-size: 27px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .t-side { display: flex; gap: 14px; }
+    .t-item { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+    .t-item b { font-size: 14px; font-variant-numeric: tabular-nums; }
+
+    .tiny-badge { font-size: 10px; padding: 2px 7px; }
+    .ord .qty { font-size: 15px; font-variant-numeric: tabular-nums; }
+    .defect { color: var(--danger); font-style: normal; font-weight: 600; }

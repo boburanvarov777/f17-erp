@@ -1,0 +1,365 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="row gap-3">
+            <span class="head-ic"><ui-icon [name]="icon()" [size]="19" /></span>
+            <span class="title">{{ 'stage_' + stageType() | t }}</span>
+          </div>
+          <div class="sub">{{ i18n.t('prod_stage_orders_count', { n: data()?.total || 0 }) }}</div>
+        </div>
+        <div class="page-actions">
+          @if (canWrite()) {
+            <button class="btn btn-primary btn-sm" type="button" (click)="openEntry()" [attr.data-tip]="'update_operation' | t">
+              <ui-icon name="pencil" [size]="15" /> {{ 'update_operation' | t }}
+            </button>
+          }
+          @if (isLoading()) {
+            <button class="btn btn-sm" type="button" (click)="openShipmentModal()" [attr.data-tip]="'new_shipment' | t">
+              <ui-icon name="truck" [size]="15" /> {{ 'new_shipment' | t }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- summary strip -->
+      <div class="stats mb-6">
+        <div class="stat"><div class="k">{{ 'plan_label' | t }}</div><div class="v">{{ sum().plan | num }}</div></div>
+        <div class="stat"><div class="k">{{ 'actual_label' | t }}</div><div class="v" style="color:var(--success)">{{ sum().done | num }}</div></div>
+        <div class="stat"><div class="k">{{ 'remaining_label' | t }}</div><div class="v">{{ sum().remaining | num }}</div></div>
+        <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" [style.color]="sum().defect ? 'var(--danger)' : ''">{{ sum().defect | num }}</div></div>
+        <div class="stat"><div class="k">{{ 'progress' | t }}</div><div class="v">{{ sum().progress }}%</div></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="search-box">
+            <ui-icon name="search" [size]="15" />
+            <input class="input" [(ngModel)]="search" (ngModelChange)="onSearch()" [placeholder]="'search' | t" />
+          </div>
+          <select class="select" style="width:auto;min-width:160px" [(ngModel)]="status" (ngModelChange)="reload()">
+            <option value="">{{ 'status' | t }}: {{ 'all' | t }}</option>
+            @for (s of statuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+          </select>
+          <div class="grow"></div>
+          @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
+        </div>
+
+        @if (loading()) {
+          <ui-loading />
+        } @else if (data(); as d) {
+          @if (d.items.length) {
+            <div class="table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>{{ 'order_no' | t }}</th>
+                    <th>{{ 'model' | t }}</th>
+                    <th class="num">{{ 'plan_label' | t }}</th>
+                    <th class="num">{{ 'actual_label' | t }}</th>
+                    <th class="num">{{ 'remaining_label' | t }}</th>
+                    <th class="num">{{ 'defect_label' | t }}</th>
+                    <th style="width:160px">{{ 'progress' | t }}</th>
+                    <th>{{ 'status' | t }}</th>
+                    <th>{{ 'responsible' | t }}</th>
+                    <th>{{ 'deadline' | t }}</th>
+                    <th class="actions">{{ 'actions' | t }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (s of d.items; track s.id) {
+                    <tr>
+                      <td><a class="mono bold" [routerLink]="['/orders', s.order?.id]">{{ s.order?.number }}</a></td>
+                      <td>
+                        <div class="small">{{ s.order?.model?.code || '—' }}</div>
+                        <div class="tiny text-3 truncate" style="max-width:150px">{{ s.order?.client?.name }}</div>
+                      </td>
+                      <td class="num">{{ s.planQty | num }}</td>
+                      <td class="num bold">{{ s.doneQty | num }}</td>
+                      <td class="num">{{ s.remainingQty | num }}</td>
+                      <td class="num" [style.color]="s.defectQty ? 'var(--danger)' : ''">{{ s.defectQty | num }}</td>
+                      <td><ui-progress [value]="s.doneQty" [max]="s.planQty" [allowOver100]="isCutting()" /></td>
+                      <td><ui-status [value]="s.status" /></td>
+                      <td class="small">{{ s.responsible ? s.responsible.lastName : '—' }}</td>
+                      <td class="small nowrap">{{ s.order?.deadline | shortDate }}</td>
+                      <td class="actions">
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openDetail(s)" [attr.data-tip]="'view' | t">
+                          <ui-icon name="eye" [size]="15" />
+                        </button>
+                        @if (canWrite() && (isCutting() || s.status !== 'COMPLETED')) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'update_operation' | t">
+                            <ui-icon name="pencil" [size]="15" />
+                          </button>
+                        }
+                        @if (canWrite()) {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openDefect(s)" [attr.data-tip]="'add_defect' | t">
+                            <ui-icon name="alert-triangle" [size]="15" />
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ui-pagination [page]="page()" [limit]="limit()" [total]="d.total" [totalPages]="d.pages"
+                           (pageChange)="page.set($event); reload(false)" (limitChange)="limit.set($event); page.set(1); reload(false)" />
+          } @else {
+            <ui-empty [icon]="icon()" [title]="'no_data' | t" [message]="'prod_no_orders' | t" />
+          }
+        }
+      </div>
+
+      <!-- shipments (Ortish) -->
+      @if (isLoading()) {
+        <div class="card mt-6">
+          <div class="card-head"><h3>{{ 'shipments' | t }}</h3></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>{{ 'order_no' | t }}</th><th>{{ 'client' | t }}</th><th>{{ 'vehicle' | t }}</th><th>{{ 'driver' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'box_count' | t }}</th><th>{{ 'loading_date' | t }}</th><th>{{ 'status' | t }}</th><th class="actions"></th></tr></thead>
+              <tbody>
+                @for (s of shipments(); track s.id) {
+                  <tr>
+                    <td><a class="mono bold" [routerLink]="['/orders', s.order?.id]">{{ s.order?.number }}</a></td>
+                    <td class="small">{{ s.order?.client?.name }}</td>
+                    <td class="small">{{ s.vehicle || '—' }}</td>
+                    <td class="small">{{ s.driver || '—' }}</td>
+                    <td class="num">{{ s.qty | num }}</td>
+                    <td class="num">{{ s.boxCount }}</td>
+                    <td class="small nowrap">{{ s.loadingDate | shortDate }}</td>
+                    <td><ui-status [value]="s.status" /></td>
+                    <td class="actions">
+                      @if (canWrite()) {
+                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openShipmentModal(s)" [attr.data-tip]="'edit' | t">
+                          <ui-icon name="pencil" [size]="15" />
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                } @empty { <tr><td colspan="9"><ui-empty icon="truck" [title]="'no_data' | t" /></td></tr> }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ─── update operation ─── -->
+    @if (entryModal()) {
+      <ui-modal size="lg" [title]="'update_operation' | t" [subtitle]="'stage_' + stageType() | t" (closed)="entryModal.set(null)">
+        <div class="form-grid">
+          <div class="field full" [class.field-invalid]="entryFe.has('orderId')">
+            <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
+            <select class="select" [(ngModel)]="entry.orderId" (ngModelChange)="entryFe.clear('orderId')">
+              <option value="" disabled>{{ 'select_order' | t }}</option>
+              @for (s of openStages(); track s.id) {
+                <option [value]="s.order?.id">{{ s.order?.number }} · {{ s.order?.model?.code }} — {{ s.doneQty }}/{{ s.planQty }}</option>
+              }
+            </select>
+            @if (entryFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="entryFe.has('qty')">
+            <label class="label">{{ 'operation_qty' | t }} <span class="req">*</span></label>
+            <input class="input" groupedNumber [(ngModel)]="entry.qty" (ngModelChange)="entryFe.clear('qty')" [placeholder]="'operation_qty_placeholder' | t" />
+            @if (entryFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field">
+            <label class="label">{{ 'defect_qty' | t }}</label>
+            <input class="input" groupedNumber [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
+          </div>
+          <div class="field" [class.field-invalid]="entryFe.has('date')">
+            <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
+            <ui-date-input [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
+            @if (entryFe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+
+          <!-- stage-specific fields -->
+          @switch (stageType()) {
+            @case ('WASHING') {
+              <div class="field"><label class="label">{{ 'batch' | t }}</label><input class="input" [(ngModel)]="entry.meta['batch']" /></div>
+              <div class="field"><label class="label">{{ 'washing_type' | t }}</label><input class="input" [(ngModel)]="entry.meta['washingType']" [placeholder]="'washing_type_placeholder' | t" /></div>
+              <div class="field"><label class="label">{{ 'returned_date' | t }}</label><ui-date-input [(ngModel)]="entry.meta['returnedDate']" /></div>
+            }
+            @case ('LASER') {
+              <div class="field"><label class="label">{{ 'machine' | t }}</label><input class="input" [(ngModel)]="entry.meta['machine']" /></div>
+              <div class="field"><label class="label">{{ 'operator' | t }}</label><input class="input" [(ngModel)]="entry.meta['operator']" /></div>
+              <div class="field"><label class="label">{{ 'design_code' | t }}</label><input class="input" [(ngModel)]="entry.meta['design']" /></div>
+            }
+            @case ('PACKING') {
+              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="entry.meta['boxCount']" /></div>
+              <div class="field">
+                <label class="label">{{ 'sub_stage' | t }}</label>
+                <select class="select" [(ngModel)]="entry.meta['subStage']">
+                  <option value="" disabled>{{ 'select_sub_stage' | t }}</option>
+                  <option value="CLEANING">{{ 'pack_sub_CLEANING' | t }}</option>
+                  <option value="IRONING">{{ 'pack_sub_IRONING' | t }}</option>
+                  <option value="ACCESSORIES">{{ 'pack_sub_ACCESSORIES' | t }}</option>
+                  <option value="SCANNING">{{ 'pack_sub_SCANNING' | t }}</option>
+                  <option value="BOXING">{{ 'pack_sub_BOXING' | t }}</option>
+                </select>
+              </div>
+            }
+            @case ('LOADING') {
+              <div class="field"><label class="label">{{ 'vehicle' | t }}</label><input class="input" [(ngModel)]="entry.meta['vehicle']" /></div>
+              <div class="field"><label class="label">{{ 'driver' | t }}</label><input class="input" [(ngModel)]="entry.meta['driver']" /></div>
+              <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="entry.meta['boxCount']" /></div>
+            }
+          }
+
+          @if (isPacking()) {
+            <div class="field full">
+              <label class="label">{{ 'note' | t }}</label>
+              <input class="input" [(ngModel)]="entry.note" [placeholder]="'note_optional' | t" />
+            </div>
+          }
+        </div>
+        @if (entryError()) { <div class="err-text mt-3">{{ entryError() }}</div> }
+
+        <div footer>
+          <button class="btn" type="button" (click)="entryModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveEntry()" [disabled]="busy()">
+            @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'save' | t }} }
+          </button>
+        </div>
+      </ui-modal>
+    }
+
+    <!-- ─── add defect ─── -->
+    @if (defectModal(); as s) {
+      <ui-modal size="lg" [title]="'add_defect' | t" [subtitle]="s.order?.number || ''" (closed)="defectModal.set(null)">
+        <div class="form-grid">
+          <div class="field" [class.field-invalid]="defectFe.has('type')">
+            <label class="label">{{ 'defect_type' | t }} <span class="req">*</span></label>
+            <input class="input" [(ngModel)]="defect.type" (ngModelChange)="defectFe.clear('type')" />
+            @if (defectFe.get('type'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field" [class.field-invalid]="defectFe.has('qty')">
+            <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
+            <input class="input" groupedNumber [(ngModel)]="defect.qty" (ngModelChange)="defectFe.clear('qty')" />
+            @if (defectFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field full"><label class="label">{{ 'defect_reason' | t }}</label><input class="input" [(ngModel)]="defect.reason" /></div>
+          <div class="field full"><label class="label">{{ 'comment' | t }}</label><textarea class="textarea" rows="2" [(ngModel)]="defect.comment"></textarea></div>
+        </div>
+        <div footer>
+          <button class="btn" type="button" (click)="defectModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveDefect(s)" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
+
+    <!-- ─── stage detail ─── -->
+    @if (detail(); as s) {
+      <ui-modal size="lg" [title]="s.order?.number || ''" [subtitle]="detailSubtitle(s)" (closed)="detail.set(null)">
+        @if (!isCutting() && (s.cuttingDoneQty ?? 0) > 0) {
+          <div class="cutting-feed-banner mb-4">
+            <ui-icon name="scissors" [size]="16" />
+            <span>{{ 'cutting_output_info' | t: { qty: (s.cuttingDoneQty ?? 0) | num } }}</span>
+          </div>
+        }
+        <div class="stats mb-4">
+          <div class="stat"><div class="k">{{ 'model' | t }}</div><div class="v small">{{ s.order?.model?.code || '—' }}</div></div>
+          <div class="stat">
+            <div class="k">{{ isCutting() ? ('plan_label' | t) : ('plan_from_cutting' | t) }}</div>
+            <div class="v" style="font-size:21px">{{ s.planQty | num }}</div>
+            @if (!isCutting() && (s.orderPlanQty ?? 0) > 0 && (s.cuttingDoneQty ?? 0) > 0 && s.cuttingDoneQty !== s.orderPlanQty) {
+              <div class="m">{{ 'order_qty_label' | t }}: {{ s.orderPlanQty | num }}</div>
+            }
+          </div>
+          <div class="stat"><div class="k">{{ 'actual_label' | t }}</div><div class="v" style="font-size:21px;color:var(--success)">{{ s.doneQty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" style="font-size:21px;color:var(--danger)">{{ s.defectQty | num }}</div></div>
+        </div>
+
+        @if (canWrite() && canAssignUsers()) {
+          <div class="row gap-2 mb-4 wrap">
+            <select class="select" style="width:auto;min-width:170px" [(ngModel)]="assignId" (ngModelChange)="assignFe.clear('assignId')" [class.field-invalid]="assignFe.has('assignId')">
+              <option value="">{{ 'responsible' | t }}…</option>
+              @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
+            </select>
+            <button class="btn btn-sm" type="button" (click)="assign(s)">{{ 'save' | t }}</button>
+          </div>
+          @if (assignFe.get('assignId'); as msg) { <div class="field-error mb-4">{{ msg }}</div> }
+        }
+
+        <b class="small">{{ 'entries' | t }}</b>
+        <div class="table-wrap mt-2">
+          <table class="data">
+            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th>@if (isPacking()) { <th>{{ 'note' | t }}</th> }<th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
+            <tbody>
+              @for (e of s.entries; track e.id) {
+                <tr [style.opacity]="e.cancelled ? .45 : 1">
+                  <td class="small nowrap">{{ e.date | shortDate: true }}</td>
+                  <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}</td>
+                  <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
+                  @if (isPacking()) {
+                    <td class="small text-2">{{ entryNote(e.note) }}</td>
+                  }
+                  <td>
+                    @if (workerNick(e.workerName); as nick) {
+                      <span class="badge badge-info mono"><ui-icon name="send" [size]="11" /> {{ nick }}</span>
+                    } @else { <span class="tiny text-3">—</span> }
+                  </td>
+                  <td>
+                    <span class="badge" [class.badge-info]="isTelegramSource(e.source)" [class.badge-neutral]="!isTelegramSource(e.source)">
+                      @if (isTelegramSource(e.source)) { <ui-icon name="send" [size]="10" /> }
+                      {{ sourceLabel(e.source) }}
+                    </span>
+                  </td>
+                  <td class="actions">
+                    @if (canWrite() && !e.cancelled && e.qty > 0) {
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="cancelling.set(e)" [attr.data-tip]="'cancel_entry' | t">
+                        <ui-icon name="rotate-ccw" [size]="14" />
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty { <tr><td [attr.colspan]="isPacking() ? 7 : 6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+            </tbody>
+          </table>
+        </div>
+
+        <div footer><button class="btn" type="button" (click)="detail.set(null)">{{ 'close' | t }}</button></div>
+      </ui-modal>
+    }
+
+    @if (cancelling(); as e) {
+      <ui-confirm
+        [title]="'cancel_entry' | t"
+        [message]="'cancel_entry_confirm' | t: { qty: e.qty }"
+        [note]="'cancel_entry_note' | t"
+        [confirmLabel]="'confirm' | t"
+        (confirmed)="cancelEntry(e)" (cancelled)="cancelling.set(null)" />
+    }
+
+    <!-- ─── shipment ─── -->
+    @if (shipmentModal(); as sh) {
+      <ui-modal size="lg" [title]="'new_shipment' | t" (closed)="shipmentModal.set(null)">
+        <div class="form-grid">
+          <div class="field full" [class.field-invalid]="shipmentFe.has('orderId')">
+            <label class="label">{{ 'order' | t }} <span class="req">*</span></label>
+            <select class="select" [(ngModel)]="shipment.orderId" [disabled]="!!sh.id" (ngModelChange)="shipmentFe.clear('orderId')">
+              <option value="" disabled>{{ 'select_order' | t }}</option>
+              @for (s of data()?.items || []; track s.id) { <option [value]="s.order?.id">{{ s.order?.number }}</option> }
+            </select>
+            @if (shipmentFe.get('orderId'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field"><label class="label">{{ 'vehicle' | t }}</label><input class="input" [(ngModel)]="shipment.vehicle" /></div>
+          <div class="field"><label class="label">{{ 'driver' | t }}</label><input class="input" [(ngModel)]="shipment.driver" /></div>
+          <div class="field"><label class="label">{{ 'driver_phone' | t }}</label><input class="input" type="tel" inputmode="numeric" digitsOnly [(ngModel)]="shipment.driverPhone" [placeholder]="'phone_placeholder' | t" /></div>
+          <div class="field"><label class="label">{{ 'quantity' | t }}</label><input class="input" groupedNumber [(ngModel)]="shipment.qty" /></div>
+          <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="shipment.boxCount" /></div>
+          <div class="field"><label class="label">{{ 'loading_date' | t }}</label><ui-date-input [(ngModel)]="shipment.loadingDate" /></div>
+          <div class="field"><label class="label">{{ 'track_no' | t }}</label><input class="input" [(ngModel)]="shipment.trackNo" /></div>
+          <div class="field">
+            <label class="label">{{ 'status' | t }}</label>
+            <select class="select" [(ngModel)]="shipment.status">
+              <option [ngValue]="undefined" disabled>{{ 'select_status' | t }}</option>
+              @for (s of shipmentStatuses; track s) { <option [value]="s">{{ 'st_' + s | t }}</option> }
+            </select>
+          </div>
+        </div>
+        <div footer>
+          <button class="btn" type="button" (click)="shipmentModal.set(null)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveShipment(sh)" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }

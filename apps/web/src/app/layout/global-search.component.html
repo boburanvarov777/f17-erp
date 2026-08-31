@@ -1,0 +1,32 @@
+    <div class="palette-backdrop" (click)="onBackdrop($event)">
+      <div class="palette">
+        <div class="palette-input">
+          <ui-icon name="search" [size]="18" />
+          <input #box class="grow" [(ngModel)]="query" (ngModelChange)="onQuery($event)"
+                 [placeholder]="'search_placeholder' | t" autocomplete="off" />
+          @if (loading()) { <span class="spinner"></span> }
+          <span class="kbd">{{ 'keyboard_esc' | t }}</span>
+        </div>
+
+        <div class="palette-body">
+          @if (hits().length) {
+            @for (h of hits(); track h.link + h.title; let i = $index) {
+              <button class="hit" type="button" [class.sel]="i === selected()" (click)="go(h)" (mouseenter)="selected.set(i)">
+                <span class="hit-ic"><ui-icon [name]="h.icon" [size]="16" /></span>
+                <span class="grow" style="min-width:0">
+                  <span class="hit-t truncate">{{ h.title }}</span>
+                  <span class="hit-s truncate">{{ h.sub }}</span>
+                </span>
+                <span class="badge badge-neutral">{{ h.group }}</span>
+              </button>
+            }
+          } @else if (query.length >= 2 && !loading()) {
+            <div class="empty" style="padding:36px"><span class="small">{{ 'no_data' | t }}</span></div>
+          } @else {
+            <div class="hint">
+              <div class="small text-3">{{ 'search_hint' | t }}</div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>

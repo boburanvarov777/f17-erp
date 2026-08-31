@@ -1,0 +1,32 @@
+    <div class="bc" [style.height.px]="height()">
+      <div class="bc-axis">
+        @for (t of ticks(); track $index) {
+          <span class="bc-tick"><b>{{ t | num }}</b></span>
+        }
+      </div>
+      <div class="bc-plot">
+        @for (t of ticks(); track $index) { <span class="bc-line"></span> }
+        <div class="bc-bars">
+          @for (p of points(); track p.key) {
+            <button
+              type="button"
+              class="bc-col"
+              [class.active]="p.key === active()"
+              [class.dim]="active() && p.key !== active()"
+              [attr.data-tip]="p.hint || (p.label + ' — ' + p.value)"
+              (click)="pick.emit(p.key)"
+            >
+              <span class="bc-stack">
+                @if (p.extra) { <i class="bc-bar defect" [style.height.%]="pct(p.extra)"></i> }
+                @if (p.value) { <i class="bc-bar" [style.height.%]="pct(p.value)" [style.background]="p.color || null"></i> }
+              </span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="bc-labels">
+        @for (p of points(); track p.key) {
+          <span class="bc-x" [class.active]="p.key === active()">{{ p.label }}</span>
+        }
+      </div>
+    </div>

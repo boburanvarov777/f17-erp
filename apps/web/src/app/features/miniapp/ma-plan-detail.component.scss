@@ -1,0 +1,7 @@
+.head { align-items: center; }
+    .back { flex: 0 0 auto; margin-left: -4px; }
+    .summary-qty { font-size: 32px; font-weight: 700; line-height: 1.05; color: var(--primary-600); font-variant-numeric: tabular-nums; }
+    .row-card { display: flex; align-items: center; gap: 12px; }
+    .stats { text-align: right; flex: 0 0 auto; }
+    .stat-qty { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .stat-defect { margin-top: 4px; font-size: 10px; padding: 2px 7px; border-radius: 999px; }

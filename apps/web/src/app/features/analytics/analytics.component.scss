@@ -1,0 +1,28 @@
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+
+    .dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
+    .dept .card-head { gap: 10px; flex-wrap: wrap; }
+    .dept-sum { font-size: 12px; color: var(--text-3); }
+    .dept-sum b { color: var(--text); font-size: 13px; }
+    .dept-sum em { color: var(--danger); font-style: normal; font-weight: 600; }
+
+    .ord-list { display: flex; flex-direction: column; }
+    .ord {
+      display: grid; grid-template-columns: 1fr auto 118px; align-items: center; gap: 14px;
+      padding: 11px 18px; border-bottom: 1px solid var(--border);
+      text-decoration: none; color: inherit;
+    }
+    .ord:last-child { border-bottom: none; }
+    .ord:hover { background: var(--surface-2); text-decoration: none; }
+    .ord-main { min-width: 0; }
+    .ord-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .ord-sub { display: block; font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ord-qty { text-align: right; white-space: nowrap; }
+    .ord-qty b { font-size: 14px; font-variant-numeric: tabular-nums; }
+    .ord-qty em { display: block; font-size: 11px; color: var(--danger); font-style: normal; }
+    .ord-prog { display: flex; flex-direction: column; gap: 3px; }
+
+    @media (max-width: 620px) {
+      .ord { grid-template-columns: 1fr auto; }
+      .ord-prog { grid-column: 1 / -1; }
+    }

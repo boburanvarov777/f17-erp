@@ -1,0 +1,5 @@
+.titem { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+    .titem.done { opacity: .6; }
+    .titem.done .bold { text-decoration: line-through; }
+    .tcheck { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--border-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: #fff; }
+    .tcheck.on { background: var(--success); border-color: var(--success); }

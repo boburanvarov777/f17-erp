@@ -1,0 +1,28 @@
+.bc { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; gap: 0 10px; }
+    .bc-axis { display: flex; flex-direction: column-reverse; justify-content: space-between; align-items: flex-end; }
+    .bc-tick { font-size: 10px; color: var(--text-3); line-height: 1; transform: translateY(-4px); font-variant-numeric: tabular-nums; }
+    .bc-plot { position: relative; display: flex; flex-direction: column-reverse; justify-content: space-between; }
+    .bc-line { border-top: 1px dashed var(--border); height: 0; }
+    .bc-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 4px; }
+    .bc-col {
+      flex: 1; min-width: 0; height: 100%; padding: 0; border: none; background: none; cursor: pointer;
+      display: flex; align-items: flex-end;
+    }
+    /* Height must be definite here, otherwise the bars' percentage heights collapse. */
+    .bc-stack { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+    .bc-bar {
+      display: block; flex: 0 0 auto; width: 100%; min-height: 2px;
+      background: var(--primary-500); border-radius: 0 0 2px 2px;
+      transition: height .3s ease, opacity .15s ease, filter .15s ease;
+    }
+    .bc-bar.defect { background: var(--danger); border-radius: 3px 3px 0 0; }
+    .bc-stack :first-child { border-radius: 3px 3px 0 0; }
+    .bc-col:hover .bc-bar { filter: brightness(1.08); }
+    .bc-col.dim .bc-bar { opacity: .38; }
+    .bc-col.active .bc-bar { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--primary-500); }
+    .bc-labels { grid-column: 2; display: flex; gap: 4px; padding-top: 7px; }
+    .bc-x {
+      flex: 1; min-width: 0; text-align: center; font-size: 10px; color: var(--text-3);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bc-x.active { color: var(--primary-500); font-weight: 700; }

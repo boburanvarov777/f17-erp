@@ -6,7 +6,7 @@ import { MiniAppService } from './miniapp.service';
 @Component({
   selector: 'app-ma-redirect',
   standalone: true,
-  template: '',
+  templateUrl: './ma-redirect.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MaRedirectComponent implements OnInit {

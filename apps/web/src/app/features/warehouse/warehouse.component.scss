@@ -1,0 +1,3 @@
+.ops { display: flex; gap: 6px; flex-wrap: wrap; }
+    .op { padding: 7px 13px; border: 1px solid var(--border-strong); border-radius: 100px; background: var(--surface); cursor: pointer; font-size: 13px; }
+    .op.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }

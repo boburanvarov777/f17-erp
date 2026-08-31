@@ -1,0 +1,7 @@
+.head-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--primary-50); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+    .cutting-feed-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: var(--r-lg);
+      background: var(--info-bg); border: 1px solid var(--info-br);
+      color: var(--text-2); font-size: 13.5px; font-weight: 500;
+    }

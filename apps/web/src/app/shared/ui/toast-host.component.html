@@ -1,0 +1,5 @@
+    <div class="toast-host no-print">
+      @for (t of toast.toasts(); track t.id) {
+        <ui-toast-item [t]="t" (closed)="toast.dismiss($event)" />
+      }
+    </div>

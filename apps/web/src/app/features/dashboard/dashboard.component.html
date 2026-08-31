@@ -1,0 +1,140 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="title">{{ 'dash_title' | t }}</div>
+          <div class="sub">{{ 'dash_subtitle' | t }} · {{ now | shortDate: true }}</div>
+        </div>
+        <button class="btn btn-sm" type="button" (click)="load()" [disabled]="loading()" [attr.data-tip]="'refresh' | t">
+          <ui-icon name="refresh-cw" [size]="15" /> {{ 'refresh' | t }}
+        </button>
+      </div>
+
+      @if (loading() && !data()) {
+        <ui-loading [count]="4" [height]="86" />
+      } @else if (view(); as d) {
+        @if (fullManage()) {
+        <!-- KPI -->
+        <div class="stats mb-6">
+          <div class="stat">
+            <div class="k">{{ 'kpi_active_orders' | t }}</div>
+            <div class="v">{{ d.kpis.activeOrders | num }}</div>
+            <div class="m">{{ 'total' | t }}: {{ d.kpis.totalOrders | num }}</div>
+            <span class="ic"><ui-icon name="clipboard-list" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'kpi_in_production' | t }}</div>
+            <div class="v">{{ d.kpis.inProductionQty | num }}</div>
+            <div class="m">{{ 'pieces' | t }}</div>
+            <span class="ic"><ui-icon name="shirt" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'kpi_late' | t }}</div>
+            <div class="v" [style.color]="d.kpis.lateOrders ? 'var(--danger)' : ''">{{ d.kpis.lateOrders | num }}</div>
+            <div class="m">{{ 'kpi_deadline_passed' | t }}</div>
+            <span class="ic"><ui-icon name="alert-triangle" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'kpi_ready' | t }}</div>
+            <div class="v" [style.color]="d.kpis.readyToLoad ? 'var(--success)' : ''">{{ d.kpis.readyToLoad | num }}</div>
+            <div class="m">{{ 'kpi_orders_unit' | t }}</div>
+            <span class="ic"><ui-icon name="truck" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'kpi_defect_rate' | t }}</div>
+            <div class="v">{{ d.kpis.defectRate }}%</div>
+            <div class="m">{{ d.kpis.defectQty | num }} {{ 'pieces' | t }}</div>
+            <span class="ic"><ui-icon name="alert-circle" [size]="30" /></span>
+          </div>
+        </div>
+        }
+
+        <!-- stages -->
+        <h2 class="mb-3" style="font-size:15px">{{ fullManage() ? ('dash_stages' | t) : (deptTitle() | t) }}</h2>
+        <div class="stage-grid mb-6">
+          @for (s of visibleStages(); track s.stage) {
+            <a class="stage-card" [routerLink]="['/production', slug(s.stage)]">
+              <div class="row-between">
+                <div class="name">
+                  <span class="s-ic"><ui-icon [name]="icon(s.stage)" [size]="16" /></span>
+                  {{ 'stage_' + s.stage | t }}
+                </div>
+                <div class="pct" [style.color]="pctColor(s.progress)">{{ s.progress }}%</div>
+              </div>
+              <dl>
+                <dt>{{ 'plan_label' | t }}</dt><dd>{{ s.plan | num }}</dd>
+                <dt>{{ 'actual_label' | t }}</dt><dd>{{ s.done | num }}</dd>
+                <dt>{{ 'remaining_label' | t }}</dt><dd>{{ s.remaining | num }}</dd>
+                <dt>{{ 'defect_label' | t }}</dt><dd [style.color]="s.defect ? 'var(--danger)' : ''">{{ s.defect | num }}</dd>
+              </dl>
+              <ui-progress [value]="s.done" [max]="s.plan" [showLabel]="false" />
+            </a>
+          }
+        </div>
+
+        @if (fullManage()) {
+          <div class="grid two">
+            <!-- upcoming -->
+            <div class="card dash-card">
+              <div class="card-head">
+                <h3>{{ 'dash_upcoming' | t }}</h3>
+                <a class="btn btn-ghost btn-sm" routerLink="/orders">{{ 'all' | t }} <ui-icon name="chevron-right" [size]="14" /></a>
+              </div>
+              <div class="table-wrap dash-card-body">
+                <table class="data">
+                  <tbody>
+                    @for (o of d.upcoming; track o.id) {
+                      <tr class="clickable" [routerLink]="['/orders', o.id]">
+                        <td>
+                          <div class="bold mono">{{ o.number }}</div>
+                          <div class="tiny text-3 truncate" style="max-width:180px">{{ o.model || o.client }}</div>
+                        </td>
+                        <td class="num">{{ o.qty | num }}</td>
+                        <td style="width:130px"><ui-progress [value]="o.progress" [max]="100" [late]="o.isLate" [showLabel]="false" /></td>
+                        <td class="nowrap">
+                          <div class="small" [class.late]="o.isLate">{{ o.deadline | shortDate }}</div>
+                          <div class="tiny" [style.color]="o.isLate ? 'var(--danger)' : 'var(--text-3)'">
+                            {{ o.isLate ? ('days_late' | t: { n: -o.daysLeft }) : ('days_left' | t: { n: o.daysLeft }) }}
+                          </div>
+                        </td>
+                        <td><ui-status [value]="o.status" /></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5"><ui-empty icon="clipboard-list" [title]="'no_orders' | t" /></td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- recent -->
+            <div class="card dash-card">
+              <div class="card-head">
+                <h3>{{ 'dash_recent' | t }}</h3>
+                @if (rt.connected()) { <span class="badge badge-success"><i class="dot"></i>{{ 'live' | t }}</span> }
+              </div>
+              <div class="feed dash-card-body">
+                @for (r of d.recent; track r.id) {
+                  <a class="feed-row" [routerLink]="['/orders', r.order.id]">
+                    <span class="feed-ic" [class.tg]="r.source === 'TELEGRAM' || r.source === 'MINIAPP'">
+                      <ui-icon [name]="r.source === 'TELEGRAM' || r.source === 'MINIAPP' ? 'send' : icon(r.stage)" [size]="15" />
+                    </span>
+                    <span class="grow" style="min-width:0">
+                      <span class="row gap-2">
+                        <b class="mono small">{{ r.order.number }}</b>
+                        <span class="small text-2">{{ 'stage_' + r.stage | t }}</span>
+                        <span class="badge badge-info">+{{ r.qty | num }}</span>
+                        @if (r.defectQty) { <span class="badge badge-danger">{{ 'defect_label' | t }} {{ r.defectQty | num }}</span> }
+                      </span>
+                      <span class="tiny text-3">{{ r.user }} · {{ r.progress }}%</span>
+                    </span>
+                    <span class="tiny text-3 nowrap">{{ r.at | ago }}</span>
+                  </a>
+                } @empty {
+                  <ui-empty icon="history" [title]="'no_data' | t" />
+                }
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>

@@ -1,0 +1,6 @@
+    <span class="sort-label"><ng-content /></span>
+    @if (active()) {
+      <ui-icon [name]="direction() === 'asc' ? 'arrow-up' : 'arrow-down'" [size]="13" class="sort-icon active" />
+    } @else {
+      <ui-icon name="arrow-up-down" [size]="13" class="sort-icon" />
+    }

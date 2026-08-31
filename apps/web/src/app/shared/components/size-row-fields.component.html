@@ -1,0 +1,49 @@
+    <div class="size-row-fields">
+      <div class="field size-field">
+        <label class="label">{{ 'size_label' | t }}</label>
+        @if (custom()) {
+          <div class="row gap-1">
+            <input
+              class="input btn-sm size-in mono"
+              digitsOnly
+              [(ngModel)]="row().size"
+              (ngModelChange)="onSizeInput()"
+              [placeholder]="'size_placeholder' | t"
+            />
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" (click)="useList()" [attr.data-tip]="'size_from_list' | t">↩</button>
+          </div>
+        } @else {
+          <select class="select btn-sm size-in" [ngModel]="selectValue()" (ngModelChange)="onSelect($event)">
+            <option value="" disabled>{{ 'select_size' | t }}</option>
+            <optgroup [label]="'size_letters' | t">
+              @for (sz of options().letters; track sz) { <option [value]="sz">{{ sz }}</option> }
+            </optgroup>
+            <optgroup [label]="'size_numbers' | t">
+              @for (sz of options().numbers; track sz) { <option [value]="sz">{{ sz }}</option> }
+            </optgroup>
+            @if (options().extra.length) {
+              <optgroup [label]="'size_other' | t">
+                @for (sz of options().extra; track sz) { <option [value]="sz">{{ sz }}</option> }
+              </optgroup>
+            }
+            <option [value]="customKey">{{ 'size_custom_number' | t }}</option>
+          </select>
+        }
+      </div>
+
+      <div class="field qty-field">
+        <label class="label">{{ 'quantity' | t }}</label>
+        <input
+          class="input btn-sm qty-in"
+          groupedNumber
+          [(ngModel)]="row().qty"
+          (ngModelChange)="changed.emit()"
+          [placeholder]="'plan_done_placeholder' | t"
+        />
+      </div>
+
+      <div class="field action-field">
+        <label class="label">&nbsp;</label>
+        <ng-content />
+      </div>
+    </div>

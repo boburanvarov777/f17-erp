@@ -13,28 +13,10 @@ import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'ui-toast-item',
+  templateUrl: './toast-item.component.html',
   standalone: true,
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="toast" [class]="t().type" (mouseenter)="pause()" (mouseleave)="resume()">
-      <div class="toast-body">
-        <span [style.color]="iconColor()">
-          <ui-icon [name]="iconName()" [size]="17" />
-        </span>
-        <div class="grow">
-          <div class="toast-title">{{ t().title }}</div>
-          @if (t().body) { <div class="small text-3">{{ t().body }}</div> }
-        </div>
-        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="closed.emit(t().id)">
-          <ui-icon name="x" [size]="14" />
-        </button>
-      </div>
-      <div class="toast-track" aria-hidden="true">
-        <div class="toast-bar" #bar></div>
-      </div>
-    </div>
-  `,
 })
 export class ToastItemComponent implements AfterViewInit, OnDestroy {
   readonly t = input.required<Toast>();

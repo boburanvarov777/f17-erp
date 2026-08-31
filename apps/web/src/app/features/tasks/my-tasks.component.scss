@@ -1,0 +1,10 @@
+.grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .tlist { display: flex; flex-direction: column; }
+    .titem { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .titem:last-child { border-bottom: none; }
+    .titem.done { opacity: .6; }
+    .titem.done b { text-decoration: line-through; }
+    .tcheck { width: 21px; height: 21px; border-radius: 6px; border: 1.5px solid var(--border-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: #fff; }
+    .tcheck.on { background: var(--success); border-color: var(--success); }
+    .breakdown { border-top: 1px solid var(--border); padding-top: 10px; }
+    .break-row { padding: 3px 0; }

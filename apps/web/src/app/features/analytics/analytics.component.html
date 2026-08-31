@@ -1,0 +1,118 @@
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="title">{{ 'nav_analytics' | t }}</div>
+          <div class="sub">{{ day }}</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(-1)" [attr.data-tip]="'rep_prev_day' | t"><ui-icon name="chevron-left" [size]="16" /></button>
+          <ui-date-input style="width:158px" size="sm" [(ngModel)]="day" (ngModelChange)="load()" />
+          <button class="btn btn-icon btn-sm" type="button" (click)="shiftDay(1)" [attr.data-tip]="'rep_next_day' | t"><ui-icon name="chevron-right" [size]="16" /></button>
+          <button class="btn btn-sm" type="button" (click)="today()">{{ 'today' | t }}</button>
+        </div>
+      </div>
+
+      @if (loading()) { <ui-loading [count]="4" [height]="90" /> }
+      @else if (report(); as r) {
+        <div class="stats mb-6">
+          <div class="stat">
+            <div class="k">{{ 'produced' | t }}</div><div class="v">{{ r.totals.qty | num }}</div>
+            <div class="m">{{ 'pieces' | t }}</div>
+            <span class="ic"><ui-icon name="shirt" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'defect_label' | t }}</div>
+            <div class="v" [style.color]="r.totals.defect ? 'var(--danger)' : ''">{{ r.totals.defect | num }}</div>
+            <div class="m">{{ defectRate(r) }}%</div>
+            <span class="ic"><ui-icon name="alert-circle" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'an_active_depts' | t }}</div><div class="v">{{ r.byStage.length | num }}</div>
+            <div class="m">{{ i18n.t('rep_ops_count', { n: r.totals.operations }) }}</div>
+            <span class="ic"><ui-icon name="building" [size]="30" /></span>
+          </div>
+          <div class="stat">
+            <div class="k">{{ 'rep_orders' | t }}</div><div class="v">{{ r.totals.orders | num }}</div>
+            <div class="m">{{ 'an_in_work' | t }}</div>
+            <span class="ic"><ui-icon name="clipboard-list" [size]="30" /></span>
+          </div>
+        </div>
+
+        <div class="card mb-6">
+          <div class="card-head">
+            <h3>{{ 'an_by_department' | t }}</h3>
+            @if (activeStage()) {
+              <button class="btn btn-sm" type="button" (click)="activeStage.set(null)">
+                <ui-icon name="x" [size]="14" /> {{ 'an_show_all' | t }}
+              </button>
+            } @else {
+              <span class="tiny text-3">{{ 'an_pick_dept_hint' | t }}</span>
+            }
+          </div>
+          <div class="card-body">
+            @if (r.byStage.length) {
+              <ui-bar-chart [points]="deptPoints()" [height]="200" [active]="activeStage()" (pick)="toggleStage($event)" />
+            } @else { <ui-empty icon="history" [title]="'rep_no_ops_day' | t" /> }
+          </div>
+        </div>
+
+        <div class="grid two mb-6">
+          <div class="card">
+            <div class="card-head"><h3>{{ 'by_model' | t }}</h3></div>
+            <div class="card-body">
+              @if (modelPoints().length) { <ui-rank-chart [points]="modelPoints()" /> }
+              @else { <ui-empty icon="info" [title]="'no_data' | t" /> }
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>{{ 'an_trend' | t }}</h3>
+              <span class="tiny text-3">{{ 'rep_pick_day_hint' | t }}</span>
+            </div>
+            <div class="card-body">
+              @if (trend().length) { <ui-bar-chart [points]="trendPoints()" [height]="200" [active]="day" (pick)="pickDay($event)" /> }
+              @else { <ui-empty icon="chart-column" [title]="'no_data' | t" /> }
+            </div>
+          </div>
+        </div>
+
+        @if (visibleStages().length) {
+          <div class="dept-grid">
+            @for (s of visibleStages(); track s.stage) {
+              <div class="card dept">
+                <div class="card-head">
+                  <ui-status [value]="s.stage" prefix="stage_" />
+                  <span class="dept-sum">
+                    <b>{{ s.qty | num }}</b> {{ 'pieces' | t }}
+                    @if (s.defect) { <em>· {{ 'defect_label' | t }} {{ s.defect | num }}</em> }
+                    <span class="text-3">· {{ i18n.t('rep_ops_count', { n: s.operations }) }}</span>
+                  </span>
+                </div>
+                <div class="ord-list">
+                  @for (o of s.orders; track o.orderId) {
+                    <a class="ord" [routerLink]="['/orders', o.orderId]">
+                      <span class="ord-main">
+                        <span class="ord-top">
+                          <b class="mono">{{ o.number }}</b>
+                          @if (o.model) { <span class="badge badge-neutral">{{ o.model }}</span> }
+                          <ui-status [value]="o.stageStatus" />
+                        </span>
+                        <span class="ord-sub">{{ o.modelName || o.client || '—' }}@if (o.users.length) { · {{ o.users.join(', ') }} }</span>
+                      </span>
+                      <span class="ord-qty">
+                        <b>+{{ o.qty | num }}</b>
+                        @if (o.defect) { <em>{{ 'defect_label' | t }} {{ o.defect | num }}</em> }
+                      </span>
+                      <span class="ord-prog">
+                        <ui-progress [value]="o.doneQty" [max]="o.planQty" [showLabel]="false" />
+                        <span class="tiny text-3">{{ o.doneQty | num }} / {{ o.planQty | num }}</span>
+                      </span>
+                    </a>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>

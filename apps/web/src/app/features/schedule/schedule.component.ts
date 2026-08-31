@@ -18,103 +18,11 @@ interface Tick { label: string; left: number; major: boolean; }
 
 @Component({
   selector: 'app-schedule',
+  templateUrl: './schedule.component.html',
+  styleUrl: './schedule.component.scss',
   standalone: true,
   imports: [FormsModule, RouterLink, StatusBadgeComponent, EmptyComponent, LoadingComponent, DateInputComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <div class="page-head">
-        <div>
-          <div class="title">{{ 'schedule_title' | t }}</div>
-          <div class="sub">{{ i18n.t('schedule_count_sub', { n: rows().length, from, to }) }}</div>
-        </div>
-        <div class="page-actions">
-          <div class="seg">
-            @for (v of views; track v.key) {
-              <button type="button" [class.on]="view() === v.key" (click)="setView(v.key)">{{ v.label | t }}</button>
-            }
-          </div>
-          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="load()" />
-          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="load()" />
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="legend">
-          @for (s of stages; track s) {
-            <span class="lg"><i [style.background]="color(s)"></i>{{ 'stage_' + s | t }}</span>
-          }
-        </div>
-
-        @if (loading()) { <ui-loading [count]="8" [height]="34" /> }
-        @else if (!rows().length) { <ui-empty icon="calendar-range" [title]="'no_orders' | t" /> }
-        @else {
-          <div class="gantt">
-            <div class="g-head">
-              <div class="g-left">{{ 'order' | t }}</div>
-              <div class="g-track">
-                @for (t of ticks(); track t.left) {
-                  <span class="tick" [class.major]="t.major" [style.left.%]="t.left">{{ t.label }}</span>
-                }
-                <span class="nowline" [style.left.%]="nowLeft()"></span>
-              </div>
-            </div>
-
-            @for (r of rows(); track r.id) {
-              <div class="g-row">
-                <div class="g-left">
-                  <a class="mono bold small" [routerLink]="['/orders', r.id]">{{ r.number }}</a>
-                  <div class="tiny text-3 truncate">{{ r.model || r.client }}</div>
-                  <div class="row gap-2 mt-2"><ui-status [value]="r.status" /></div>
-                </div>
-                <div class="g-track">
-                  @for (t of ticks(); track t.left) { <span class="grid-line" [class.major]="t.major" [style.left.%]="t.left"></span> }
-                  <span class="nowline" [style.left.%]="nowLeft()"></span>
-                  @for (b of r.bars; track b.stage) {
-                    <div class="bar"
-                         [style.left.%]="left(b.start)"
-                         [style.width.%]="width(b.start, b.end)"
-                         [style.background]="color(b.stage)"
-                         [style.opacity]="b.status === 'NOT_STARTED' ? .35 : 1"
-                         [attr.data-tip]="('stage_' + b.stage | t) + ' — ' + b.doneQty + '/' + b.planQty + ' (' + b.progress + '%)'">
-                      <span class="bar-fill" [style.width.%]="b.progress"></span>
-                      <span class="bar-label">{{ 'stage_' + b.stage | t }}</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </div>
-  `,
-  styles: [`
-    .seg { display: flex; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; }
-    .seg button { border: none; background: var(--surface); padding: 7px 13px; cursor: pointer; color: var(--text-2); font-size: 13px; }
-    .seg button.on { background: var(--primary); color: #fff; font-weight: 600; }
-    .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-    .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
-    .lg i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-
-    .gantt { overflow-x: auto; }
-    .g-head, .g-row { display: flex; min-width: 900px; }
-    .g-head { position: sticky; top: 0; background: var(--surface-2); border-bottom: 1px solid var(--border); z-index: 2; height: 34px; }
-    .g-left { width: 210px; flex: 0 0 auto; padding: 8px 14px; border-right: 1px solid var(--border); font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
-    .g-row .g-left { text-transform: none; letter-spacing: 0; color: inherit; padding: 10px 14px; }
-    .g-row { border-bottom: 1px solid var(--border); }
-    .g-row:hover { background: var(--surface-2); }
-    .g-track { position: relative; flex: 1; min-height: 34px; padding: 8px 0; }
-    .tick { position: absolute; top: 9px; font-size: 10.5px; color: var(--text-3); transform: translateX(-50%); white-space: nowrap; }
-    .tick.major { font-weight: 600; color: var(--text-2); }
-    .grid-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); opacity: .5; }
-    .grid-line.major { opacity: 1; }
-    .nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); opacity: .6; z-index: 1; }
-    .bar { position: absolute; height: 15px; border-radius: 4px; overflow: hidden; min-width: 6px; display: flex; align-items: center; }
-    .bar:nth-child(4n) { top: 8px; } 
-    .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.35); }
-    .bar-label { position: relative; font-size: 9.5px; color: #fff; padding: 0 5px; white-space: nowrap; overflow: hidden; font-weight: 500; }
-  `],
 })
 export class ScheduleComponent {
   private api = inject(ApiService);

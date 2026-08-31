@@ -1,0 +1,30 @@
+.grid.layout { grid-template-columns: 330px minmax(0, 1fr); align-items: start; }
+    @media (max-width: 960px) { .grid.layout { grid-template-columns: 1fr; } }
+    .sidebar-card { overflow: hidden; }
+    .photos-block { padding: 12px 12px 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .photos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .photos-grid.single { grid-template-columns: 1fr; }
+    .photo-tile {
+      position: relative; border: none; padding: 0; border-radius: var(--r); overflow: hidden;
+      aspect-ratio: 1; background: var(--surface-3); cursor: zoom-in;
+    }
+    .photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
+    .photo-hover {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.45); color: #fff; opacity: 0; transition: opacity .15s ease;
+    }
+    .photo-tile:hover img { transform: scale(1.04); }
+    .photo-tile:hover .photo-hover { opacity: 1; }
+    .photo-empty {
+      height: 220px; display: flex; align-items: center; justify-content: center;
+      color: var(--text-3); background: var(--surface-3); border-radius: var(--r); margin-bottom: 12px;
+    }
+    .empty-hint { margin: 8px 0 0; text-align: center; font-size: 12px; color: var(--text-3); line-height: 1.45; }
+    .lightbox-img { display: block; width: 100%; max-height: min(78vh, 900px); object-fit: contain; margin: 0 auto; border-radius: var(--r); }
+    dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
+    dl.kv dt { color: var(--text-3); } dl.kv dd { margin: 0; }
+    .size-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+    .chip { border: 1px solid var(--border); border-radius: var(--r); padding: 9px; text-align: center; background: var(--surface-2); }
+    .chip-k { display: block; font-size: 11px; color: var(--text-3); text-transform: uppercase; }
+    .chip-v { display: block; font-size: 16px; font-weight: 600; }
+    .swatch { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); display: inline-block; flex-shrink: 0; }

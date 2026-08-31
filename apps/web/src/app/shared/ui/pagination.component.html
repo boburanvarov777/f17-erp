@@ -1,0 +1,42 @@
+    <div class="paginator">
+      <div class="paginator-report small text-3">
+        {{ 'showing' | t: { from: from(), to: to(), total: total() } }}
+      </div>
+
+      <div class="paginator-controls">
+        <div class="paginator-rpp">
+          <span class="paginator-rpp-label">{{ 'rows_per_page' | t }}</span>
+          <select
+            class="paginator-rpp-select select btn-sm"
+            [ngModel]="limit()"
+            (ngModelChange)="onLimitPick($event)"
+          >
+            @for (opt of limitOptions(); track opt.value) {
+              <option [ngValue]="opt.value" [disabled]="opt.disabled && opt.value !== limit()">{{ opt.value }}</option>
+            }
+          </select>
+        </div>
+
+        @if (showPager()) {
+          <nav class="paginator-pages" [attr.aria-label]="'page' | t">
+            <button type="button" class="paginator-nav" [disabled]="page() <= 1" (click)="go(1)" [attr.data-tip]="'first_page' | t">«</button>
+            <button type="button" class="paginator-nav" [disabled]="page() <= 1" (click)="go(page() - 1)" [attr.data-tip]="'prev_page' | t">‹</button>
+            @for (p of pages(); track $index) {
+              @if (p === -1) {
+                <span class="paginator-ellipsis">…</span>
+              } @else {
+                <button
+                  type="button"
+                  class="paginator-page"
+                  [class.active]="p === page()"
+                  (click)="go(p)"
+                  [attr.data-tip]="('page' | t) + ' ' + p"
+                >{{ p }}</button>
+              }
+            }
+            <button type="button" class="paginator-nav" [disabled]="page() >= totalPages()" (click)="go(page() + 1)" [attr.data-tip]="'next_page' | t">›</button>
+            <button type="button" class="paginator-nav" [disabled]="page() >= totalPages()" (click)="go(totalPages())" [attr.data-tip]="'last_page' | t">»</button>
+          </nav>
+        }
+      </div>
+    </div>

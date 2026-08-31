@@ -4,17 +4,10 @@ import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'ui-empty',
+  templateUrl: './empty.component.html',
   standalone: true,
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="empty">
-      <ui-icon [name]="icon()" [size]="34" [stroke]="1.4" />
-      <h3>{{ resolvedTitle() }}</h3>
-      @if (message()) { <div class="small">{{ message() }}</div> }
-      <ng-content />
-    </div>
-  `,
 })
 export class EmptyComponent {
   private readonly i18n = inject(I18nService);
@@ -26,15 +19,9 @@ export class EmptyComponent {
 
 @Component({
   selector: 'ui-loading',
+  templateUrl: './loading.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="col gap-2" style="padding:16px">
-      @for (r of rows(); track $index) {
-        <div class="skeleton" [style.height.px]="height()"></div>
-      }
-    </div>
-  `,
 })
 export class LoadingComponent {
   readonly count = input(6);

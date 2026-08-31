@@ -1,0 +1,29 @@
+<div class="dc">
+  <div class="dc-ring">
+    <svg viewBox="0 0 140 140" role="img">
+      <circle class="dc-bg" cx="70" cy="70" [attr.r]="radius" />
+      @for (s of segments(); track s.key) {
+        <circle
+          cx="70" cy="70" [attr.r]="radius"
+          [attr.stroke]="s.color"
+          [attr.stroke-dasharray]="s.dash + ' ' + circumference"
+          [attr.stroke-dashoffset]="-s.offset"
+        />
+      }
+    </svg>
+    <div class="dc-center">
+      <b>{{ total() | num }}</b>
+      <span>{{ caption() }}</span>
+    </div>
+  </div>
+  <div class="dc-legend">
+    @for (s of segments(); track s.key) {
+      <div class="dc-item">
+        <i [style.background]="s.color"></i>
+        <span class="dc-name">{{ s.label }}</span>
+        <b>{{ s.value | num }}</b>
+        <span class="dc-pct">{{ s.share }}%</span>
+      </div>
+    }
+  </div>
+</div>

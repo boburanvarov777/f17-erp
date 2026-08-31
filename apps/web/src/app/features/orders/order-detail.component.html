@@ -1,0 +1,297 @@
+    <div [class.page]="!embedded()" [class.embedded-detail]="embedded()">
+      @if (loading() && !order()) {
+        <ui-loading [count]="5" [height]="70" />
+      } @else if (order(); as o) {
+        @if (!embedded()) {
+          <div class="breadcrumb no-print">
+            <a [routerLink]="o.archivedAt ? '/archive' : '/orders'">{{ (o.archivedAt ? 'archive_title' : 'orders_title') | t }}</a>
+            <ui-icon name="chevron-right" [size]="13" />
+            <span>{{ o.number }}</span>
+          </div>
+
+          <div class="page-head">
+            <div>
+              <div class="row gap-3">
+                <span class="title mono">{{ o.number }}</span>
+                <ui-status [value]="o.status" />
+                <ui-priority [value]="o.priority" />
+                @if (o.archivedAt) { <span class="badge badge-neutral"><ui-icon name="archive" [size]="12" /> {{ 'archived' | t }}</span> }
+                @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
+              </div>
+              <div class="sub">
+                {{ o.model ? o.model.code + ' — ' + o.model.name : '—' }} · {{ o.client?.name }} · {{ o.qty | num }} {{ 'pieces' | t }}
+              </div>
+            </div>
+            <div class="row gap-2 no-print">
+              <button class="btn btn-sm" type="button" (click)="print()" [attr.data-tip]="'print' | t"><ui-icon name="printer" [size]="15" /> {{ 'print' | t }}</button>
+              @if (auth.can('orders.update') && !o.archivedAt) {
+                <button class="btn btn-sm" type="button" (click)="editing.set(o)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /> {{ 'edit' | t }}</button>
+              }
+            </div>
+          </div>
+        }
+        @if (embedded()) {
+          <div class="row gap-2 mb-4 wrap">
+            <ui-status [value]="o.status" />
+            <ui-priority [value]="o.priority" />
+            <span class="badge badge-neutral"><ui-icon name="archive" [size]="12" /> {{ 'archived' | t }}</span>
+            @if (o.isLate) { <span class="badge badge-danger"><ui-icon name="alert-triangle" [size]="12" /> {{ 'late_badge' | t }}</span> }
+          </div>
+        }
+        <div class="stats mb-6">
+          <div class="stat"><div class="k">{{ 'quantity' | t }}</div><div class="v">{{ o.qty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'completed' | t }}</div><div class="v" style="color:var(--success)">{{ o.completedQty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'remaining' | t }}</div><div class="v">{{ o.remainingQty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" [style.color]="totalDefects() ? 'var(--danger)' : ''">{{ totalDefects() | num }}</div></div>
+          <div class="stat">
+            <div class="k">{{ 'deadline' | t }}</div>
+            <div class="v" style="font-size:19px" [style.color]="o.isLate ? 'var(--danger)' : ''">{{ o.deadline | shortDate }}</div>
+            <div class="m">{{ 'order_date' | t }}: {{ o.orderDate | shortDate }}</div>
+          </div>
+        </div>
+
+        <!-- production chain -->
+        <div class="card mb-6">
+          <div class="card-head row-between">
+            <h3>{{ 'production_progress' | t }}</h3>
+            <span class="small text-3">{{ chainDoneCount(o) }} / {{ o.stages?.length ?? 0 }}</span>
+          </div>
+          <div class="card-body">
+            <div class="pipeline-track" aria-hidden="true">
+              @for (s of o.stages; track s.stage) {
+                <span class="track-seg" [class.done]="s.status === 'COMPLETED'" [class.active]="s.status === 'IN_PROGRESS'"></span>
+              }
+            </div>
+            <div class="pipeline-grid">
+              @for (s of o.stages; track s.stage; let i = $index) {
+                @if (readOnly()) {
+                  <div
+                    class="pipeline-card static"
+                    [class.done]="s.status === 'COMPLETED'"
+                    [class.active]="s.status === 'IN_PROGRESS'"
+                    [class.waiting]="s.status === 'WAITING'"
+                    [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+                  >
+                    <ng-container *ngTemplateOutlet="stageCardInner; context: { $implicit: s, i: i, total: o.stages?.length ?? 0 }" />
+                  </div>
+                } @else {
+                  <a
+                    class="pipeline-card"
+                    [routerLink]="['/production', s.stage.toLowerCase()]"
+                    [class.done]="s.status === 'COMPLETED'"
+                    [class.active]="s.status === 'IN_PROGRESS'"
+                    [class.waiting]="s.status === 'WAITING'"
+                    [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+                  >
+                    <ng-container *ngTemplateOutlet="stageCardInner; context: { $implicit: s, i: i, total: o.stages?.length ?? 0 }" />
+                  </a>
+                }
+              }
+            </div>
+          </div>
+        </div>
+
+        <ng-template #stageCardInner let-s let-i="i" let-total="total">
+          <div class="pipeline-head">
+            <span class="pipeline-icon"><ui-icon [name]="stageIcon(s.stage)" [size]="18" /></span>
+            <div class="pipeline-title">
+              <span class="pipeline-name">{{ 'stage_' + s.stage | t }}</span>
+              <span class="pipeline-step">{{ i + 1 }} / {{ total }}</span>
+            </div>
+          </div>
+          <div class="pipeline-metrics">
+            <span class="pipeline-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
+            <span class="pipeline-pct" [style.color]="stagePctColor(s)">{{ stagePct(s) }}%</span>
+          </div>
+          <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" [allowOver100]="s.stage === 'CUTTING'" />
+          <div class="pipeline-foot">
+            <ui-status [value]="s.status" [wrap]="true" [light]="true" />
+            @if (s.defectQty) {
+              <span class="badge badge-danger badge-light pipeline-defect" [attr.data-tip]="'defect_label' | t">
+                <ui-icon name="alert-triangle" [size]="11" />
+                {{ s.defectQty | num }}
+              </span>
+            }
+          </div>
+          @if (s.responsible) {
+            <div class="pipeline-user" [attr.title]="s.responsible.lastName + ' ' + s.responsible.firstName">
+              {{ s.responsible.lastName }} {{ s.responsible.firstName }}
+            </div>
+          }
+        </ng-template>
+
+        <!-- tabs -->
+        <div class="tabs mb-4 no-print">
+          @for (t of tabs; track t) {
+            <button type="button" [class.active]="tab() === t" (click)="setTab(t)">{{ tabLabel(t) | t }}</button>
+          }
+        </div>
+
+        @switch (tab()) {
+          @case ('general') {
+            <div class="grid two">
+              <div class="card">
+                <div class="card-head"><h3>{{ 'general' | t }}</h3></div>
+                <div class="card-body">
+                  <dl class="kv">
+                    <dt>{{ 'client' | t }}</dt><dd>{{ o.client?.name || '—' }}</dd>
+                    <dt>{{ 'model' | t }}</dt>
+                    <dd>@if (o.model) {
+                      @if (readOnly()) { {{ o.model.code }} — {{ o.model.name }} }
+                      @else { <a [routerLink]="['/models', o.model.id]">{{ o.model.code }} — {{ o.model.name }}</a> }
+                    } @else { — }</dd>
+                    <dt>{{ 'fabric' | t }}</dt><dd>{{ o.model?.fabric || '—' }}</dd>
+                    <dt>{{ 'responsible' | t }}</dt><dd>{{ o.responsible ? o.responsible.lastName + ' ' + o.responsible.firstName : '—' }}</dd>
+                    <dt>{{ 'created' | t }}</dt><dd>{{ o.createdBy ? o.createdBy.lastName + ' ' + o.createdBy.firstName : '—' }}</dd>
+                    <dt>{{ 'note' | t }}</dt><dd>{{ o.note || '—' }}</dd>
+                  </dl>
+                  <div class="divider"></div>
+                  <div class="row-between">
+                    <b class="small">{{ 'sample' | t }}</b>
+                    @if (o.sampleStatus) { <ui-status [value]="o.sampleStatus" /> } @else { <span class="small text-3">{{ 'sample_not_tracked' | t }}</span> }
+                  </div>
+                  @if (o.sampleStatus) {
+                    <dl class="kv mt-2">
+                      <dt>{{ 'sample_sent' | t }}</dt><dd>{{ o.sampleSentAt ? (o.sampleSentAt | shortDate) : '—' }}</dd>
+                      <dt>{{ 'sample_approved' | t }}</dt><dd>{{ o.sampleApprovedAt ? (o.sampleApprovedAt | shortDate) : '—' }}</dd>
+                    </dl>
+                    @if (sampleWarning()) {
+                      <div class="badge badge-warning mt-3" style="width:100%;align-items:flex-start;justify-content:flex-start;padding:9px 11px;border-radius:var(--r);white-space:normal;text-align:left;line-height:1.4;height:auto">
+                        <ui-icon name="alert-triangle" [size]="14" /> {{ 'sample_warning' | t }}
+                      </div>
+                    }
+                  } @else {
+                    <div class="small text-3 mt-2">{{ 'sample_not_tracked_hint' | t }}</div>
+                  }
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><h3>{{ 'size_breakdown' | t }}</h3></div>
+                <div class="card-body">
+                  @if (o.sizes?.length) {
+                    <div class="size-chips">
+                      @for (s of o.sizes; track s.size + (s.color || '')) {
+                        <div class="chip">
+                          <span class="chip-k">{{ s.size }}</span>
+                          <span class="chip-v">{{ s.qty | num }}</span>
+                        </div>
+                      }
+                    </div>
+                    <div class="row-between mt-4 bold">
+                      <span>{{ 'total' | t }}</span>
+                      <span>{{ sizeTotal() | num }} {{ 'pieces' | t }}</span>
+                    </div>
+                  } @else { <ui-empty icon="info" [title]="'no_data' | t" /> }
+                </div>
+              </div>
+            </div>
+          }
+
+          @case ('defects') {
+            <div class="card">
+              <div class="card-head"><h3>{{ 'order_defects' | t }}</h3></div>
+              <div class="table-wrap">
+                <table class="data">
+                  <thead><tr><th>{{ 'date' | t }}</th><th>{{ 'stage' | t }}</th><th>{{ 'defect_type' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th>{{ 'defect_reason' | t }}</th><th>{{ 'who' | t }}</th></tr></thead>
+                  <tbody>
+                    @for (d of o.defects; track d.id) {
+                      <tr>
+                        <td class="small nowrap">{{ d.date | shortDate: true }}</td>
+                        <td><ui-status [value]="d.stage" prefix="stage_" /></td>
+                        <td>{{ defectTypeLabel(d.type) }}</td>
+                        <td class="num" style="color:var(--danger);font-weight:600">{{ d.qty | num }}</td>
+                        <td class="small text-2">{{ d.reason || '—' }}</td>
+                        <td class="small">{{ d.user ? d.user.lastName + ' ' + d.user.firstName : '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="6"><ui-empty icon="check-circle" [title]="'no_defects' | t" /></td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          @case ('logistics') {
+            <div class="card">
+              <div class="card-head"><h3>{{ 'logistics' | t }}</h3></div>
+              <div class="table-wrap">
+                <table class="data">
+                  <thead><tr><th>{{ 'vehicle' | t }}</th><th>{{ 'driver' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'box_count' | t }}</th><th>{{ 'loading_date' | t }}</th><th>{{ 'track_no' | t }}</th><th>{{ 'status' | t }}</th></tr></thead>
+                  <tbody>
+                    @for (s of o.shipments; track s.id) {
+                      <tr>
+                        <td>{{ s.vehicle || '—' }}</td>
+                        <td>{{ s.driver || '—' }}<div class="tiny text-3">{{ s.driverPhone }}</div></td>
+                        <td class="num">{{ s.qty | num }}</td>
+                        <td class="num">{{ s.boxCount }}</td>
+                        <td class="small">{{ s.loadingDate | shortDate }}</td>
+                        <td class="mono small">{{ s.trackNo || '—' }}</td>
+                        <td><ui-status [value]="s.status" /></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="7"><ui-empty icon="truck" [title]="'no_data' | t" /></td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          @case ('history') {
+            <div class="card">
+              <div class="card-head"><h3>{{ 'history' | t }}</h3></div>
+              <div class="timeline">
+                @for (h of history(); track h.at + h.text) {
+                  <div class="tl-row">
+                    <div class="tl-dot" [class.audit]="h.kind === 'AUDIT'" [class.defect]="h.kind === 'DEFECT'"></div>
+                    <div class="grow">
+                      <div class="row gap-2 wrap">
+                        <span class="small">{{ h.text }}</span>
+                        @if (h.source === 'TELEGRAM' || h.source === 'MINIAPP') { <span class="badge badge-info"><ui-icon name="send" [size]="10" /> {{ 'source_telegram' | t }}</span> }
+                      </div>
+                      <div class="tiny text-3">{{ h.user || ('system' | t) }} · {{ h.at | shortDate: true }}</div>
+                    </div>
+                  </div>
+                } @empty { <ui-empty icon="history" [title]="'no_data' | t" /> }
+              </div>
+            </div>
+          }
+
+          @case ('comments') {
+            <div class="card">
+              <div class="card-head"><h3>{{ 'order_comments' | t }}</h3></div>
+              <div class="card-body">
+                @if (!readOnly()) {
+                  <div class="row gap-2 mb-4">
+                    <input class="input" [(ngModel)]="commentText" [placeholder]="'add_comment' | t" (keyup.enter)="addComment()" />
+                    <button class="btn btn-primary" type="button" (click)="addComment()" [disabled]="!commentText.trim()" [attr.data-tip]="'add_comment' | t">
+                      <ui-icon name="send" [size]="15" />
+                    </button>
+                  </div>
+                }
+                @for (c of o.comments; track c.id) {
+                  <div class="row gap-3 mb-4" style="align-items:flex-start">
+                    <span class="avatar sm">{{ c.user?.firstName | initials: c.user?.lastName }}</span>
+                    <div class="grow">
+                      <div class="row gap-2">
+                        <b class="small">{{ c.user?.lastName }} {{ c.user?.firstName }}</b>
+                        <span class="tiny text-3">{{ c.createdAt | ago }}</span>
+                      </div>
+                      <div class="small text-2">{{ c.text }}</div>
+                    </div>
+                  </div>
+                } @empty { <ui-empty icon="message-square" [title]="'no_data' | t" /> }
+              </div>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    @if (editing() && !embedded()) {
+      <app-order-form [order]="editing()!" [clients]="clients()" [models]="models()"
+                       (clientsChange)="clients.set($event)"
+                       (saved)="onSaved()" (closed)="editing.set(null)" />
+    }

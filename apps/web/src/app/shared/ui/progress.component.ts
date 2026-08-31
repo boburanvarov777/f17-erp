@@ -2,19 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 @Component({
   selector: 'ui-progress',
+  templateUrl: './progress.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="col gap-1" style="min-width:96px">
-      @if (showLabel()) {
-        <div class="row-between tiny text-3">
-          <span>{{ value() }} / {{ max() }}</span>
-          <span class="bold" [style.color]="color()">{{ pct() }}%</span>
-        </div>
-      }
-      <div class="progress" [class]="tone()"><i [style.width.%]="barWidth()"></i></div>
-    </div>
-  `,
 })
 export class ProgressComponent {
   readonly allowOver100 = input(false);

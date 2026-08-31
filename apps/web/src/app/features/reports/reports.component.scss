@@ -1,0 +1,14 @@
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+
+    .presets { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; }
+    .presets button {
+      height: 32px; padding: 0 11px; border: none; border-right: 1px solid var(--border);
+      background: var(--surface); color: var(--text-2); font-size: 12.5px; cursor: pointer;
+    }
+    .presets button:last-child { border-right: none; }
+    .presets button:hover { background: var(--surface-3); color: var(--text); }
+    .presets button.active { background: var(--primary); color: #fff; font-weight: 600; }
+
+    .legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--text-3); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 9px; height: 9px; border-radius: 3px; }

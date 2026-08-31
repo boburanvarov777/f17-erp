@@ -1,0 +1,28 @@
+.status-badge { gap: 5px; }
+    .status-badge.wrap { white-space: normal; height: auto; min-height: 22px; line-height: 1.25; padding-block: 3px; }
+    .status-badge.light {
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+      font-weight: 600;
+    }
+    .status-badge.light.badge-success { color: var(--success); border-color: var(--success-br); }
+    .status-badge.light.badge-warning { color: var(--warning); border-color: var(--warning-br); }
+    .status-badge.light.badge-danger { color: var(--danger); border-color: var(--danger-br); }
+    .status-badge.light.badge-info { color: var(--info); border-color: var(--info-br); }
+    .status-badge.light.badge-neutral { color: var(--text-2); border-color: var(--border-strong); }
+    .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
+
+    .status-badge.stage {
+      color: var(--st-fg);
+      background: var(--st-bg);
+      border-color: var(--st-br);
+      padding-inline: 10px;
+    }
+    .status-badge.stage.light { background: var(--surface); }
+    .status-badge.stage ui-icon { opacity: 1; }
+    .stage-cutting { --st-fg: var(--stage-cutting); --st-bg: var(--stage-cutting-bg); --st-br: var(--stage-cutting-br); }
+    .stage-sewing  { --st-fg: var(--stage-sewing);  --st-bg: var(--stage-sewing-bg);  --st-br: var(--stage-sewing-br); }
+    .stage-washing { --st-fg: var(--stage-washing); --st-bg: var(--stage-washing-bg); --st-br: var(--stage-washing-br); }
+    .stage-laser   { --st-fg: var(--stage-laser);   --st-bg: var(--stage-laser-bg);   --st-br: var(--stage-laser-br); }
+    .stage-packing { --st-fg: var(--stage-packing); --st-bg: var(--stage-packing-bg); --st-br: var(--stage-packing-br); }
+    .stage-loading { --st-fg: var(--stage-loading); --st-bg: var(--stage-loading-bg); --st-br: var(--stage-loading-br); }

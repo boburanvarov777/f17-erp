@@ -16,77 +16,10 @@ const STAGES: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING',
 
 @Component({
   selector: 'app-departments',
+  templateUrl: './departments.component.html',
   standalone: true,
   imports: [FormsModule, IconComponent, EmptyComponent, LoadingComponent, ModalComponent, StatusBadgeComponent, TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <div class="page-head">
-        <div>
-          <div class="title">{{ 'departments_title' | t }}</div>
-          <div class="sub">{{ i18n.t('departments_count_sub', { n: items().length }) }}</div>
-        </div>
-        @if (auth.can('departments.create')) {
-          <button class="btn btn-primary btn-sm" type="button" (click)="open({})" [attr.data-tip]="'new_department' | t"><ui-icon name="plus" [size]="15" /> {{ 'new_department' | t }}</button>
-        }
-      </div>
-
-      <div class="card">
-        @if (loading()) { <ui-loading /> }
-        @else if (items().length) {
-          <div class="table-wrap">
-            <table class="data">
-              <thead><tr><th>{{ 'code' | t }}</th><th>{{ 'dept_name_uz' | t }}</th><th>{{ 'dept_name_ru' | t }}</th><th>{{ 'dept_name_en' | t }}</th><th>{{ 'linked_stage' | t }}</th><th class="num">{{ 'employees' | t }}</th><th class="actions"></th></tr></thead>
-              <tbody>
-                @for (d of items(); track d.id) {
-                  <tr>
-                    <td class="mono small bold">{{ d.code }}</td>
-                    <td>{{ d.nameUz }}</td>
-                    <td class="small">{{ d.nameRu }}</td>
-                    <td class="small">{{ d.nameEn }}</td>
-                    <td>@if (d.stage) { <ui-status [value]="d.stage" prefix="stage_" /> } @else { <span class="text-3">—</span> }</td>
-                    <td class="num">{{ d._count?.users || 0 }}</td>
-                    <td class="actions">
-                      @if (auth.can('departments.update')) {
-                        <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="open(d)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        } @else { <ui-empty icon="building" [title]="'no_data' | t" /> }
-      </div>
-    </div>
-
-    @if (editing(); as d) {
-      <ui-modal size="lg" [title]="d.id ? ('edit' | t) : ('new_department' | t)" (closed)="editing.set(null)">
-        <div class="form-grid">
-          <div class="field" [class.field-invalid]="fe.has('code')">
-            <label class="label">{{ 'code' | t }} <span class="req">*</span></label>
-            <input class="input mono" [(ngModel)]="form.code" [disabled]="!!d.id" (ngModelChange)="fe.clear('code')" />
-            @if (fe.get('code'); as msg) { <div class="field-error">{{ msg }}</div> }
-          </div>
-          <div class="field">
-            <label class="label">{{ 'linked_stage' | t }}</label>
-            <select class="select" [(ngModel)]="form.stage"><option value="" disabled>{{ 'select_stage' | t }}</option>@for (s of stages; track s) { <option [value]="s">{{ 'stage_' + s | t }}</option> }</select>
-          </div>
-          <div class="field full" [class.field-invalid]="fe.has('nameUz')">
-            <label class="label">{{ 'dept_name_uz' | t }} <span class="req">*</span></label>
-            <input class="input" [(ngModel)]="form.nameUz" (ngModelChange)="fe.clear('nameUz')" />
-            @if (fe.get('nameUz'); as msg) { <div class="field-error">{{ msg }}</div> }
-          </div>
-          <div class="field full"><label class="label">{{ 'dept_name_ru' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameRu" /></div>
-          <div class="field full"><label class="label">{{ 'dept_name_en' | t }} <span class="req">*</span></label><input class="input" [(ngModel)]="form.nameEn" /></div>
-        </div>
-        <div footer>
-          <button class="btn" type="button" (click)="editing.set(null)">{{ 'cancel' | t }}</button>
-          <button class="btn btn-primary" type="button" (click)="save()" [disabled]="busy()">{{ 'save' | t }}</button>
-        </div>
-      </ui-modal>
-    }
-  `,
 })
 export class DepartmentsComponent {
   private api = inject(ApiService);

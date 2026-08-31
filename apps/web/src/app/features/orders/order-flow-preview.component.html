@@ -1,0 +1,63 @@
+    @if (loading()) {
+      <ui-loading [count]="3" [height]="56" />
+    } @else if (order(); as o) {
+      <div class="flow-preview">
+        <div class="stats compact mb-4">
+          <div class="stat"><div class="k">{{ 'quantity' | t }}</div><div class="v">{{ o.qty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'completed' | t }}</div><div class="v" style="color:var(--success)">{{ o.completedQty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'remaining' | t }}</div><div class="v">{{ o.remainingQty | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" [style.color]="totalDefects() ? 'var(--danger)' : ''">{{ totalDefects() | num }}</div></div>
+          <div class="stat"><div class="k">{{ 'deadline' | t }}</div><div class="v" style="font-size:17px">{{ o.deadline | shortDate }}</div></div>
+        </div>
+
+        <div class="flow-head row-between mb-3">
+          <h4 class="small bold m-0">{{ 'production_progress' | t }}</h4>
+          <span class="tiny text-3">{{ chainDoneCount(o) }} / {{ o.stages?.length ?? 0 }}</span>
+        </div>
+
+        <div class="pipeline-track" aria-hidden="true">
+          @for (s of o.stages; track s.stage) {
+            <span class="track-seg" [class.done]="s.status === 'COMPLETED'" [class.active]="s.status === 'IN_PROGRESS'"></span>
+          }
+        </div>
+
+        <div class="pipeline-grid">
+          @for (s of o.stages; track s.stage; let i = $index) {
+            <div
+              class="pipeline-card"
+              [class.done]="s.status === 'COMPLETED'"
+              [class.active]="s.status === 'IN_PROGRESS'"
+              [class.waiting]="s.status === 'WAITING'"
+              [class.idle]="s.status === 'NOT_STARTED' || s.status === 'BLOCKED' || s.status === 'DELAYED'"
+            >
+              <div class="pipeline-head">
+                <span class="pipeline-icon"><ui-icon [name]="stageIcon(s.stage)" [size]="18" /></span>
+                <div class="pipeline-title">
+                  <span class="pipeline-name">{{ 'stage_' + s.stage | t }}</span>
+                  <span class="pipeline-step">{{ i + 1 }} / {{ o.stages?.length ?? 0 }}</span>
+                </div>
+              </div>
+              <div class="pipeline-metrics">
+                <span class="pipeline-qty">{{ s.doneQty | num }} / {{ s.planQty | num }}</span>
+                <span class="pipeline-pct" [style.color]="stagePctColor(s)">{{ stagePct(s) }}%</span>
+              </div>
+              <ui-progress [value]="s.doneQty" [max]="s.planQty" [showLabel]="false" />
+              <div class="pipeline-foot">
+                <ui-status [value]="s.status" [wrap]="true" [light]="true" />
+                @if (s.defectQty) {
+                  <span class="badge badge-danger badge-light pipeline-defect">
+                    <ui-icon name="alert-triangle" [size]="11" />
+                    {{ s.defectQty | num }}
+                  </span>
+                }
+              </div>
+              @if (s.responsible) {
+                <div class="pipeline-user">{{ s.responsible.lastName }} {{ s.responsible.firstName }}</div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <ui-empty icon="alert-circle" [title]="'error' | t" />
+    }

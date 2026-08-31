@@ -1,0 +1,58 @@
+    <div class="date-input" [class.open]="open()" [class.sm]="size() === 'sm'" [class.disabled]="disabled()">
+      <button
+        type="button"
+        class="date-trigger"
+        [disabled]="disabled()"
+        (click)="toggle()"
+        [attr.aria-expanded]="open()"
+        [attr.aria-haspopup]="'dialog'"
+      >
+        <span class="date-value" [class.placeholder]="!hasValue()">{{ displayText() }}</span>
+        <span class="date-icon"><ui-icon name="calendar" [size]="size() === 'sm' ? 14 : 16" /></span>
+      </button>
+
+      @if (open()) {
+        <div class="date-panel" [class.align-right]="panelAlign() === 'right'" role="dialog" [attr.aria-label]="'select_date' | t">
+          <div class="date-head">
+            <button type="button" class="date-nav" (click)="shiftMonth(-1)" [attr.data-tip]="'prev' | t">
+              <ui-icon name="chevron-left" [size]="16" />
+            </button>
+            <div class="date-title">{{ monthLabel() }}</div>
+            <button type="button" class="date-nav" (click)="shiftMonth(1)" [attr.data-tip]="'next' | t">
+              <ui-icon name="chevron-right" [size]="16" />
+            </button>
+          </div>
+
+          <div class="date-weekdays">
+            @for (w of weekdays(); track w) { <span>{{ w }}</span> }
+          </div>
+
+          <div class="date-grid">
+            @for (cell of cells(); track cell.iso + cell.day) {
+              <button
+                type="button"
+                class="date-day"
+                [class.muted]="cell.muted"
+                [class.today]="cell.today"
+                [class.selected]="cell.selected"
+                (click)="pick(cell.iso)"
+              >{{ cell.day }}</button>
+            }
+          </div>
+
+          @if (mode() === 'datetime') {
+            <div class="date-time">
+              <label class="date-time-label">{{ 'time' | t }}</label>
+              <input class="date-time-input" type="time" [value]="timePart()" (input)="onTimeInput($event)" />
+            </div>
+          }
+
+          <div class="date-foot">
+            <button type="button" class="date-link" (click)="pickToday()">{{ 'today' | t }}</button>
+            @if (hasValue()) {
+              <button type="button" class="date-link muted" (click)="clear()">{{ 'clear' | t }}</button>
+            }
+          </div>
+        </div>
+      }
+    </div>

@@ -1,0 +1,17 @@
+<div class="rc">
+  @for (r of points(); track r.key) {
+    <div class="rc-row">
+      <div class="rc-head">
+        <span class="rc-label" [attr.title]="r.label">{{ r.label }}</span>
+        <span class="rc-value">
+          {{ r.value | num }}
+          @if (r.extra) { <b class="rc-defect">+{{ r.extra | num }}</b> }
+        </span>
+      </div>
+      <div class="rc-track" [attr.data-tip]="r.hint || null">
+        <i [style.width.%]="pct(r.value)" [style.background]="r.color || 'var(--primary-500)'"></i>
+        @if (r.extra) { <i class="defect" [style.width.%]="pct(r.extra)"></i> }
+      </div>
+    </div>
+  }
+</div>

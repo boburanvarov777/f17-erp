@@ -9,39 +9,11 @@ import { haptic } from './telegram';
 
 @Component({
   selector: 'app-ma-tasks',
+  templateUrl: './ma-tasks.component.html',
+  styleUrl: './ma-tasks.component.scss',
   standalone: true,
   imports: [IconComponent, EmptyComponent, LoadingComponent, TPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <h2 class="mb-3" style="font-size:17px">{{ 'ma_my_work' | t }}</h2>
-
-    @if (loading()) { <ui-loading [count]="5" [height]="60" /> }
-    @else if (tasks().length) {
-      <div class="col gap-2">
-        @for (t of tasks(); track t.id) {
-          <div class="titem" [class.done]="t.status === 'DONE'">
-            <button class="tcheck" type="button" [class.on]="t.status === 'DONE'" (click)="toggle(t)">
-              @if (t.status === 'DONE') { <ui-icon name="check" [size]="13" /> }
-            </button>
-            <div class="grow" style="min-width:0">
-              <div class="small bold truncate">{{ t.title }}</div>
-              <div class="tiny text-3">
-                {{ t.date | shortDate }}@if (t.order) { · {{ t.order.number }} }
-              </div>
-            </div>
-            <span class="badge" [class]="tone(t.status)">{{ 'st_' + t.status | t }}</span>
-          </div>
-        }
-      </div>
-    } @else { <ui-empty icon="list-checks" [title]="'ma_no_tasks' | t" /> }
-  `,
-  styles: [`
-    .titem { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
-    .titem.done { opacity: .6; }
-    .titem.done .bold { text-decoration: line-through; }
-    .tcheck { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--border-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: #fff; }
-    .tcheck.on { background: var(--success); border-color: var(--success); }
-  `],
 })
 export class MaTasksComponent {
   private api = inject(ApiService);

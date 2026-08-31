@@ -1,0 +1,8 @@
+.plan-line-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r);
+      background: var(--surface); cursor: pointer;
+    }
+    .plan-line-row.on { border-color: var(--primary-500); background: var(--primary-50); }
+    .plan-line-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0; }
+    .qty-in { width: 88px; height: 34px; text-align: center; padding: 0 8px; }

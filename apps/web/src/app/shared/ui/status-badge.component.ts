@@ -40,45 +40,11 @@ const STAGE_THEMES: Record<string, string> = {
 
 @Component({
   selector: 'ui-status',
+  templateUrl: './status-badge.component.html',
+  styleUrl: './status-badge.component.scss',
   standalone: true,
   imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <span class="badge status-badge" [class.wrap]="wrap()" [class.light]="light()" [class]="theme()">
-      <ui-icon [name]="icon()" [size]="11" />
-      <span>{{ prefix() + value() | t }}</span>
-    </span>
-  `,
-  styles: [`
-    .status-badge { gap: 5px; }
-    .status-badge.wrap { white-space: normal; height: auto; min-height: 22px; line-height: 1.25; padding-block: 3px; }
-    .status-badge.light {
-      background: var(--surface);
-      box-shadow: var(--sh-1);
-      font-weight: 600;
-    }
-    .status-badge.light.badge-success { color: var(--success); border-color: var(--success-br); }
-    .status-badge.light.badge-warning { color: var(--warning); border-color: var(--warning-br); }
-    .status-badge.light.badge-danger { color: var(--danger); border-color: var(--danger-br); }
-    .status-badge.light.badge-info { color: var(--info); border-color: var(--info-br); }
-    .status-badge.light.badge-neutral { color: var(--text-2); border-color: var(--border-strong); }
-    .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
-
-    .status-badge.stage {
-      color: var(--st-fg);
-      background: var(--st-bg);
-      border-color: var(--st-br);
-      padding-inline: 10px;
-    }
-    .status-badge.stage.light { background: var(--surface); }
-    .status-badge.stage ui-icon { opacity: 1; }
-    .stage-cutting { --st-fg: var(--stage-cutting); --st-bg: var(--stage-cutting-bg); --st-br: var(--stage-cutting-br); }
-    .stage-sewing  { --st-fg: var(--stage-sewing);  --st-bg: var(--stage-sewing-bg);  --st-br: var(--stage-sewing-br); }
-    .stage-washing { --st-fg: var(--stage-washing); --st-bg: var(--stage-washing-bg); --st-br: var(--stage-washing-br); }
-    .stage-laser   { --st-fg: var(--stage-laser);   --st-bg: var(--stage-laser-bg);   --st-br: var(--stage-laser-br); }
-    .stage-packing { --st-fg: var(--stage-packing); --st-bg: var(--stage-packing-bg); --st-br: var(--stage-packing-br); }
-    .stage-loading { --st-fg: var(--stage-loading); --st-bg: var(--stage-loading-bg); --st-br: var(--stage-loading-br); }
-  `],
 })
 export class StatusBadgeComponent {
   readonly value = input.required<string>();
@@ -100,19 +66,11 @@ export class StatusBadgeComponent {
 
 @Component({
   selector: 'ui-priority',
+  templateUrl: './priority-badge.component.html',
+  styleUrl: './priority-badge.component.scss',
   standalone: true,
   imports: [TPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <span class="badge status-badge" [class]="'badge-' + tone()">
-      <ui-icon [name]="icon()" [size]="11" />
-      <span>{{ 'pr_' + value() | t }}</span>
-    </span>
-  `,
-  styles: [`
-    .status-badge { gap: 5px; }
-    .status-badge ui-icon { flex-shrink: 0; opacity: .92; }
-  `],
 })
 export class PriorityBadgeComponent {
   readonly value = input.required<string>();
