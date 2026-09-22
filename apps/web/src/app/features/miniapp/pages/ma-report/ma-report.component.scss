@@ -3,3 +3,5 @@
     .quick { display: flex; gap: 6px; flex-wrap: wrap; }
     .quick button { flex: 1; min-width: 56px; padding: 9px 0; border: 1px solid var(--border-strong); border-radius: var(--r); background: var(--surface); cursor: pointer; font-size: 13px; }
     .quick button:active { background: var(--primary-50); }
+    .close-confirm { padding: 12px; border: 1px solid var(--danger-br); border-radius: var(--r-lg); background: var(--danger-bg); }
+    .close-confirm p { margin: 0 0 4px; }

@@ -36,6 +36,8 @@ export class MaReportComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly ok = signal(false);
+  /** Two-step close: the button turns into a confirm, no modal on a phone. */
+  readonly confirmClose = signal(false);
 
   qty: number | null = null;
   defectQty: number | null = null;
@@ -44,6 +46,8 @@ export class MaReportComponent {
   readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
   readonly stageSlug = computed(() => this.stageType()?.toLowerCase() ?? '');
   readonly isPacking = computed(() => this.stageType() === 'PACKING');
+  readonly isCutting = computed(() => this.stageType() === 'CUTTING');
+  readonly canComplete = computed(() => this.ma.can(`${this.stageSlug()}.update`));
 
   constructor() {
     this.load();
@@ -70,6 +74,52 @@ export class MaReportComponent {
     this.note = '';
     this.error.set('');
     this.ok.set(false);
+    this.confirmClose.set(false);
+  }
+
+  completeMessage(s: OrderStage): string {
+    return this.i18n.t('stage_complete_confirm', {
+      order: s.order?.number ?? '',
+      stage: this.i18n.t(`stage_${this.stageType()}`),
+      done: s.doneQty,
+      plan: s.planQty,
+    });
+  }
+
+  /** Spells out what closing costs: locked downstream plan, or unrecorded pieces. */
+  completeNote(s: OrderStage): string {
+    return this.stageType() === 'CUTTING'
+      ? this.i18n.t('stage_complete_note_cutting', { done: s.doneQty })
+      : this.i18n.t('stage_complete_note', { left: Math.max(0, s.planQty - s.doneQty) });
+  }
+
+  /**
+   * Closes the stage by hand: cutting never closes itself, and any stage can
+   * end short of plan when there is nothing left to produce.
+   */
+  complete(): void {
+    const s = this.selected();
+    if (!s) return;
+    this.busy.set(true);
+    this.error.set('');
+
+    this.api.patch(`/production/stages/${s.id}`, { status: 'COMPLETED' }).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.confirmClose.set(false);
+        haptic('success');
+        this.ma.notifyProduction();
+        this.selected.set(null);
+        this.load();
+      },
+      error: (e) => {
+        this.busy.set(false);
+        this.confirmClose.set(false);
+        haptic('error');
+        const m = e?.error?.message;
+        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+      },
+    });
   }
 
   submit(): void {

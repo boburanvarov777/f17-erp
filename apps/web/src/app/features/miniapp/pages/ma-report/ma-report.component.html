@@ -13,7 +13,7 @@
               <b class="mono">{{ s.order?.number }}</b>
               <span class="badge badge-neutral">{{ s.order?.model?.code }}</span>
             </div>
-            <ui-progress [value]="s.doneQty" [max]="s.planQty" />
+            <ui-progress [value]="s.doneQty" [max]="s.planQty" [allowOver100]="isCutting()" />
           </button>
         } @empty {
           <ui-empty icon="clipboard-list" [title]="'ma_no_active_orders' | t" [message]="'ma_no_active_orders_msg' | t" />
@@ -29,7 +29,7 @@
           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="selected.set(null)" [attr.data-tip]="'back' | t"><ui-icon name="x" [size]="16" /></button>
         </div>
 
-        <ui-progress [value]="selected()!.doneQty" [max]="selected()!.planQty" />
+        <ui-progress [value]="selected()!.doneQty" [max]="selected()!.planQty" [allowOver100]="isCutting()" />
 
         <div class="field mt-4" [class.field-invalid]="fe.has('qty')">
           <label class="label">{{ 'ma_enter_qty' | t }}</label>
@@ -59,5 +59,24 @@
         <button class="btn btn-primary btn-lg btn-block mt-4" type="button" (click)="submit()" [disabled]="busy()">
           @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { <ui-icon name="send" [size]="16" /> {{ 'ma_send' | t }} }
         </button>
+
+        @if (canComplete()) {
+          @if (!confirmClose()) {
+            <button class="btn btn-block mt-3" type="button" [disabled]="busy()" (click)="confirmClose.set(true)">
+              <ui-icon name="check-circle" [size]="16" /> {{ 'stage_complete' | t }}
+            </button>
+          } @else {
+            <div class="close-confirm mt-3">
+              <p class="small">{{ completeMessage(selected()!) }}</p>
+              <p class="tiny text-3">{{ completeNote(selected()!) }}</p>
+              <div class="row gap-2 mt-3">
+                <button class="btn btn-block" type="button" (click)="confirmClose.set(false)">{{ 'cancel' | t }}</button>
+                <button class="btn btn-danger btn-block" type="button" [disabled]="busy()" (click)="complete()">
+                  @if (busy()) { <span class="spinner" style="border-top-color:#fff"></span> } @else { {{ 'stage_complete' | t }} }
+                </button>
+              </div>
+            </div>
+          }
+        }
       </div>
     }

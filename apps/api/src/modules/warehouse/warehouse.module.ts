@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Injectable, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { Prisma, StockOp } from '@prisma/client';
-import { IsEnum, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { ArrayMinSize, IsArray, IsEnum, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
 import { badRequest } from '../../common/i18n/api-errors';
@@ -30,6 +30,17 @@ export class StockOpDto {
   @ApiProperty({ example: 150.5 }) @IsNumber() qty!: number;
   @ApiPropertyOptional() @IsOptional() @IsString() orderId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
+}
+
+export class BulkStockOpDto {
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @IsString({ each: true }) materialIds!: string[];
+  @ApiProperty({ enum: StockOp }) @IsEnum(StockOp) op!: StockOp;
+  @ApiProperty({ example: 150.5 }) @IsNumber() qty!: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
+}
+
+export class BulkMaterialIdsDto {
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @IsString({ each: true }) materialIds!: string[];
 }
 
 export class UpdateTransactionDto {
@@ -237,6 +248,27 @@ export class WarehouseService {
     return { success: true };
   }
 
+  async archiveBulk(dto: BulkMaterialIdsDto, actor: JwtUser) {
+    const ids = [...new Set(dto.materialIds)];
+    let archived = 0;
+    const errors: { materialId: string }[] = [];
+    for (const id of ids) {
+      try {
+        const m = await this.prisma.material.findFirst({ where: { id, archivedAt: null } });
+        if (!m) {
+          errors.push({ materialId: id });
+          continue;
+        }
+        await this.archive(id, actor);
+        archived++;
+      } catch {
+        errors.push({ materialId: id });
+      }
+    }
+    if (!archived && errors.length) throw badRequest('err_internal');
+    return { archived, errors };
+  }
+
   /**
    * Every balance change goes through a transaction with the resulting balance
    * stored on the row, so the ledger can always be replayed and audited.
@@ -294,6 +326,21 @@ export class WarehouseService {
       });
     }
     return this.decorate(result.material);
+  }
+
+  async operateBulk(dto: BulkStockOpDto, actor: JwtUser) {
+    const items: Awaited<ReturnType<WarehouseService['operate']>>[] = [];
+    const errors: { materialId: string; code: string }[] = [];
+    for (const materialId of [...new Set(dto.materialIds)]) {
+      try {
+        items.push(await this.operate({ materialId, op: dto.op, qty: dto.qty, note: dto.note }, actor));
+      } catch (e: any) {
+        const code = e?.response?.message ?? e?.message ?? 'err_unknown';
+        errors.push({ materialId, code: typeof code === 'string' ? code : 'err_unknown' });
+      }
+    }
+    if (!items.length && errors.length) throw badRequest('err_internal');
+    return { updated: items.length, items, errors };
   }
 
   async transactions(materialId?: string, dto?: PaginationDto, from?: string, to?: string) {
@@ -412,6 +459,16 @@ export class WarehouseController {
   @RequirePermissions('warehouse.update')
   @ApiOperation({ summary: 'Archive material — preserved in Archive module' })
   archive(@Param('id') id: string, @CurrentUser() actor: JwtUser) { return this.service.archive(id, actor); }
+
+  @Post('archive/bulk')
+  @RequirePermissions('warehouse.update')
+  @ApiOperation({ summary: 'Archive multiple materials' })
+  archiveBulk(@Body() dto: BulkMaterialIdsDto, @CurrentUser() actor: JwtUser) { return this.service.archiveBulk(dto, actor); }
+
+  @Post('operations/bulk')
+  @RequirePermissions('warehouse.update')
+  @ApiOperation({ summary: 'Apply the same stock operation to multiple materials' })
+  operateBulk(@Body() dto: BulkStockOpDto, @CurrentUser() actor: JwtUser) { return this.service.operateBulk(dto, actor); }
 
   @Post('operations')
   @RequirePermissions('warehouse.update')

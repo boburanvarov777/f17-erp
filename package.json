@@ -18,6 +18,7 @@
     "prisma:migrate": "npm --workspace apps/api run prisma:migrate",
     "prisma:deploy": "npm --workspace apps/api run prisma:deploy",
     "seed": "npm --workspace apps/api run seed",
+    "local:reset-demo": "bash scripts/reset-local-demo.sh",
     "clean-db": "npm --workspace apps/api run clean-db",
     "lint": "npm --workspace apps/api run lint",
     "test": "npm --workspace apps/api run test"

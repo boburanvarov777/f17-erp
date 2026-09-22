@@ -52,6 +52,9 @@ export class WarehouseComponent {
   readonly txLoading = signal(false);
   readonly busy = signal(false);
   readonly opModal = signal<Material | null>(null);
+  readonly bulkOpOpen = signal(false);
+  readonly bulkArchiveOpen = signal(false);
+  readonly selected = signal<Set<string>>(new Set());
   readonly materialModal = signal<Partial<Material> | null>(null);
   readonly archiving = signal<Material | null>(null);
   readonly txEditing = signal<StockTransaction | null>(null);
@@ -76,6 +79,22 @@ export class WarehouseComponent {
   readonly lowCount = computed(() => (this.data()?.items ?? []).filter((m) => m.status === 'LOW').length);
   readonly outCount = computed(() => (this.data()?.items ?? []).filter((m) => m.status === 'OUT').length);
   readonly reservedCount = computed(() => (this.data()?.items ?? []).reduce((a, m) => a + m.reserved, 0));
+  readonly selectedIds = computed(() => [...this.selected()]);
+  readonly bulkTargetCount = computed(() => (this.selected().size >= 2 ? this.selected().size : 0));
+  /** Edit / history — faqat bitta qator rejimida (2+ tanlovda tanlangan qatorlarda yashirin). */
+  canSingleRowUi(m: Material): boolean {
+    const sel = this.selected();
+    return sel.size < 2 || !sel.has(m.id);
+  }
+  readonly bulkTargetsOnPage = computed(() => {
+    const ids = new Set(this.bulkTargetIds());
+    return (this.data()?.items ?? []).filter((m) => ids.has(m.id));
+  });
+  readonly bulkTargetsOffPageCount = computed(() => {
+    const ids = this.bulkTargetIds();
+    const onPage = new Set(this.bulkTargetsOnPage().map((m) => m.id));
+    return ids.filter((id) => !onPage.has(id)).length;
+  });
 
   constructor() {
     const qp = new URLSearchParams(location.search);
@@ -101,6 +120,10 @@ export class WarehouseComponent {
         this.limit.set(d.limit);
         this.snapshotAsOf.set(d.asOf ?? (asOf && asOf !== isoDate(new Date()) ? asOf : null));
         this.loading.set(false);
+        this.selected.update((s) => {
+          const ids = new Set(d.items.map((m) => m.id));
+          return new Set([...s].filter((id) => ids.has(id)));
+        });
       },
       error: () => this.loading.set(false),
     });
@@ -169,7 +192,116 @@ export class WarehouseComponent {
     this.tab.set('stock');
   }
 
-  openOp(m: Material): void { this.opFe.reset(); this.op = { op: 'IN', qty: null, note: '' }; this.opModal.set(m); }
+  /** Row action targets: 2+ checked including this row → all selected; otherwise only this row. */
+  private actionTargetIds(m: Material): string[] {
+    const sel = this.selected();
+    if (sel.size >= 2 && sel.has(m.id)) return [...sel];
+    return [m.id];
+  }
+
+  openOp(m: Material): void {
+    this.opFe.reset();
+    this.op = { op: 'IN', qty: null, note: '' };
+    if (this.actionTargetIds(m).length >= 2) {
+      this.bulkOpOpen.set(true);
+      return;
+    }
+    this.opModal.set(m);
+  }
+
+  openArchive(m: Material): void {
+    if (this.actionTargetIds(m).length >= 2) {
+      this.bulkArchiveOpen.set(true);
+      return;
+    }
+    this.archiving.set(m);
+  }
+
+  toggleSelect(id: string, on: boolean): void {
+    this.selected.update((s) => {
+      const n = new Set(s);
+      if (on) n.add(id); else n.delete(id);
+      return n;
+    });
+  }
+
+  allPageSelected(items: Material[]): boolean {
+    return items.length > 0 && items.every((m) => this.selected().has(m.id));
+  }
+
+  toggleSelectAll(items: Material[], on: boolean): void {
+    this.selected.update((s) => {
+      const n = new Set(s);
+      for (const m of items) {
+        if (on) n.add(m.id); else n.delete(m.id);
+      }
+      return n;
+    });
+  }
+
+  clearSelection(): void { this.selected.set(new Set()); }
+
+  saveBulkOp(): void {
+    if (this.busy()) return;
+    const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
+    const ids = this.bulkTargetIds();
+    if (!ids.length) return;
+    if (!this.opFe.apply(runValidation([
+      { key: 'qty', label: t('quantity'), value: this.op.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('quantity') }) : null },
+    ], t))) return;
+
+    this.busy.set(true);
+    this.api.post<{ updated: number; errors: { materialId: string; code: string }[] }>(
+      '/warehouse/operations/bulk',
+      { materialIds: ids, op: this.op.op, qty: +this.op.qty!, note: this.op.note || undefined },
+    ).subscribe({
+      next: (res) => {
+        this.busy.set(false);
+        this.bulkOpOpen.set(false);
+        this.clearSelection();
+        if (res.errors?.length) {
+          this.toast.info(t('bulk_partial_ok', { ok: res.updated, fail: res.errors.length }));
+        } else {
+          this.toast.success(t('saved'));
+        }
+        this.reload(false);
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  /** Ids for bulk modals opened from a row action (2+ selected including that row). */
+  bulkTargetIds(): string[] {
+    const sel = this.selected();
+    return sel.size >= 2 ? [...sel] : [];
+  }
+
+  confirmBulkArchive(): void {
+    if (this.busy()) return;
+    const ids = this.bulkTargetIds();
+    if (!ids.length) return;
+    this.busy.set(true);
+    this.api.post<{ archived: number; errors: { materialId: string }[] }>('/warehouse/archive/bulk', { materialIds: ids }).subscribe({
+      next: (res) => {
+        this.busy.set(false);
+        this.bulkArchiveOpen.set(false);
+        const removed = new Set(ids);
+        this.data.update((d) => {
+          if (!d) return d;
+          const items = d.items.filter((m) => !removed.has(m.id));
+          return { ...d, items, total: Math.max(0, d.total - res.archived) };
+        });
+        this.clearSelection();
+        if (res.errors?.length) {
+          this.toast.info(this.i18n.t('bulk_partial_ok', { ok: res.archived, fail: res.errors.length }));
+        } else {
+          this.toast.success(this.i18n.t('archived'));
+        }
+        this.reload(false);
+      },
+      error: () => this.busy.set(false),
+    });
+  }
 
   saveOp(m: Material): void {
     const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
@@ -216,13 +348,18 @@ export class WarehouseComponent {
   }
 
   archive(m: Material): void {
+    if (this.busy()) return;
+    this.busy.set(true);
     this.api.delete(`/warehouse/${m.id}`).subscribe({
       next: () => {
+        this.busy.set(false);
         this.archiving.set(null);
+        this.data.update((d) => d ? { ...d, items: d.items.filter((x) => x.id !== m.id), total: Math.max(0, d.total - 1) } : d);
+        this.selected.update((s) => { const n = new Set(s); n.delete(m.id); return n; });
         this.toast.success(this.i18n.t('archived'));
         this.reload(false);
       },
-      error: () => this.archiving.set(null),
+      error: () => { this.busy.set(false); this.archiving.set(null); },
     });
   }
 

@@ -1,4 +1,19 @@
-:host { display: block; width: 100%; }
+:host {
+  display: block;
+  width: 100%;
+}
+
+:host(.w-auto) {
+  display: inline-block;
+  width: auto;
+  vertical-align: middle;
+}
+
+:host(.w-auto) .date-trigger {
+  width: auto;
+  min-width: 108px;
+  max-width: 124px;
+}
 
     .date-input { position: relative; }
 

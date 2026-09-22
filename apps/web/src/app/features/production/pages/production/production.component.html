@@ -95,6 +95,11 @@
                             <ui-icon name="alert-triangle" [size]="15" />
                           </button>
                         }
+                        @if (canWrite() && s.status !== 'COMPLETED') {
+                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); completing.set(s)" [attr.data-tip]="'stage_complete' | t">
+                            <ui-icon name="check-circle" [size]="15" />
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -328,6 +333,16 @@
         [note]="'cancel_entry_note' | t"
         [confirmLabel]="'confirm' | t"
         (confirmed)="cancelEntry(e)" (cancelled)="cancelling.set(null)" />
+    }
+
+    @if (completing(); as s) {
+      <ui-confirm
+        [title]="'stage_complete' | t"
+        [message]="completeMessage(s)"
+        [note]="completeNote(s)"
+        [danger]="stageLeft(s) > 0"
+        [confirmLabel]="'stage_complete' | t"
+        (confirmed)="completeStage(s)" (cancelled)="completing.set(null)" />
     }
 
     <!-- ─── shipment ─── -->

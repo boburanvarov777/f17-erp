@@ -1,66 +1,516 @@
-    <div class="page">
-      <div class="page-head">
-        <div>
-          <div class="title">{{ 'schedule_title' | t }}</div>
-          <div class="sub">{{ i18n.t('schedule_count_sub', { n: rows().length, from, to }) }}</div>
-        </div>
-        <div class="page-actions">
-          <div class="seg">
-            @for (v of views; track v.key) {
-              <button type="button" [class.on]="view() === v.key" (click)="setView(v.key)">{{ v.label | t }}</button>
-            }
-          </div>
-          <ui-date-input style="width:150px" size="sm" [(ngModel)]="from" (ngModelChange)="load()" />
-          <ui-date-input style="width:150px" size="sm" [(ngModel)]="to" (ngModelChange)="load()" />
-        </div>
+<div class="page sched">
+  <header class="page-head">
+    <div>
+      <div class="title">{{ 'schedule_title' | t }}</div>
+      <div class="sub">{{ 'schedule_subtitle' | t }}</div>
+    </div>
+  </header>
+
+  <div class="sched-filters">
+    <div class="sched-range">
+      <ui-date-input class="w-auto" size="sm" [ngModel]="from()" (ngModelChange)="onFromChange($event)" />
+      <span class="sched-sep" aria-hidden="true">—</span>
+      <ui-date-input class="w-auto" size="sm" [ngModel]="to()" (ngModelChange)="onToChange($event)" />
+    </div>
+    <div class="sched-presets">
+      @for (p of viewPresets; track p.key) {
+        <button
+          type="button"
+          class="btn btn-sm sched-preset"
+          [class.active]="isViewActive(p.key)"
+          (click)="applyViewPreset(p.key)"
+        >{{ p.label | t }}</button>
+      }
+    </div>
+    <div class="sched-filters-end">
+      <select
+        class="select sched-filter"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusChange($event)"
+      >
+        <option value="">{{ 'status' | t }}: {{ 'all' | t }}</option>
+        <option value="IN_PRODUCTION">{{ 'st_IN_PRODUCTION' | t }}</option>
+        <option value="COMPLETED">{{ 'st_COMPLETED' | t }}</option>
+        <option value="DELAYED">{{ 'st_DELAYED' | t }}</option>
+        <option value="NEW">{{ 'st_NEW' | t }}</option>
+      </select>
+      <div class="search-box sched-search">
+        <ui-icon name="search" [size]="15" />
+        <input
+          class="input"
+          [ngModel]="search()"
+          (ngModelChange)="onSearchChange($event)"
+          [placeholder]="'search' | t"
+        />
       </div>
+    </div>
+  </div>
 
-      <div class="card">
-        <div class="legend">
-          @for (s of stages; track s) {
-            <span class="lg"><i [style.background]="color(s)"></i>{{ 'stage_' + s | t }}</span>
-          }
-        </div>
+  <nav class="sched-tabs" role="tablist">
+    @for (t of tabItems; track t.key) {
+      <button
+        type="button"
+        role="tab"
+        class="sched-tab"
+        [class.on]="activeTab() === t.key"
+        [attr.aria-selected]="activeTab() === t.key"
+        (click)="setTab(t.key)"
+      >{{ t.label | t }}</button>
+    }
+  </nav>
 
-        @if (loading()) { <ui-loading [count]="8" [height]="34" /> }
-        @else if (!rows().length) { <ui-empty icon="calendar-range" [title]="'no_orders' | t" /> }
-        @else {
-          <div class="gantt">
-            <div class="g-head">
-              <div class="g-left">{{ 'order' | t }}</div>
-              <div class="g-track">
-                @for (t of ticks(); track t.left) {
-                  <span class="tick" [class.major]="t.major" [style.left.%]="t.left">{{ t.label }}</span>
-                }
-                <span class="nowline" [style.left.%]="nowLeft()"></span>
+  <div class="card sched-panel">
+    @if (activeTab() === 'gantt') {
+      <div class="sched-toolbar">
+        <button
+          class="btn btn-sm"
+          type="button"
+          [disabled]="!canZoom(-1)"
+          [title]="'schedule_zoom_out' | t"
+          (click)="zoom(-1)"
+        >−</button>
+        <span class="sched-zoom mono tiny">{{ dayW() }}px</span>
+        <button
+          class="btn btn-sm"
+          type="button"
+          [disabled]="!canZoom(1)"
+          [title]="'schedule_zoom_in' | t"
+          (click)="zoom(1)"
+        >+</button>
+        <button class="btn btn-sm" type="button" [class.btn-primary]="autoFit()" (click)="fitZoom()">
+          {{ 'schedule_zoom_fit' | t }}
+          <ng-container *ngTemplateOutlet="btnHelp; context: { $implicit: 'schedule_zoom_fit', desc: 'schedule_h_zoom_d' }" />
+        </button>
+        <button class="btn btn-sm" type="button" [class.btn-primary]="showLegend()" (click)="toggleLegend()">
+          {{ 'schedule_chart_legend' | t }}
+          <ng-container *ngTemplateOutlet="btnHelp; context: { $implicit: 'schedule_chart_legend', desc: 'schedule_h_legend_d' }" />
+        </button>
+      </div>
+    }
+
+    @if (activeTab() === 'gantt' && showLegend()) {
+      <div class="sched-legend">
+        @for (s of stages; track s) {
+          <span class="lg"><i [style.background]="color(s)"></i>{{ 'stage_' + s | t }}</span>
+        }
+        @for (l of legendNotes; track l.key) {
+          <button
+            type="button"
+            [class]="'lg ' + l.key"
+            (mouseenter)="showHelp(l.label, l.desc, $event)"
+            (mouseleave)="hideHelp()"
+            (focus)="showHelp(l.label, l.desc, $event)"
+            (blur)="hideHelp()"
+          >
+            <i></i>{{ l.label | t }}
+            <ui-icon class="lg-info" name="info" [size]="11" />
+          </button>
+        }
+      </div>
+    }
+
+    @if (loading()) {
+      <ui-loading [count]="6" [height]="48" />
+    } @else if (!filteredRows().length) {
+      <ui-empty icon="calendar-range" [title]="'no_orders' | t" />
+    } @else if (activeTab() === 'table') {
+      <div class="table-wrap">
+        <table class="data sched-table">
+          <thead>
+            <tr>
+              <th>
+                <span>{{ 'order' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'order', desc: 'schedule_h_number_d' }" />
+              </th>
+              <th>
+                <span>{{ 'model' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'model', desc: 'schedule_h_model_d' }" />
+              </th>
+              <th>
+                <span>{{ 'status' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'status', desc: 'schedule_h_status_d' }" />
+              </th>
+              <th>
+                <span>{{ 'schedule_col_duration' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_col_duration', desc: 'schedule_h_duration_d' }" />
+              </th>
+              <th>
+                <span>{{ 'schedule_date_accepted_full' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_date_accepted_full', desc: 'schedule_h_accepted_d' }" />
+              </th>
+              <th>
+                <span>{{ 'schedule_date_due_full' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_date_due_full', desc: 'schedule_h_due_d' }" />
+              </th>
+              <th>
+                <span>{{ 'schedule_readiness' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_readiness', desc: 'schedule_h_readiness_d' }" />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of pagedRows(); track r.id) {
+              <tr>
+                <td class="mono"><a [routerLink]="['/orders', r.id]">{{ r.number }}</a></td>
+                <td>{{ r.model || r.client }}</td>
+                <td><ui-status [value]="r.status" [light]="true" /></td>
+                <td>{{ i18n.t('schedule_days', { n: daysBetween(r.start, r.end) }) }}</td>
+                <td class="mono small">{{ fmtDay(r.start) }}</td>
+                <td class="mono small">{{ fmtDay(r.end) }}</td>
+                <td class="ready-cell">
+                  <div class="ready-bar" [style.--accent]="'var(--primary)'" [style.--pct]="orderProgress(r) + '%'">
+                    <div class="ready-fill"></div><span class="ready-text">{{ orderProgress(r) }}%</span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <ng-container *ngTemplateOutlet="foot" />
+    } @else {
+      <div class="g-scroll" (scroll)="onChartScroll()">
+        <div class="g-sheet" [style.width.px]="sheetWidth()">
+          <div class="g-row g-head">
+            <div class="g-meta g-head-meta">
+              <div class="cell cell-order">
+                <span>{{ 'order' | t }} / {{ 'model' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_h_order', desc: 'schedule_h_order_d' }" />
+              </div>
+              <div class="cell cell-st">
+                <span>{{ 'status' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'status', desc: 'schedule_h_status_d' }" />
+              </div>
+              <div class="cell cell-dur">
+                <span>{{ 'schedule_col_duration' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_col_duration', desc: 'schedule_h_duration_d' }" />
+              </div>
+              <div class="cell cell-dates">
+                <span>{{ 'schedule_dates' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_dates', desc: 'schedule_h_dates_d' }" />
+              </div>
+              <div class="cell cell-ready">
+                <span>{{ 'schedule_readiness' | t }}</span>
+                <ng-container *ngTemplateOutlet="colHelp; context: { $implicit: 'schedule_readiness', desc: 'schedule_h_readiness_d' }" />
               </div>
             </div>
+            <div class="g-chart g-chart-head" [style.width.px]="timelineWidth()">
+              <div class="chart-months">
+                @for (m of monthSpans(); track m.label + m.start) {
+                  <span class="chart-month" [style.left.px]="m.start" [style.width.px]="m.width">{{ m.label }}</span>
+                }
+              </div>
+              <div class="chart-days">
+                @for (d of days(); track d.ts) {
+                  <span class="chart-day" [class.is-today]="d.isToday" [style.width.px]="dayW()">{{ d.day }}</span>
+                }
+              </div>
+            </div>
+          </div>
 
-            @for (r of rows(); track r.id) {
+          @for (r of pagedRows(); track r.id) {
+            <div class="g-block">
               <div class="g-row">
-                <div class="g-left">
-                  <a class="mono bold small" [routerLink]="['/orders', r.id]">{{ r.number }}</a>
-                  <div class="tiny text-3 truncate">{{ r.model || r.client }}</div>
-                  <div class="row gap-2 mt-2"><ui-status [value]="r.status" /></div>
-                </div>
-                <div class="g-track">
-                  @for (t of ticks(); track t.left) { <span class="grid-line" [class.major]="t.major" [style.left.%]="t.left"></span> }
-                  <span class="nowline" [style.left.%]="nowLeft()"></span>
-                  @for (b of r.bars; track b.stage) {
-                    <div class="bar"
-                         [style.left.%]="left(b.start)"
-                         [style.width.%]="width(b.start, b.end)"
-                         [style.background]="color(b.stage)"
-                         [style.opacity]="b.status === 'NOT_STARTED' ? .35 : 1"
-                         [attr.data-tip]="('stage_' + b.stage | t) + ' — ' + b.doneQty + '/' + b.planQty + ' (' + b.progress + '%)'">
-                      <span class="bar-fill" [style.width.%]="b.progress"></span>
-                      <span class="bar-label">{{ 'stage_' + b.stage | t }}</span>
+                <div class="g-meta">
+                  <div class="cell cell-order">
+                    <button type="button" class="exp" (click)="toggleRow(r.id)"><ui-icon [name]="isCollapsed(r.id) ? 'chevron-right' : 'chevron-down'" [size]="14" /></button>
+                    <div class="order-text">
+                      <a class="mono bold small" [routerLink]="['/orders', r.id]">{{ r.number }}</a>
+                      <div class="tiny text-3 clip">{{ r.model || r.client }}</div>
                     </div>
+                  </div>
+                  <div class="cell cell-st"><ui-status [value]="r.status" [light]="true" /></div>
+                  <div class="cell cell-dur"><span class="cell-text">{{ i18n.t('schedule_days', { n: daysBetween(r.start, r.end) }) }}</span></div>
+                  <div class="cell cell-dates">
+                    <div class="date-line">
+                      <span class="date-lbl">{{ 'schedule_date_accepted' | t }}</span>
+                      <span class="cell-text mono">{{ fmtDay(r.start) }}</span>
+                    </div>
+                    <div class="date-line">
+                      <span class="date-lbl">{{ 'schedule_date_due' | t }}</span>
+                      <span class="cell-text mono text-3">{{ fmtDay(r.end) }}</span>
+                    </div>
+                  </div>
+                  <div class="cell cell-ready">
+                    <div
+                      class="ready-bar hoverable"
+                      [style.--accent]="'var(--primary)'"
+                      [style.--pct]="orderProgress(r) + '%'"
+                      (mouseenter)="showTip(r, null, $event)"
+                      (mouseleave)="hideTip()"
+                    >
+                      <div class="ready-fill"></div><span class="ready-text">{{ orderProgress(r) }}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="g-chart" [style.width.px]="timelineWidth()" [style.--dw.px]="dayW()">
+                  @if (todayLeft(); as tl) { <div class="v-today" [style.left.px]="tl"><span>{{ 'schedule_today_line' | t }}</span></div> }
+                  @if (idleGap(r); as g) {
+                    @if (barVisible(g.from, g.to)) {
+                      <div
+                        class="bar-track idle"
+                        [style.left.px]="leftPx(g.from)"
+                        [style.width.px]="widthPx(g.from, g.to)"
+                        (mouseenter)="showTip(r, null, $event)"
+                        (mouseleave)="hideTip()"
+                      ></div>
+                    }
+                  }
+                  @if (orderTail(r); as g) {
+                    @if (barVisible(g.from, g.to)) {
+                      <div
+                        class="bar-track open"
+                        [style.left.px]="leftPx(g.from)"
+                        [style.width.px]="widthPx(g.from, g.to)"
+                        (mouseenter)="showTip(r, null, $event)"
+                        (mouseleave)="hideTip()"
+                      ></div>
+                    }
+                  }
+                  @for (b of r.bars; track b.stage) {
+                    @if (barVisible(barFrom(b), barTo(b))) {
+                      <div
+                        class="bar-track seg"
+                        [class.complete]="barComplete(b)"
+                        [class.pending]="barPending(b)"
+                        [style.left.px]="leftPx(barFrom(b))"
+                        [style.width.px]="widthPx(barFrom(b), barTo(b))"
+                        [style.--accent]="color(b.stage)"
+                        (mouseenter)="showTip(r, null, $event)"
+                        (mouseleave)="hideTip()"
+                      >
+                        <div class="bar-track-fill" [style.width.%]="barQtyPct(b)"></div>
+                      </div>
+                    }
                   }
                 </div>
               </div>
-            }
-          </div>
-        }
+
+              @if (!isCollapsed(r.id)) {
+                @for (b of r.bars; track b.stage) {
+                  <div class="g-row g-row-stage">
+                    <div class="g-meta">
+                      <div class="cell cell-order stage">
+                        <span class="dot" [style.background]="color(b.stage)"></span>
+                        <span class="clip">{{ 'stage_' + b.stage | t }}</span>
+                      </div>
+                      <div class="cell cell-st"><ui-status [value]="b.status" [light]="true" /></div>
+                      <div class="cell cell-dur"><span class="cell-text">{{ i18n.t('schedule_days', { n: daysBetween(barFrom(b), barTo(b)) }) }}</span></div>
+                      <div class="cell cell-dates">
+                        <div class="date-line">
+                          <span class="date-lbl">{{ 'schedule_col_start' | t }}</span>
+                          <span class="cell-text mono">{{ fmtDay(barFrom(b)) }}</span>
+                        </div>
+                        <div class="date-line">
+                          <span class="date-lbl">{{ 'schedule_col_end' | t }}</span>
+                          <span class="cell-text mono text-3">{{ fmtDay(barTo(b)) }}</span>
+                        </div>
+                      </div>
+                      <div class="cell cell-ready">
+                        <div class="ready-bar sm" [style.--accent]="color(b.stage)" [style.--pct]="b.progress + '%'">
+                          <div class="ready-fill"></div>
+                          <span class="ready-text">{{ b.progress }}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="g-chart" [style.width.px]="timelineWidth()" [style.--dw.px]="dayW()">
+                      @if (todayLeft(); as tl) { <div class="v-today thin" [style.left.px]="tl"></div> }
+                      @if (stageWait(r, b); as w) {
+                        @if (barVisible(w.from, w.to)) {
+                          <div
+                            class="bar-track open"
+                            [style.left.px]="leftPx(w.from)"
+                            [style.width.px]="widthPx(w.from, w.to)"
+                            (mouseenter)="showTip(r, b, $event)"
+                            (mouseleave)="hideTip()"
+                          ></div>
+                        }
+                      }
+                      @if (barVisible(barFrom(b), barTo(b))) {
+                        <div
+                          class="bar-track"
+                          [class.complete]="barComplete(b)"
+                          [class.pending]="barPending(b)"
+                          [style.left.px]="leftPx(barFrom(b))"
+                          [style.width.px]="widthPx(barFrom(b), barTo(b))"
+                          [style.--accent]="color(b.stage)"
+                          (mouseenter)="showTip(r, b, $event)"
+                          (mouseleave)="hideTip()"
+                        >
+                          <div class="bar-track-fill" [style.width.%]="barQtyPct(b)"></div>
+                          <span
+                            class="bar-tag"
+                            [class.outside]="tagOutside(b.doneQty + '/' + b.planQty, barFrom(b), barTo(b))"
+                          >{{ b.doneQty }}/{{ b.planQty }}</span>
+                        </div>
+                      }
+                      @if (b.finishedAt && barVisible(b.finishedAt, b.finishedAt)) {
+                        <span class="v-done" [style.left.px]="leftPx(b.finishedAt)"></span>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
       </div>
+      <ng-container *ngTemplateOutlet="foot" />
+    }
+  </div>
+</div>
+
+<ng-template #colHelp let-titleKey let-desc="desc">
+  <button
+    type="button"
+    class="th-info"
+    [attr.aria-label]="desc | t"
+    (mouseenter)="showHelp(titleKey, desc, $event)"
+    (mouseleave)="hideHelp()"
+    (focus)="showHelp(titleKey, desc, $event)"
+    (blur)="hideHelp()"
+  >
+    <ui-icon name="info" [size]="12" />
+  </button>
+</ng-template>
+
+<!-- Nested inside a button, so it stays a span and reacts to hover only. -->
+<ng-template #btnHelp let-titleKey let-desc="desc">
+  <span
+    class="btn-i"
+    [attr.aria-label]="desc | t"
+    (mouseenter)="showHelp(titleKey, desc, $event)"
+    (mouseleave)="hideHelp()"
+  >
+    <ui-icon name="info" [size]="11" />
+  </span>
+</ng-template>
+
+@if (help(); as h) {
+  <div
+    class="sched-tip tip-help"
+    [class.below]="h.below"
+    [style.left.px]="h.ax"
+    [style.top.px]="h.ay"
+    [style.--arrow.px]="h.arrow"
+  >
+    <div class="tip-title">{{ h.title }}</div>
+    <p class="tip-line tiny">{{ h.text }}</p>
+  </div>
+}
+
+@if (tip(); as t) {
+  <div
+    class="sched-tip"
+    [class.tip-order]="!t.bar"
+    [class.below]="t.below"
+    [style.left.px]="t.ax"
+    [style.top.px]="t.ay"
+    [style.--arrow.px]="t.arrow"
+    (mouseenter)="onTipEnter()"
+    (mouseleave)="onTipLeave()"
+  >
+    <ng-container *ngTemplateOutlet="tipBody; context: { $implicit: t }" />
+  </div>
+}
+
+<ng-template #foot>
+  <footer class="sched-foot">
+    <span class="tiny text-3">{{ (page() - 1) * pageSize() + 1 }}–{{ pageEnd() }} / {{ filteredRows().length }}</span>
+    <div class="sched-pages">
+      <button class="btn btn-sm" type="button" [disabled]="page() <= 1" (click)="page.update((p) => p - 1)">‹</button>
+      <span class="tiny">{{ page() }} / {{ totalPages() }}</span>
+      <button class="btn btn-sm" type="button" [disabled]="page() >= totalPages()" (click)="page.update((p) => p + 1)">›</button>
     </div>
+  </footer>
+</ng-template>
+
+<ng-template #tipBody let-t>
+  @if (t.bar; as b) {
+    <div class="tip-title"><ui-status [value]="b.status" [light]="true" /> {{ 'stage_' + b.stage | t }}</div>
+    <p class="tip-line mono tiny">{{ t.row.number }}</p>
+    <div class="tip-h">
+      <span class="tip-chip">{{ 'schedule_col_start' | t }}: {{ fmtDateTime(barFrom(b)) }}</span>
+      <span class="tip-chip">{{ 'schedule_col_end' | t }}: {{ fmtDateTime(barTo(b)) }}</span>
+      <span class="tip-chip">{{ i18n.t('schedule_days', { n: daysBetween(barFrom(b), barTo(b)) }) }}</span>
+      <span class="tip-chip">{{ 'quantity' | t }}: {{ b.doneQty }}/{{ b.planQty }}</span>
+      <span class="tip-chip">{{ 'schedule_defects' | t }}: {{ b.defectQty ?? 0 }} ({{ defectRate(b) }}%)</span>
+      @if (b.responsible) { <span class="tip-chip">{{ 'schedule_responsible' | t }}: {{ b.responsible }}</span> }
+      @if (b.finishedAt) { <span class="tip-chip ok">{{ 'schedule_finished' | t }}: {{ fmtDateTime(b.finishedAt) }}</span> }
+    </div>
+    @if (stageWait(t.row, b); as w) {
+      <div class="tip-idle">
+        <span class="tip-swatch amber"></span>
+        <div>
+          <div class="tip-idle-title">
+            {{ 'schedule_stage_wait' | t }}: {{ fmtDay(w.from) }} — {{ fmtDay(w.to) }}
+            <b>· {{ i18n.t('schedule_days', { n: w.days }) }}</b>
+          </div>
+          <div class="tiny text-3">{{ 'schedule_stage_wait_hint' | t }}</div>
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="tip-title"><ui-status [value]="t.row.status" [light]="true" /> {{ t.row.number }}</div>
+    @if (t.row.model) { <p class="tip-line tiny">{{ t.row.model }}</p> }
+    <div class="tip-h">
+      @if (t.row.client) { <span class="tip-chip">{{ t.row.client }}</span> }
+      <span class="tip-chip">{{ 'schedule_date_accepted_full' | t }}: {{ fmtDay(t.row.start) }}</span>
+      <span class="tip-chip">{{ 'schedule_date_due_full' | t }}: {{ fmtDay(t.row.end) }}</span>
+      <span class="tip-chip">{{ 'quantity' | t }}: {{ t.row.qty }}</span>
+      @if (t.row.responsible) { <span class="tip-chip">{{ 'schedule_responsible' | t }}: {{ t.row.responsible }}</span> }
+      <span class="tip-chip bold">{{ 'schedule_readiness' | t }}: {{ orderProgress(t.row) }}%</span>
+      <span class="tip-chip">{{ i18n.t('schedule_days', { n: daysBetween(t.row.start, t.row.end) }) }}</span>
+    </div>
+    @if (idleGap(t.row); as g) {
+      <div class="tip-idle">
+        <span class="tip-swatch grey"></span>
+        <div>
+          <div class="tip-idle-title">
+            {{ 'schedule_idle' | t }}: {{ fmtDay(g.from) }} — {{ fmtDay(g.to) }}
+            <b>· {{ i18n.t('schedule_days', { n: g.days }) }}</b>
+          </div>
+          <div class="tiny text-3">
+            @if (g.workStart) { {{ 'schedule_idle_work_start' | t }}: {{ fmtDay(g.workStart) }} · }
+            {{ 'schedule_idle_hint' | t }}
+          </div>
+        </div>
+      </div>
+    }
+    @if (orderTail(t.row); as g) {
+      <div class="tip-idle">
+        <span class="tip-swatch amber"></span>
+        <div>
+          <div class="tip-idle-title">
+            {{ 'schedule_order_open' | t }}: {{ fmtDay(g.from) }} — {{ fmtDay(g.to) }}
+            <b>· {{ i18n.t('schedule_days', { n: g.days }) }}</b>
+          </div>
+          <div class="tiny text-3">{{ 'schedule_order_open_hint' | t }}</div>
+        </div>
+      </div>
+    }
+    <div class="tip-stages-head tiny text-3">{{ 'schedule_stage_history' | t }}</div>
+    <div class="tip-stages-h">
+      @for (b of t.row.bars; track b.stage) {
+        <div class="tip-stage-card">
+          <div class="tip-stage-row">
+            <span class="tip-stage-dot" [style.background]="color(b.stage)"></span>
+            <span class="tip-stage-name">{{ 'stage_' + b.stage | t }}</span>
+            <ui-status [value]="b.status" [light]="true" />
+          </div>
+          <p class="tip-line tiny">{{ b.doneQty }}/{{ b.planQty }} · {{ b.progress }}%</p>
+          <p class="tip-line tiny mono text-3">
+            {{ fmtDay(barFrom(b)) }} — {{ fmtDay(barTo(b)) }} · {{ i18n.t('schedule_days', { n: daysBetween(barFrom(b), barTo(b)) }) }}
+          </p>
+          @if (b.finishedAt) {
+            <p class="tip-line tiny ok">{{ fmtDateTime(b.finishedAt) }}</p>
+          } @else if (b.firstEntryAt) {
+            <p class="tip-line tiny">{{ fmtDateTime(b.firstEntryAt) }}</p>
+          } @else {
+            <p class="tip-line tiny text-3">{{ 'schedule_not_started' | t }}</p>
+          }
+        </div>
+      }
+    </div>
+  }
+</ng-template>

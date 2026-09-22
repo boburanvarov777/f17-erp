@@ -1,24 +1,983 @@
-.seg { display: flex; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; }
-    .seg button { border: none; background: var(--surface); padding: 7px 13px; cursor: pointer; color: var(--text-2); font-size: 13px; }
-    .seg button.on { background: var(--primary); color: #fff; font-weight: 600; }
-    .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-    .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
-    .lg i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+:host {
+  display: block;
+}
 
-    .gantt { overflow-x: auto; }
-    .g-head, .g-row { display: flex; min-width: 900px; }
-    .g-head { position: sticky; top: 0; background: var(--surface-2); border-bottom: 1px solid var(--border); z-index: 2; height: 34px; }
-    .g-left { width: 210px; flex: 0 0 auto; padding: 8px 14px; border-right: 1px solid var(--border); font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
-    .g-row .g-left { text-transform: none; letter-spacing: 0; color: inherit; padding: 10px 14px; }
-    .g-row { border-bottom: 1px solid var(--border); }
-    .g-row:hover { background: var(--surface-2); }
-    .g-track { position: relative; flex: 1; min-height: 34px; padding: 8px 0; }
-    .tick { position: absolute; top: 9px; font-size: 10.5px; color: var(--text-3); transform: translateX(-50%); white-space: nowrap; }
-    .tick.major { font-weight: 600; color: var(--text-2); }
-    .grid-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); opacity: .5; }
-    .grid-line.major { opacity: 1; }
-    .nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); opacity: .6; z-index: 1; }
-    .bar { position: absolute; height: 15px; border-radius: 4px; overflow: hidden; min-width: 6px; display: flex; align-items: center; }
-    .bar:nth-child(4n) { top: 8px; } 
-    .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.35); }
-    .bar-label { position: relative; font-size: 9.5px; color: #fff; padding: 0 5px; white-space: nowrap; overflow: hidden; font-weight: 500; }
+/*
+ * Never a scroll container: the date pickers open below the inputs and have to
+ * escape the card. Narrow screens wrap the groups instead of scrolling.
+ */
+.sched-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.sched-filters-end {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .sched-filters-end {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.sched-range {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sched-sep {
+  color: var(--text-3);
+  user-select: none;
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.sched-presets {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sched-filters .sched-search {
+  flex: 0 0 168px;
+  width: 168px;
+  min-width: 168px;
+  max-width: 168px;
+}
+
+.sched-filters .sched-filter {
+  flex: 0 0 172px;
+  width: 172px;
+  min-width: 172px;
+}
+
+.sched-preset.active {
+  background: var(--primary-100);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.sched-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.sched-tab {
+  border: none;
+  background: transparent;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.sched-tab.on {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.sched-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.sched-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sched-zoom {
+  min-width: 38px;
+  text-align: center;
+  color: var(--text-3);
+}
+
+.btn .btn-i {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  border-radius: 50%;
+  opacity: 0.65;
+  cursor: help;
+}
+
+.btn .btn-i:hover {
+  opacity: 1;
+}
+
+.sched-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lg i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.lg.plan i {
+  background: transparent;
+  border: 2px dashed var(--border-strong);
+}
+
+.lg.fact i {
+  background: #64748b;
+}
+
+.lg.idle i,
+.lg.open i,
+.tip-swatch {
+  background-image: repeating-linear-gradient(10deg, var(--hatch) 0 2px, transparent 2px 7px);
+}
+
+.lg.idle i,
+.tip-swatch.grey {
+  --hatch: rgba(51, 65, 85, 0.5);
+  border: 1px dashed #94a3b8;
+  background-color: #cbd5e1;
+}
+
+.lg.open i,
+.tip-swatch.amber {
+  --hatch: color-mix(in srgb, var(--warning) 55%, transparent);
+  border: 1px dashed var(--warning);
+  background-color: var(--warning-bg);
+}
+
+.tip-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* Legend entries that explain a pattern rather than a stage. */
+button.lg {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+}
+
+button.lg:hover,
+button.lg:focus-visible {
+  color: var(--primary);
+  outline: none;
+}
+
+.lg .lg-info {
+  color: var(--text-3);
+}
+
+/* —— Gantt sheet —— */
+.g-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+}
+
+.g-sheet {
+  position: relative;
+  min-width: 100%;
+}
+
+.g-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+}
+
+.g-row-stage {
+  min-height: 46px;
+  background: #f8fafc;
+}
+
+.g-row-stage .g-meta {
+  background: #f8fafc;
+}
+
+.g-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #f1f5f9;
+  min-height: 0;
+}
+
+.g-meta {
+  flex: 0 0 720px;
+  width: 720px;
+  display: grid;
+  grid-template-columns: minmax(148px, 1fr) 118px 100px 166px 112px;
+  align-items: center;
+  column-gap: 8px;
+  padding: 0 10px;
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.g-head-meta .cell {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 10px 0;
+  line-height: 1.2;
+  /* Row wrap so a long label keeps the help icon instead of clipping it. */
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 2px 4px;
+}
+
+.g-head-meta .cell-ready {
+  justify-content: center;
+}
+
+.g-head-meta .cell > span {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.th-info {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  cursor: help;
+}
+
+.th-info:hover,
+.th-info:focus-visible {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  outline: none;
+}
+
+.sched-table th {
+  white-space: nowrap;
+}
+
+.sched-table th > span {
+  vertical-align: middle;
+}
+
+.sched-table .th-info {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cell-order {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cell-order.stage {
+  padding-left: 22px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.order-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.cell-st {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.cell-st ui-status {
+  max-width: 100%;
+  display: block;
+}
+
+.cell-st ::ng-deep .status-badge {
+  max-width: 100%;
+  font-size: 10px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 7px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-dur,
+.cell-dates {
+  font-size: 12px;
+}
+
+.cell-dur .cell-text {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.cell-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+}
+
+.cell-dates .cell-text {
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 11px;
+}
+
+.date-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  line-height: 1.25;
+}
+
+.date-lbl {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cell-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-ready {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exp {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* Progress — dashed border, light tint for remainder, centered % */
+.ready-bar {
+  --pct: 0%;
+  --accent: var(--primary);
+  position: relative;
+  width: 100%;
+  max-width: 96px;
+  height: 30px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ready-bar.sm {
+  height: 26px;
+  max-width: 104px;
+}
+
+.ready-bar.hoverable {
+  cursor: pointer;
+}
+
+.ready-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct);
+  background: var(--accent);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.ready-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.g-chart {
+  position: relative;
+  flex-shrink: 0;
+  min-height: inherit;
+  overflow: visible;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent calc(var(--dw, 28px) - 1px),
+    color-mix(in srgb, var(--border) 85%, transparent) calc(var(--dw, 28px) - 1px),
+    color-mix(in srgb, var(--border) 85%, transparent) var(--dw, 28px)
+  );
+}
+
+.g-chart-head {
+  min-height: 56px;
+  background: #f1f5f9;
+}
+
+.chart-months {
+  position: relative;
+  height: 26px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-month {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.chart-days {
+  display: flex;
+  height: 30px;
+}
+
+.chart-day {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-3);
+  border-right: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.chart-day.is-today {
+  background: color-mix(in srgb, var(--danger) 14%, white);
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.bar-track {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 22px;
+  min-width: 8px;
+  z-index: 2;
+  border: 1px dashed var(--accent, var(--primary));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent, var(--primary)) 16%, var(--surface));
+  overflow: visible;
+  box-sizing: border-box;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bar-track.complete {
+  border-style: solid;
+  background: var(--accent);
+}
+
+/*
+ * A stage whose window is planned but has no output yet keeps the plan look —
+ * grey hatching is reserved for idle calendar time on the order row.
+ */
+.bar-track.pending {
+  background: color-mix(in srgb, var(--accent, var(--primary)) 9%, var(--surface));
+}
+
+/* Hatched blocks: grey means nothing started, amber means still not closed. */
+.bar-track.idle,
+.bar-track.open {
+  cursor: help;
+  background-image: repeating-linear-gradient(10deg, var(--hatch) 0 2px, transparent 2px 7px);
+}
+
+.bar-track.idle {
+  --hatch: rgba(51, 65, 85, 0.5);
+  border: 1px dashed #94a3b8;
+  background-color: #cbd5e1;
+}
+
+.bar-track.open {
+  --hatch: color-mix(in srgb, var(--warning) 55%, transparent);
+  border: 1px dashed var(--warning);
+  background-color: var(--warning-bg);
+}
+
+.bar-track.idle,
+.bar-track.open {
+  height: 18px;
+  min-width: 4px;
+  border-radius: 3px;
+}
+
+.bar-track.idle:hover {
+  border-color: #64748b;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.3);
+}
+
+.bar-track.open:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 35%, transparent);
+}
+
+.bar-track.pending .bar-track-fill {
+  display: none;
+}
+
+/* Order row: one coloured segment per stage, laid out on the calendar. */
+.bar-track.seg {
+  height: 18px;
+  min-width: 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.bar-track.seg:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.bar-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+  opacity: 0.92;
+  pointer-events: none;
+  border-radius: 4px 0 0 4px;
+}
+
+.bar-track.complete .bar-track-fill {
+  width: 100% !important;
+  opacity: 1;
+  border-radius: 4px;
+}
+
+.bar-tag {
+  position: relative;
+  z-index: 3;
+  display: inline-block;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 22px;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-tag.dark {
+  color: var(--text);
+  text-shadow: none;
+}
+
+.bar-tag.outside {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 6px;
+  text-shadow: none;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-radius: 4px;
+  line-height: 16px;
+  padding: 0 4px;
+}
+
+.bar-track:not(.complete) .bar-tag {
+  mix-blend-mode: normal;
+  color: var(--text);
+  text-shadow: 0 0 3px var(--surface), 0 0 6px var(--surface);
+}
+
+.bar-track.complete .bar-tag {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * A label pushed out of its bar sits on the sheet, so it takes the stage colour
+ * instead of white — white would disappear against the background.
+ */
+.bar-track .bar-tag.outside {
+  color: color-mix(in srgb, var(--accent, var(--primary)) 72%, var(--text));
+  text-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 38%, transparent);
+}
+
+.v-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--danger);
+  z-index: 4;
+  pointer-events: none;
+  transform: translateX(-1px);
+}
+
+.v-today span {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.v-today.thin {
+  opacity: 0.45;
+}
+
+.v-done {
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 3;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid var(--success);
+  transform: translate(-50%, -50%);
+}
+
+.g-block:last-child .g-row:last-child {
+  border-bottom: none;
+}
+
+/* Table tab */
+.sched-table .ready-cell {
+  width: 120px;
+}
+
+.sched-table .ready-bar {
+  max-width: 100px;
+  margin: 0 auto;
+}
+
+.sched-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sched-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Fixed so no scroll container in the sheet can clip or stack above it. */
+.sched-tip {
+  --arrow: 24px;
+  position: fixed;
+  z-index: 300;
+  width: 320px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
+  transform: translateY(-100%);
+}
+
+.sched-tip.below {
+  transform: none;
+}
+
+/* Wide and shallow: all six stages sit side by side so nothing is cut off. */
+.sched-tip.tip-order {
+  width: min(1040px, calc(100vw - 24px));
+}
+
+.sched-tip.tip-help {
+  width: 300px;
+  pointer-events: none;
+}
+
+.tip-idle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 6px);
+}
+
+.tip-idle-title {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.tip-idle .tip-swatch {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.sched-tip::before,
+.sched-tip::after {
+  content: '';
+  position: absolute;
+  left: var(--arrow);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  transform: translateX(-50%);
+}
+
+.sched-tip::before {
+  top: 100%;
+  border-top: 8px solid var(--border);
+}
+
+.sched-tip::after {
+  top: calc(100% - 1px);
+  border-top: 8px solid var(--surface);
+}
+
+.sched-tip.below::before {
+  top: auto;
+  bottom: 100%;
+  border-top: none;
+  border-bottom: 8px solid var(--border);
+}
+
+.sched-tip.below::after {
+  top: auto;
+  bottom: calc(100% - 1px);
+  border-top: none;
+  border-bottom: 8px solid var(--surface);
+}
+
+.tip-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tip-line {
+  margin: 0 0 4px;
+  color: var(--text-2);
+}
+
+.tip-line.ok {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.tip-line.bold {
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.tip-h {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 6px 0 4px;
+}
+
+.tip-chip {
+  font-size: 11px;
+  color: var(--text-2);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.tip-chip.ok {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+
+.tip-chip.bold {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tip-stages-head {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* One column per stage so the whole history reads left to right. */
+.tip-stages-h {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 1000px) {
+  .tip-stages-h {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tip-stage-card {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+
+.tip-stage-card .tip-line {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.tip-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.tip-stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.tip-stage-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tip-stage-card ::ng-deep .status-badge {
+  font-size: 9px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0 6px;
+}

@@ -76,6 +76,7 @@ export class ProductionComponent {
   readonly defectModal = signal<OrderStage | null>(null);
   readonly detail = signal<OrderStage | null>(null);
   readonly cancelling = signal<StageEntry | null>(null);
+  readonly completing = signal<OrderStage | null>(null);
   readonly shipmentModal = signal<Partial<Shipment> | null>(null);
   readonly entryError = signal('');
 
@@ -262,6 +263,41 @@ export class ProductionComponent {
       next: () => { this.toast.success(this.i18n.t('saved')); this.reload(false); },
       error: () => void 0,
     });
+  }
+
+  /**
+   * Closes a stage by hand. Cutting never closes itself, and any stage may have
+   * to be closed short of plan — fabric ran out, the rest was scrapped.
+   */
+  completeStage(s: OrderStage): void {
+    this.completing.set(null);
+    this.api.patch(`/production/stages/${s.id}`, { status: 'COMPLETED' }).subscribe({
+      next: () => { this.toast.success(this.i18n.t('stage_completed_ok')); this.reload(false); },
+      error: () => void 0,
+    });
+  }
+
+  /** Pieces still missing against the plan, so the confirm can state the cost. */
+  stageLeft(s: OrderStage): number {
+    return Math.max(0, s.planQty - s.doneQty);
+  }
+
+  completeMessage(s: OrderStage): string {
+    return this.i18n.t('stage_complete_confirm', {
+      order: s.order?.number ?? '',
+      stage: this.i18n.t(`stage_${this.stageType()}`),
+      done: s.doneQty,
+      plan: s.planQty,
+    });
+  }
+
+  /** Spells out what closing costs: locked downstream plan, or unrecorded pieces. */
+  completeNote(s: OrderStage): string {
+    if (this.isCutting()) return this.i18n.t('stage_complete_note_cutting', { done: s.doneQty });
+    const over = s.doneQty - s.planQty;
+    return over > 0
+      ? this.i18n.t('stage_complete_note_over', { over })
+      : this.i18n.t('stage_complete_note', { left: this.stageLeft(s) });
   }
 
   cancelEntry(e: StageEntry): void {

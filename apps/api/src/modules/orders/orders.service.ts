@@ -339,7 +339,21 @@ export class OrdersService {
         model: { select: { code: true, name: true } },
         client: { select: { name: true } },
         responsible: { select: { firstName: true, lastName: true } },
-        stages: { orderBy: { stage: 'asc' } },
+        stages: {
+          orderBy: { stage: 'asc' },
+          include: {
+            responsible: { select: { firstName: true, lastName: true } },
+            entries: {
+              where: { cancelled: false },
+              orderBy: { date: 'asc' },
+              take: 40,
+              select: {
+                date: true, qty: true, defectQty: true,
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { deadline: 'asc' }, take: 300,
     });
@@ -347,25 +361,61 @@ export class OrdersService {
     return orders.map((o) => {
       const start = o.orderDate;
       const end = o.deadline;
-      const span = Math.max(1, Math.ceil((+end - +start) / 864e5));
-      const per = span / STAGE_ORDER.length;
+      const milestones: { stage: StageType; at: Date; doneQty: number; planQty: number }[] = [];
+      // Planned windows are chained: a stage that has not started yet sits right
+      // after the previous one and ends on its own deadline. Spreading stages
+      // evenly across the order window instead would leave long gaps in the chart.
+      let prevEnd = +start - 864e5;
+      const bars = STAGE_ORDER.map((stage) => {
+          const s = o.stages.find((x) => x.stage === stage);
+          const chainStart = Math.max(prevEnd + 864e5, +start);
+          const planEnd = s?.deadline ? +s.deadline : chainStart + 864e5;
+          const barStart = s?.startDate ?? new Date(Math.max(chainStart, planEnd - 864e5));
+          const barEnd = s?.endDate ?? new Date(Math.max(+barStart, planEnd));
+          prevEnd = +barEnd;
+          const entries = s?.entries ?? [];
+          const firstEntryAt = entries[0]?.date ?? null;
+          const lastEntryAt = entries.length ? entries[entries.length - 1].date : null;
+          const finishedAt = s?.status === 'COMPLETED'
+            ? (s.endDate ?? lastEntryAt)
+            : null;
+          if (finishedAt) {
+            milestones.push({
+              stage,
+              at: finishedAt,
+              doneQty: s?.doneQty ?? 0,
+              planQty: s?.planQty ?? o.qty,
+            });
+          }
+          const workStart = firstEntryAt ?? s?.startDate ?? barStart;
+          const workEnd = lastEntryAt ?? finishedAt ?? s?.endDate ?? barEnd;
+          return {
+            stage,
+            start: barStart, end: barEnd,
+            workStart, workEnd,
+            planQty: s?.planQty ?? o.qty, doneQty: s?.doneQty ?? 0,
+            status: s?.status ?? 'NOT_STARTED',
+            progress: s ? stageProgress(s.doneQty, s.planQty, s.stage) : 0,
+            defectQty: s?.defectQty ?? 0,
+            responsible: s?.responsible
+              ? `${s.responsible.lastName} ${s.responsible.firstName}`
+              : null,
+            firstEntryAt, lastEntryAt, finishedAt,
+            entries: entries.map((e) => ({
+              at: e.date,
+              qty: e.qty,
+              defectQty: e.defectQty,
+              who: e.user ? `${e.user.lastName} ${e.user.firstName}` : null,
+            })),
+          };
+        });
       return {
         id: o.id, number: o.number, qty: o.qty, status: o.status, priority: o.priority,
         client: o.client?.name, model: o.model ? `${o.model.code} — ${o.model.name}` : null,
         responsible: o.responsible ? `${o.responsible.lastName} ${o.responsible.firstName}` : null,
         start, end,
-        bars: STAGE_ORDER.map((stage, i) => {
-          const s = o.stages.find((x) => x.stage === stage);
-          const barStart = s?.startDate ?? new Date(+start + i * per * 864e5);
-          const barEnd = s?.endDate ?? new Date(+start + (i + 1) * per * 864e5);
-          return {
-            stage,
-            start: barStart, end: barEnd,
-            planQty: s?.planQty ?? o.qty, doneQty: s?.doneQty ?? 0,
-            status: s?.status ?? 'NOT_STARTED',
-            progress: s ? stageProgress(s.doneQty, s.planQty, s.stage) : 0,
-          };
-        }),
+        bars,
+        milestones: milestones.sort((a, b) => +a.at - +b.at),
       };
     });
   }

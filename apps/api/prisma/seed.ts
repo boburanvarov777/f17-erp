@@ -268,11 +268,21 @@ async function main() {
     d.setHours(12, 0, 0, 0);
     return d;
   };
+  const daysAfter = (from: Date, n: number) => {
+    const d = new Date(from);
+    d.setDate(d.getDate() + n);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  };
+  /** Idle days between accepting an order and the first cutting shift. */
+  const PREP_DAYS = 5;
 
   const orders = [
-    { number: 'ZR-2026-041', modelCode: 'ZR-104', clientCode: 'ZARINA', qty: 1200, orderDate: day(-42), deadline: day(-2), priority: 'HIGH', progress: [1200, 1200, 1200, 1200, 1200, 900] },
+    // Fully closed order: every stage reached its plan, so all of them are COMPLETED.
+    { number: 'ZR-2026-041', modelCode: 'ZR-104', clientCode: 'ZARINA', qty: 1200, orderDate: day(-42), deadline: day(-2), priority: 'HIGH', progress: [1200, 1200, 1200, 1200, 1200, 1200] },
     { number: 'ZR-2026-044', modelCode: 'ZR-118', clientCode: 'ZARINA', qty: 1500, orderDate: day(-35), deadline: day(6), priority: 'URGENT', progress: [1500, 1350, 1100, 900, 620, 0] },
-    { number: 'ZR-2026-047', modelCode: 'ZR-131', clientCode: 'ZARINA', qty: 900, orderDate: day(-28), deadline: day(12), priority: 'NORMAL', progress: [900, 720, 480, 300, 0, 0] },
+    // Started stages are all closed here; packing and loading are still waiting.
+    { number: 'ZR-2026-047', modelCode: 'ZR-131', clientCode: 'ZARINA', qty: 900, orderDate: day(-28), deadline: day(12), priority: 'NORMAL', progress: [900, 900, 900, 900, 0, 0] },
     { number: 'ZR-2026-051', modelCode: 'ZR-142', clientCode: 'ZARINA', qty: 600, orderDate: day(-18), deadline: day(20), priority: 'NORMAL', progress: [520, 310, 120, 0, 0, 0] },
     { number: 'BF-2026-012', modelCode: 'BF-207', clientCode: 'BEFREE', qty: 2000, orderDate: day(-12), deadline: day(28), priority: 'HIGH', progress: [1100, 640, 220, 0, 0, 0] },
     { number: 'ZR-2026-055', modelCode: 'ZR-104', clientCode: 'ZARINA', qty: 800, orderDate: day(-5), deadline: day(34), priority: 'NORMAL', progress: [240, 0, 0, 0, 0, 0] },
@@ -300,8 +310,8 @@ async function main() {
         responsibleId: userByLogin['planning'].id,
         createdById: userByLogin['admin'].id,
         sampleStatus: o.progress[0] > 0 ? 'APPROVED' : 'PENDING',
-        sampleSentAt: o.progress[0] > 0 ? day(-30) : null,
-        sampleApprovedAt: o.progress[0] > 0 ? day(-26) : null,
+        sampleSentAt: o.progress[0] > 0 ? daysAfter(o.orderDate, 1) : null,
+        sampleApprovedAt: o.progress[0] > 0 ? daysAfter(o.orderDate, PREP_DAYS - 1) : null,
         sizes: {
           create: sizeGrid.map((size, i) => ({
             size,
@@ -318,6 +328,10 @@ async function main() {
       const defect = done > 0 ? Math.round(done * (0.004 + i * 0.0015)) : 0;
       const status = done === 0 ? (i === 0 || o.progress[i - 1] > 0 ? 'WAITING' : 'NOT_STARTED') : done >= o.qty ? 'COMPLETED' : 'IN_PROGRESS';
 
+      // Each stage owns a 2-day window, chained after the order's prep period.
+      const stageFrom = daysAfter(o.orderDate, PREP_DAYS + i * 2);
+      const stageTo = daysAfter(o.orderDate, PREP_DAYS + i * 2 + 1);
+
       const st = await prisma.orderStage.create({
         data: {
           orderId: created.id,
@@ -327,9 +341,9 @@ async function main() {
           defectQty: defect,
           status: status as any,
           responsibleId: userByLogin[stageOwner[stage]].id,
-          startDate: done > 0 ? day(-30 + i * 3) : null,
-          endDate: done >= o.qty ? day(-28 + i * 3) : null,
-          deadline: day(-30 + i * 5 + 8),
+          startDate: done > 0 ? stageFrom : null,
+          endDate: done >= o.qty ? stageTo : null,
+          deadline: stageTo,
         },
       });
 
@@ -339,12 +353,15 @@ async function main() {
         const per = Math.floor(done / chunks);
         for (let c = 0; c < chunks; c++) {
           const qty = c === chunks - 1 ? done - per * (chunks - 1) : per;
+          // Spread the shifts across the stage window so entries never fall outside it.
+          const entryDate = new Date(stageFrom);
+          entryDate.setHours(8 + Math.round((c / Math.max(1, chunks - 1)) * 22), 0, 0, 0);
           await prisma.stageEntry.create({
             data: {
               orderStageId: st.id,
               qty,
               defectQty: c === 0 ? defect : 0,
-              date: day(-20 + i * 2 + c),
+              date: entryDate,
               userId: userByLogin[stageOwner[stage]].id,
               source: c % 2 === 0 ? 'TELEGRAM' : 'WEB',
               note: c === 0 ? 'Smena 1' : null,
@@ -356,7 +373,7 @@ async function main() {
             data: {
               orderId: created.id, stage, type: ['Tikuv braki', 'Mato nuqsoni', 'Rang farqi', 'Lazer nuqsoni', 'Qadoq nuqsoni', 'Transport shikasti'][i],
               qty: defect, reason: 'QC tekshiruvida aniqlangan',
-              userId: userByLogin[stageOwner[stage]].id, date: day(-18 + i * 2),
+              userId: userByLogin[stageOwner[stage]].id, date: stageTo,
             },
           });
         }

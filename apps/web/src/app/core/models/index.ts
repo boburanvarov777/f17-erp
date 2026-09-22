@@ -166,10 +166,23 @@ export interface DashboardData {
   defects: { stage: StageType; qty: number; count: number }[];
 }
 
+export interface ScheduleStageEntry {
+  at: string; qty: number; defectQty: number; who?: string | null;
+}
+
+export interface ScheduleBar {
+  stage: StageType; start: string; end: string; workStart: string; workEnd: string;
+  planQty: number; doneQty: number; defectQty?: number; status: StageStatus; progress: number;
+  responsible?: string | null;
+  firstEntryAt?: string | null; lastEntryAt?: string | null; finishedAt?: string | null;
+  entries?: ScheduleStageEntry[];
+}
+
 export interface ScheduleRow {
   id: string; number: string; qty: number; status: OrderStatus; priority: Priority;
   client?: string; model?: string; responsible?: string; start: string; end: string;
-  bars: { stage: StageType; start: string; end: string; planQty: number; doneQty: number; status: StageStatus; progress: number }[];
+  bars: ScheduleBar[];
+  milestones?: { stage: StageType; at: string; doneQty: number; planQty: number }[];
 }
 
 export interface GlobalSearchResult {

@@ -1,3 +1,8 @@
-.ops { display: flex; gap: 6px; flex-wrap: wrap; }
+.check-col { width: 40px; text-align: center; vertical-align: middle; }
+    tr.row-selected { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+    .bulk-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
+    .bulk-chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+    .bulk-chip.muted { color: var(--text-3); }
+    .ops { display: flex; gap: 6px; flex-wrap: wrap; }
     .op { padding: 7px 13px; border: 1px solid var(--border-strong); border-radius: 100px; background: var(--surface); cursor: pointer; font-size: 13px; }
     .op.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }

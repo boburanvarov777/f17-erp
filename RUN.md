@@ -61,6 +61,27 @@ npm run seed
 npm run dev
 ```
 
+### Local demo database (not production)
+
+| What | Where |
+|---|---|
+| Database | Your machine — `DATABASE_URL` in `.env` (default `localhost:5432/f17erp`) |
+| Production | Railway Postgres — **never** point local `.env` at it for `clean-db` / demo reset |
+
+Demo data (clients, models, 7 orders with stage history, 13 warehouse materials, tasks) is loaded by `apps/api/prisma/seed.ts` when **`NODE_ENV` is not `production`**.
+
+Refresh demo from scratch (keeps users, roles, departments):
+
+```bash
+npm run local:reset-demo   # only works if DATABASE_URL is localhost
+```
+
+Re-run seed without wiping (upserts users; skips orders that already exist):
+
+```bash
+npm run seed
+```
+
 - Angular dev server: <http://localhost:4200> (proxies `/api` to the backend)
 - NestJS API: <http://localhost:3000>
 - Swagger: <http://localhost:3000/docs>

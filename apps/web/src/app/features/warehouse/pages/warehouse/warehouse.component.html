@@ -93,13 +93,27 @@
               <div class="table-wrap">
                 <table class="data">
                   <thead><tr>
+                    @if (canManage() && !historicalView()) {
+                      <th class="check-col">
+                        <label class="checkbox" [attr.data-tip]="'select_all' | t">
+                          <input type="checkbox" [checked]="allPageSelected(d.items)" (click)="$event.stopPropagation()" (change)="toggleSelectAll(d.items, $any($event.target).checked)" />
+                        </label>
+                      </th>
+                    }
                     <th>{{ 'code' | t }}</th><th>{{ 'material' | t }}</th><th>{{ 'category' | t }}</th><th>{{ 'unit' | t }}</th>
                     <th class="num">{{ 'current_stock' | t }}</th><th class="num">{{ 'reserved' | t }}</th><th class="num">{{ 'available' | t }}</th>
                     <th class="num">{{ 'min_stock' | t }}</th><th>{{ 'supplier' | t }}</th><th>{{ 'last_operation' | t }}</th><th>{{ 'status' | t }}</th><th class="actions"></th>
                   </tr></thead>
                   <tbody>
                     @for (m of d.items; track m.id) {
-                      <tr>
+                      <tr [class.row-selected]="selected().has(m.id)">
+                        @if (canManage() && !historicalView()) {
+                          <td class="check-col">
+                            <label class="checkbox" (click)="$event.stopPropagation()">
+                              <input type="checkbox" [checked]="selected().has(m.id)" (change)="toggleSelect(m.id, $any($event.target).checked)" />
+                            </label>
+                          </td>
+                        }
                         <td class="mono small">{{ m.code }}</td>
                         <td>{{ m.name }}</td>
                         <td class="small">{{ m.category || '—' }}</td>
@@ -113,11 +127,15 @@
                         <td><ui-status [value]="m.status" /></td>
                         <td class="actions">
                           @if (canManage() && !historicalView()) {
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                            @if (canSingleRowUi(m)) {
+                              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
+                            }
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openArchive(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
                           }
-                          <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
+                          @if (canSingleRowUi(m)) {
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
+                          }
                         </td>
                       </tr>
                     }
@@ -168,6 +186,36 @@
         }
       </div>
     </div>
+
+    @if (bulkOpOpen()) {
+      <ui-modal size="lg" [title]="'bulk_stock_op' | t" [subtitle]="i18n.t('bulk_selected', { n: bulkTargetCount() })" (closed)="bulkOpOpen.set(false)">
+        <div class="bulk-list mb-4">
+          @for (m of bulkTargetsOnPage(); track m.id) {
+            <span class="bulk-chip mono">{{ m.code }}</span>
+          }
+          @if (bulkTargetsOffPageCount() > 0) {
+            <span class="bulk-chip muted">+{{ bulkTargetsOffPageCount() }}</span>
+          }
+        </div>
+        <div class="ops mb-4">
+          @for (o of ops; track o) {
+            <button class="op" type="button" [class.on]="op.op === o" (click)="op.op = o">{{ 'op_' + o | t }}</button>
+          }
+        </div>
+        <div class="form-grid">
+          <div class="field" [class.field-invalid]="opFe.has('qty')">
+            <label class="label">{{ 'quantity' | t }} <span class="req">*</span></label>
+            <input class="input" groupedNumber [decimals]="3" [(ngModel)]="op.qty" (ngModelChange)="opFe.clear('qty')" />
+            @if (opFe.get('qty'); as msg) { <div class="field-error">{{ msg }}</div> }
+          </div>
+          <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="op.note" /></div>
+        </div>
+        <div footer>
+          <button class="btn" type="button" (click)="bulkOpOpen.set(false)">{{ 'cancel' | t }}</button>
+          <button class="btn btn-primary" type="button" (click)="saveBulkOp()" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
 
     @if (opModal(); as m) {
       <ui-modal size="lg" [title]="'stock_op' | t" [subtitle]="m.name" (closed)="opModal.set(null)">
@@ -220,6 +268,25 @@
         <div footer>
           <button class="btn" type="button" (click)="materialModal.set(null)">{{ 'cancel' | t }}</button>
           <button class="btn btn-primary" type="button" (click)="saveMaterial(m)" [disabled]="busy()">{{ 'save' | t }}</button>
+        </div>
+      </ui-modal>
+    }
+
+    @if (bulkArchiveOpen()) {
+      <ui-modal size="lg" [title]="'delete' | t" [subtitle]="i18n.t('bulk_selected', { n: bulkTargetCount() })" (closed)="bulkArchiveOpen.set(false)">
+        <p class="small mb-3">{{ i18n.t('bulk_archive_confirm', { n: bulkTargetCount() }) }}</p>
+        <div class="bulk-list mb-3">
+          @for (m of bulkTargetsOnPage(); track m.id) {
+            <span class="bulk-chip"><span class="mono">{{ m.code }}</span> · {{ m.name }}</span>
+          }
+          @if (bulkTargetsOffPageCount() > 0) {
+            <span class="bulk-chip muted">{{ i18n.t('bulk_off_page', { n: bulkTargetsOffPageCount() }) }}</span>
+          }
+        </div>
+        <p class="tiny text-3">{{ 'material_archive_note' | t }}</p>
+        <div footer>
+          <button class="btn" type="button" (click)="bulkArchiveOpen.set(false)" [disabled]="busy()">{{ 'cancel' | t }}</button>
+          <button class="btn btn-danger" type="button" (click)="confirmBulkArchive()" [disabled]="busy()">{{ 'delete' | t }}</button>
         </div>
       </ui-modal>
     }
