@@ -84,32 +84,35 @@ export class StorageService {
           Body: body,
           ContentType: contentType,
         }));
+        return;
       } catch (e) {
         const err = e as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
         this.log.error(
-          `Bucket upload failed (bucket=${this.bucket}, key=${key}, status=${err.$metadata?.httpStatusCode}): ${err.name} ${err.message}`,
+          `Bucket upload failed — falling back to database (bucket=${this.bucket}, key=${key}, status=${err.$metadata?.httpStatusCode}): ${err.name} ${err.message}`,
         );
-        throw e;
       }
-      return;
     }
-    await this.prisma.storedObject.upsert({
-      where: { key },
-      create: { key, mime: contentType, size: body.length, data: body },
-      update: { mime: contentType, size: body.length, data: body },
-    });
+    try {
+      await this.prisma.storedObject.upsert({
+        where: { key },
+        create: { key, mime: contentType, size: body.length, data: body },
+        update: { mime: contentType, size: body.length, data: body },
+      });
+    } catch (e) {
+      this.log.error(`Database upload failed (key=${key}, size=${body.length}): ${(e as Error).message}`);
+      throw e;
+    }
   }
 
   async deleteObject(key: string): Promise<void> {
+    await this.prisma.storedObject.deleteMany({ where: { key } }).catch(() => undefined);
     if (this.enabled) {
       try {
         await this.client!.send(new DeleteObjectCommand({ Bucket: this.bucket!, Key: key }));
       } catch (e) {
-        this.log.warn(`Failed to delete ${key}: ${e}`);
+        this.log.warn(`Failed to delete ${key} from bucket: ${e}`);
       }
-      return;
     }
-    await this.prisma.storedObject.deleteMany({ where: { key } });
     try {
       await unlink(join(this.localDir, key));
     } catch {
@@ -117,22 +120,27 @@ export class StorageService {
     }
   }
 
+  /** Looks in the database first, then the bucket, then legacy local disk. */
   async getObject(key: string): Promise<{ body: Readable; contentType?: string; contentLength?: number }> {
-    if (this.enabled) {
-      const out = await this.client!.send(new GetObjectCommand({ Bucket: this.bucket!, Key: key }));
-      if (!out.Body) throw new Error('Empty object');
-      return {
-        body: out.Body as Readable,
-        contentType: out.ContentType,
-        contentLength: out.ContentLength,
-      };
-    }
     const row = await this.prisma.storedObject.findUnique({ where: { key } });
     if (row) {
       const buf = Buffer.from(row.data);
       return { body: Readable.from(buf), contentType: row.mime || this.guessContentType(key), contentLength: buf.length };
     }
-    // Legacy: files written to local disk before database storage existed.
+    if (this.enabled) {
+      try {
+        const out = await this.client!.send(new GetObjectCommand({ Bucket: this.bucket!, Key: key }));
+        if (out.Body) {
+          return {
+            body: out.Body as Readable,
+            contentType: out.ContentType,
+            contentLength: out.ContentLength,
+          };
+        }
+      } catch (e) {
+        this.log.warn(`Bucket read failed (key=${key}): ${(e as Error).message}`);
+      }
+    }
     const filePath = join(this.localDir, key);
     const buf = await readFile(filePath);
     const st = await stat(filePath);
