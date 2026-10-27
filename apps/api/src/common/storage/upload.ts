@@ -78,14 +78,12 @@ export async function storeUpload(
     ? safeDisplayName(displayName.trim(), file.mimetype, true)
     : safeDisplayName(file.originalname, file.mimetype);
 
-  if (storage.enabled || opts.kind === 'file') {
-    const ext = extFromMime(file.mimetype);
-    const key = `${keyPrefix}/${randomUUID()}${ext}`;
-    await storage.putObject(key, file.buffer, file.mimetype);
-    return { url: storage.toPublicUrl(key), mime: file.mimetype, size: file.size, name };
-  }
-
-  return { url: toPhotoDataUrl(file), mime: file.mimetype, size: file.size, name };
+  // Always store as an object (bucket, or the database when no bucket is set) —
+  // never inline base64 photos into rows, and never the container's ephemeral disk.
+  const ext = extFromMime(file.mimetype);
+  const key = `${keyPrefix}/${randomUUID()}${ext}`;
+  await storage.putObject(key, file.buffer, file.mimetype);
+  return { url: storage.toPublicUrl(key), mime: file.mimetype, size: file.size, name };
 }
 
 export async function deleteStoredUrl(storage: StorageService, url: string): Promise<void> {

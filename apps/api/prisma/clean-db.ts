@@ -10,7 +10,26 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const RUN_KEY = 'clean_db_last_run';
+
 async function main() {
+  // CLEAN_DB is read on every container start. Remember which value already ran,
+  // so a variable left in Railway does not wipe production on each deploy/restart.
+  // To wipe again on purpose, set CLEAN_DB to a new value (e.g. 2, 3, a date…).
+  const runId = (process.env.CLEAN_DB || 'manual').trim();
+  if (runId === '1') {
+    // "1" was the old always-on value and has already wiped production before.
+    console.log('▸ CLEAN_DB=1 is treated as already run — set a new value (e.g. 2) to wipe again.');
+    return;
+  }
+  if (process.env.CLEAN_DB) {
+    const last = await prisma.setting.findUnique({ where: { key: RUN_KEY } });
+    if (last && (last.value as { runId?: string })?.runId === runId) {
+      console.log(`▸ CLEAN_DB=${runId} already ran at ${(last.value as { at?: string }).at} — skipping.`);
+      return;
+    }
+  }
+
   console.log('▸ Cleaning operational data (keeping Boshqaruv)…');
 
   const result = await prisma.$transaction(
@@ -79,6 +98,11 @@ async function main() {
   console.log(
     `  removed: ${d.orders.count} orders, ${d.models.count} models, ${d.clients.count} clients, ${d.materials.count} materials, ${d.tasks.count} tasks, ${d.plans.count} plans, ${d.notifications.count} notifications`,
   );
+  await prisma.setting.upsert({
+    where: { key: RUN_KEY },
+    create: { key: RUN_KEY, value: { runId, at: new Date().toISOString() } },
+    update: { value: { runId, at: new Date().toISOString() } },
+  });
   const r = result.remaining;
   console.log(
     `  ✓ Done. Remaining: ${r.users} users, ${r.roles} roles, ${r.depts} departments, ${r.audit} audit logs, ${r.archivedOrderCount} archived orders, ${r.archivedModelCount} archived models, ${r.archivedMaterialCount} archived materials`,
