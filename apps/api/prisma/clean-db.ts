@@ -17,6 +17,11 @@ async function main() {
   // so a variable left in Railway does not wipe production on each deploy/restart.
   // To wipe again on purpose, set CLEAN_DB to a new value (e.g. 2, 3, a date…).
   const runId = (process.env.CLEAN_DB || 'manual').trim();
+  if (runId === '1') {
+    // "1" was the old always-on value and has already wiped production before.
+    console.log('▸ CLEAN_DB=1 is treated as already run — set a new value (e.g. 2) to wipe again.');
+    return;
+  }
   if (process.env.CLEAN_DB) {
     const last = await prisma.setting.findUnique({ where: { key: RUN_KEY } });
     if (last && (last.value as { runId?: string })?.runId === runId) {

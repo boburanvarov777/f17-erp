@@ -638,6 +638,18 @@ model TelegramSession {
   @@map("telegram_sessions")
 }
 
+/// Uploaded files when no S3 bucket is configured. Railway's container disk is wiped on
+/// every deploy, so files must live somewhere persistent — the database is.
+model StoredObject {
+  key       String   @id
+  mime      String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("stored_objects")
+}
+
 model Setting {
   key       String   @id
   value     Json
