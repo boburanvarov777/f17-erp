@@ -18,6 +18,11 @@ import { PrismaService } from './common/prisma/prisma.service';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false });
 
+  // Railway (and any reverse proxy) sits in front of the app: without this every user
+  // shares the proxy's IP, so the global rate limit (300 req/min) is hit by the whole
+  // factory at once and /auth/refresh starts failing with 429.
+  app.set('trust proxy', 1);
+
   app.setGlobalPrefix('api', { exclude: ['/'] });
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
   app.use(compression());

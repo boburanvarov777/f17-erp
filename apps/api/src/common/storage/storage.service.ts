@@ -76,12 +76,20 @@ export class StorageService {
 
   async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
     if (this.enabled) {
-      await this.client!.send(new PutObjectCommand({
-        Bucket: this.bucket!,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-      }));
+      try {
+        await this.client!.send(new PutObjectCommand({
+          Bucket: this.bucket!,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+        }));
+      } catch (e) {
+        const err = e as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+        this.log.error(
+          `Bucket upload failed (bucket=${this.bucket}, key=${key}, status=${err.$metadata?.httpStatusCode}): ${err.name} ${err.message}`,
+        );
+        throw e;
+      }
       return;
     }
     const filePath = join(this.localDir, key);

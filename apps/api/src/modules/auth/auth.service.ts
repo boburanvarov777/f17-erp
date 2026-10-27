@@ -136,11 +136,21 @@ export class AuthService {
     const record = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: this.sha(refreshToken) },
     });
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
+    // Two tabs (or two parallel requests) may refresh with the same token at once:
+    // the first one rotates it, so accept a just-rotated token for a short grace window.
+    const GRACE_MS = 60_000;
+    const now = Date.now();
+    if (
+      !record ||
+      record.expiresAt.getTime() < now ||
+      (record.revokedAt && now - record.revokedAt.getTime() > GRACE_MS)
+    ) {
       throw unauthorized('err_refresh_invalid');
     }
     // rotation
-    await this.prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
+    if (!record.revokedAt) {
+      await this.prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
+    }
     const tokens = await this.issueTokens(record.userId, ctx);
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: record.userId },
