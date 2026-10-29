@@ -13,6 +13,7 @@ import { GroupedNumberDirective } from '../../../../shared/directives/grouped-nu
 import { IconComponent } from '../../../../shared/ui/icon.component';
 import { ModalComponent } from '../../../../shared/ui/modal.component';
 import { DateInputComponent } from '../../../../shared/ui/date-input.component';
+import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../../../shared/utils/form-validate';
 
 /** Owner / developer accounts — never offered as an order's responsible person. */
@@ -25,7 +26,7 @@ interface SizeRow { size: string; qty: number | null; }
   templateUrl: './order-form.component.html',
   styleUrl: './order-form.component.scss',
   standalone: true,
-  imports: [FormsModule, ModalComponent, IconComponent, DateInputComponent, TPipe, NumPipe, DigitsOnlyDirective, GroupedNumberDirective, SizeRowFieldsComponent],
+  imports: [FormsModule, ModalComponent, IconComponent, DateInputComponent, ConfirmComponent, TPipe, NumPipe, DigitsOnlyDirective, GroupedNumberDirective, SizeRowFieldsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrderFormComponent {
@@ -78,11 +79,19 @@ export class OrderFormComponent {
   };
 
   readonly isNew = computed(() => !this.order()?.id);
+  readonly removedClientIds = signal<Set<string>>(new Set());
   readonly clientOptions = computed(() => {
     const map = new Map<string, Client>();
     for (const c of [...this.clients(), ...this.extraClients()]) map.set(c.id, c);
+    // Editing an order whose client was deleted: keep showing that name.
+    const own = this.order()?.client;
+    if (own?.id && !map.has(own.id)) map.set(own.id, own as Client);
+    for (const id of this.removedClientIds()) if (id !== own?.id) map.delete(id);
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
+  readonly canDeleteClient = computed(() => this.auth.can('clients.delete', 'orders.purge'));
+  /** Client pending deletion + how many orders/models still point at it. */
+  readonly deletingClient = signal<{ client: Client; orders: number; models: number } | null>(null);
   readonly canAddClient = computed(() => this.auth.can('clients.create', 'orders.create'));
   readonly canPickResponsible = computed(() => this.auth.can('users.read'));
   readonly modelSizeOptions = computed(() => {
@@ -144,6 +153,38 @@ export class OrderFormComponent {
     this.clientFe.reset();
     this.clientError.set('');
     this.showClientForm.set(true);
+  }
+
+  askDeleteClient(): void {
+    const c = this.clientOptions().find((x) => x.id === this.form.clientId);
+    if (!c) return;
+    this.api.get<{ orders: number; models: number }>(`/clients/${c.id}/usage`).subscribe({
+      next: (u) => this.deletingClient.set({ client: c, orders: u.orders, models: u.models }),
+      error: () => this.deletingClient.set({ client: c, orders: 0, models: 0 }),
+    });
+  }
+
+  clientDeleteNote(d: { orders: number; models: number }): string {
+    return d.orders + d.models > 0
+      ? this.i18n.t('client_delete_note_used', { orders: d.orders, models: d.models })
+      : this.i18n.t('client_delete_note_unused');
+  }
+
+  deleteClient(): void {
+    const d = this.deletingClient();
+    if (!d) return;
+    this.api.delete<{ mode: 'deleted' | 'hidden' }>(`/clients/${d.client.id}`).subscribe({
+      next: (r) => {
+        this.deletingClient.set(null);
+        this.removedClientIds.update((s) => new Set([...s, d.client.id]));
+        this.extraClients.update((list) => list.filter((c) => c.id !== d.client.id));
+        if (this.form.clientId === d.client.id) this.form.clientId = '';
+        this.clientsChange.emit(this.clientOptions());
+        this.touch();
+        this.toast.success(this.i18n.t(r?.mode === 'hidden' ? 'client_deleted_hidden' : 'deleted'), d.client.name);
+      },
+      error: () => this.deletingClient.set(null),
+    });
   }
 
   saveClient(): void {
