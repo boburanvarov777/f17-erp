@@ -57,6 +57,7 @@ export class WarehouseComponent {
   readonly selected = signal<Set<string>>(new Set());
   readonly materialModal = signal<Partial<Material> | null>(null);
   readonly archiving = signal<Material | null>(null);
+  readonly deleting = signal<Material | null>(null);
   readonly txEditing = signal<StockTransaction | null>(null);
   readonly txDeleting = signal<StockTransaction | null>(null);
 
@@ -412,5 +413,13 @@ export class WarehouseComponent {
 
   opTone(op: StockOp): string {
     return { IN: 'badge-success', OUT: 'badge-danger', RESERVE: 'badge-warning', RETURN: 'badge-info', INVENTORY: 'badge-neutral' }[op];
+  }
+
+  /** Permanent delete with stock history — needs warehouse.purge (API re-checks). */
+  hardDelete(m: Material): void {
+    this.api.delete(`/archive/material/${m.id}`).subscribe({
+      next: () => { this.deleting.set(null); this.toast.success(this.i18n.t('deleted'), m.code); this.reload(false); },
+      error: () => this.deleting.set(null),
+    });
   }
 }
