@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OrderStatus, Prisma, StageStatus, StageType } from '@prisma/client';
 import { JwtUser } from '../../common/decorators';
 import { paginate } from '../../common/dto/pagination.dto';
-import { badRequest } from '../../common/i18n/api-errors';
+import { badRequest, conflict } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { resolveStageStatus, stageEndDate, stageProgress, downstreamPlanQty, effectiveStagePlan } from '../../common/utils/stage-status';
@@ -166,8 +166,17 @@ export class OrdersService {
     return [...explicit, ...fromEntries].sort((a, b) => b.date.getTime() - a.date.getTime());
   }
 
+  /** Friendly error instead of a raw unique-constraint "number" message. */
+  private async assertNumberFree(number: string, exceptId?: string) {
+    const taken = await this.prisma.order.findUnique({ where: { number }, select: { id: true, archivedAt: true } });
+    if (taken && taken.id !== exceptId) {
+      throw conflict(taken.archivedAt ? 'err_order_number_taken_archived' : 'err_order_number_taken', { number });
+    }
+  }
+
   /** Creates the order and its 6 production stages in a single transaction. */
   async create(dto: CreateOrderDto, actor: JwtUser) {
+    await this.assertNumberFree(dto.number.trim().toUpperCase());
     const sizesTotal = (dto.sizes ?? []).reduce((a, s) => a + s.qty, 0);
     if (dto.sizes?.length && sizesTotal !== dto.qty) {
       throw badRequest('err_sizes_mismatch', { sizes: sizesTotal, qty: dto.qty });
@@ -218,6 +227,7 @@ export class OrdersService {
 
   async update(id: string, dto: UpdateOrderDto, actor: JwtUser) {
     const existing = await this.prisma.order.findUniqueOrThrow({ where: { id } });
+    if (dto.number) await this.assertNumberFree(dto.number.trim().toUpperCase(), id);
 
     const order = await this.prisma.$transaction(async (tx) => {
       if (dto.sizes) {

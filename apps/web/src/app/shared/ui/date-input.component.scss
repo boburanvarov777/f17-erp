@@ -9,6 +9,8 @@
   vertical-align: middle;
 }
 
+:host(.w-auto) .date-text { width: 82px; }
+
 :host(.w-auto) .date-trigger {
   width: auto;
   min-width: 108px;
@@ -22,9 +24,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       height: 38px;
-      padding: 0 10px 0 12px;
+      padding: 0 4px 0 12px;
+      box-sizing: border-box;
       border: 1px solid var(--border-strong);
       border-radius: var(--r);
       background: var(--surface);
@@ -35,13 +38,13 @@
     }
     .date-input.sm .date-trigger {
       height: 32px;
-      padding: 0 8px 0 10px;
+      padding: 0 2px 0 10px;
       font-size: 12.5px;
       border-radius: var(--r-sm);
     }
-    .date-trigger:hover:not(:disabled) { border-color: var(--primary-500); }
+    .date-trigger:hover:not(.is-disabled) { border-color: var(--primary-500); }
     .date-input.open .date-trigger,
-    .date-trigger:focus-visible {
+    .date-trigger:focus-within {
       outline: none;
       border-color: var(--primary-500);
       box-shadow: 0 0 0 3px var(--primary-50);
@@ -52,32 +55,52 @@
       cursor: not-allowed;
     }
 
-    .date-value {
+    .date-text {
       flex: 1;
       min-width: 0;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      height: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      padding: 0;
       font-variant-numeric: tabular-nums;
     }
-    .date-value.placeholder { color: var(--text-3); }
+    .date-text::placeholder { color: var(--text-3); }
+    .date-text:disabled { cursor: not-allowed; }
+
+    .date-time-suffix {
+      color: var(--text-2);
+      font-size: 12.5px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
 
     .date-icon {
       flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: var(--r-sm);
+      background: transparent;
       color: var(--text-3);
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
     }
+    .date-input.sm .date-icon { width: 26px; height: 26px; }
+    .date-icon:hover:not(:disabled) { background: var(--surface-3); }
+    .date-icon:disabled { cursor: not-allowed; }
     .date-input.open .date-icon,
-    .date-trigger:hover:not(:disabled) .date-icon { color: var(--primary-500); }
+    .date-trigger:hover:not(.is-disabled) .date-icon { color: var(--primary-500); }
 
+    /* Fixed to the viewport so a scrolling modal body cannot clip it;
+       top/left are computed from the field and flipped above when needed. */
     .date-panel {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      z-index: 260;
+      position: fixed;
+      z-index: 450;
       width: 336px;
       min-width: 336px;
       max-width: min(336px, calc(100vw - 16px));
@@ -87,10 +110,6 @@
       background: var(--surface);
       box-shadow: var(--sh-3);
       box-sizing: border-box;
-    }
-    .date-panel.align-right {
-      left: auto;
-      right: 0;
     }
 
     .date-head {

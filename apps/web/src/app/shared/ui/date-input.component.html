@@ -1,18 +1,39 @@
     <div class="date-input" [class.open]="open()" [class.sm]="size() === 'sm'" [class.disabled]="disabled()">
-      <button
-        type="button"
-        class="date-trigger"
-        [disabled]="disabled()"
-        (click)="toggle()"
-        [attr.aria-expanded]="open()"
-        [attr.aria-haspopup]="'dialog'"
-      >
-        <span class="date-value" [class.placeholder]="!hasValue()">{{ displayText() }}</span>
-        <span class="date-icon"><ui-icon name="calendar" [size]="size() === 'sm' ? 14 : 16" /></span>
-      </button>
+      <div class="date-trigger" [class.is-disabled]="disabled()" (click)="focusText($event)">
+        <input
+          #textInput
+          class="date-text"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          maxlength="10"
+          [disabled]="disabled()"
+          [value]="text()"
+          [placeholder]="placeholder() || 'kk.oo.yyyy'"
+          (input)="onTextInput($event)"
+          (blur)="onTextBlur()"
+          (keydown.enter)="onTextBlur(); $event.preventDefault()"
+          (keydown.arrowdown)="openPanel(); $event.preventDefault()"
+          [attr.aria-label]="'select_date' | t"
+        />
+        @if (mode() === 'datetime' && hasValue()) {
+          <span class="date-time-suffix">{{ timePart() }}</span>
+        }
+        <button
+          type="button"
+          class="date-icon"
+          [disabled]="disabled()"
+          (click)="toggle(); $event.stopPropagation()"
+          [attr.aria-expanded]="open()"
+          [attr.aria-haspopup]="'dialog'"
+          [attr.data-tip]="'select_date' | t"
+        >
+          <ui-icon name="calendar" [size]="size() === 'sm' ? 14 : 16" />
+        </button>
+      </div>
 
       @if (open()) {
-        <div class="date-panel" [class.align-right]="panelAlign() === 'right'" role="dialog" [attr.aria-label]="'select_date' | t">
+        <div class="date-panel" [style.top.px]="panelPos().top" [style.left.px]="panelPos().left" [style.visibility]="panelPos().ready ? 'visible' : 'hidden'" role="dialog" [attr.aria-label]="'select_date' | t">
           <div class="date-head">
             <button type="button" class="date-nav" (click)="shiftMonth(-1)" [attr.data-tip]="'prev' | t">
               <ui-icon name="chevron-left" [size]="16" />

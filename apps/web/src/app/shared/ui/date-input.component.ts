@@ -30,6 +30,43 @@ function parseIsoDate(v: string): { y: number; m: number; d: number } | null {
   return { y: +m[1], m: +m[2] - 1, d: +m[3] };
 }
 
+/** "23.09.2026" / "23092026" / "23/9/2026" → ISO, or null when not a real date. */
+function parseTyped(v: string): string | null {
+  const t = v.trim();
+  let d: number, m: number, y: number;
+  const sep = /^(\d{1,2})[.\/\-\s](\d{1,2})[.\/\-\s](\d{4})$/.exec(t);
+  const compact = /^(\d{2})(\d{2})(\d{4})$/.exec(t);
+  if (sep) { d = +sep[1]; m = +sep[2]; y = +sep[3]; }
+  else if (compact) { d = +compact[1]; m = +compact[2]; y = +compact[3]; }
+  else return null;
+  if (y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1) return null;
+  if (d > new Date(y, m, 0).getDate()) return null;
+  return toIsoDate(y, m - 1, d);
+}
+
+/**
+ * Keeps typing in the DD.MM.YYYY shape: dots are added automatically after the
+ * day and month (2309 → 23.09) and a typed separator is honoured (23.9 → 23.9).
+ */
+function maskTyped(v: string): string {
+  const parts: string[] = [''];
+  for (const ch of v) {
+    const i = parts.length - 1;
+    if (/\d/.test(ch)) {
+      if (i < 2 && parts[i].length === 2) parts.push('');
+      const j = parts.length - 1;
+      if (j === 2 && parts[j].length >= 4) continue;
+      parts[j] += ch;
+    } else if (/[./\-\s,]/.test(ch) && parts[i] && i < 2) {
+      parts.push('');
+    }
+  }
+  return parts.join('.');
+}
+
+const PANEL_W = 336;
+const GAP = 6;
+
 function todayIso(): string {
   const n = new Date();
   return toIsoDate(n.getFullYear(), n.getMonth(), n.getDate());
@@ -60,7 +97,10 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
   readonly placeholder = input('');
 
   readonly open = signal(false);
-  readonly panelAlign = signal<'left' | 'right'>('left');
+  readonly panelPos = signal({ top: 0, left: 0, ready: false });
+  /** What the text box shows — typed text while editing, formatted value otherwise. */
+  readonly text = signal('');
+  private editing = false;
   readonly disabled = signal(false);
   readonly viewYear = signal(new Date().getFullYear());
   readonly viewMonth = signal(new Date().getMonth());
@@ -140,9 +180,83 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
     return `${pad2(day)}.${pad2(month + 1)}.${year}`;
   }
 
+  private formatIso(raw: string): string {
+    const p = parseIsoDate(raw);
+    return p ? this.formatDateLabel(p.d, p.m, p.y) : '';
+  }
+
+  // ── typing ──────────────────────────────────────────────
+  focusText(e: MouseEvent): void {
+    if (this.disabled()) return;
+    if ((e.target as HTMLElement).closest('.date-icon')) return;
+    (this.host.nativeElement.querySelector('.date-text') as HTMLInputElement | null)?.focus();
+  }
+
+  onTextInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const masked = maskTyped(el.value);
+    if (masked !== el.value) el.value = masked;
+    this.editing = true;
+    this.text.set(masked);
+    if (!masked.trim()) {
+      this.value.set('');
+      this.onChange('');
+      return;
+    }
+    const iso = parseTyped(masked);
+    if (iso) this.emit(iso); // full valid date → apply immediately, calendar follows
+  }
+
+  onTextBlur(): void {
+    this.editing = false;
+    const typed = this.text().trim();
+    if (!typed) { this.text.set(''); this.onTouched(); return; }
+    const iso = parseTyped(typed);
+    if (iso) this.emit(iso);
+    // Invalid or half-typed → fall back to the last good value.
+    this.text.set(this.formatIso(this.value()));
+    this.onTouched();
+  }
+
+  openPanel(): void {
+    if (!this.open()) this.toggle();
+  }
+
+  // ── panel positioning ───────────────────────────────────
+  /** Places the panel under the field, or above it when there is no room below. */
+  private positionPanel(): void {
+    if (!this.open()) return;
+    const trigger = this.host.nativeElement.querySelector('.date-trigger') as HTMLElement | null;
+    const panel = this.host.nativeElement.querySelector('.date-panel') as HTMLElement | null;
+    if (!trigger) return;
+    const r = trigger.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const w = Math.min(PANEL_W, vw - 16);
+    const h = panel?.offsetHeight || 380;
+
+    let left = r.left;
+    if (left + w > vw - 8) left = Math.max(8, r.right - w);
+    if (left < 8) left = 8;
+
+    const below = vh - r.bottom - GAP;
+    const above = r.top - GAP;
+    let top = below >= h || below >= above ? r.bottom + GAP : r.top - GAP - h;
+    top = Math.max(8, Math.min(top, vh - h - 8));
+
+    this.panelPos.set({ top, left, ready: !!panel });
+  }
+
+  @HostListener('window:resize')
+  onResize(): void { this.positionPanel(); }
+
+  /** Capture-phase listener: follows the field when a modal body (not the window) scrolls. */
+  private readonly onAnyScroll = () => this.positionPanel();
+
   writeValue(v: string | null): void {
     const raw = v ?? '';
     this.value.set(raw);
+    if (!this.editing) this.text.set(this.formatIso(raw));
     if (raw.includes('T')) this.timePart.set(raw.slice(11, 16) || '09:00');
     const parsed = parseIsoDate(raw);
     if (parsed) {
@@ -170,7 +284,10 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
         this.viewYear.set(parsed.y);
         this.viewMonth.set(parsed.m);
       }
-      queueMicrotask(() => this.syncPanelAlign());
+      this.panelPos.set({ top: 0, left: 0, ready: false });
+      document.addEventListener('scroll', this.onAnyScroll, true);
+      // Two frames: first renders the panel (hidden), second measures its real height.
+      requestAnimationFrame(() => { this.positionPanel(); requestAnimationFrame(() => this.positionPanel()); });
     } else {
       this.releaseActive();
     }
@@ -179,6 +296,7 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   private releaseActive(): void {
+    document.removeEventListener('scroll', this.onAnyScroll, true);
     if (DateInputComponent.active === this) DateInputComponent.active = null;
   }
 
@@ -186,20 +304,13 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
     const other = DateInputComponent.active;
     if (other && other !== except) {
       other.open.set(false);
-      DateInputComponent.active = null;
+      other.releaseActive();
     }
   }
 
   private closePanel(): void {
     this.open.set(false);
     this.releaseActive();
-  }
-
-  private syncPanelAlign(): void {
-    const panel = this.host.nativeElement.querySelector('.date-panel') as HTMLElement | null;
-    if (!panel) return;
-    const rect = panel.getBoundingClientRect();
-    this.panelAlign.set(rect.right > window.innerWidth - 8 ? 'right' : 'left');
   }
 
   shiftMonth(delta: number): void {
@@ -212,6 +323,7 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   pick(iso: string): void {
+    this.editing = false;
     this.emit(iso);
     if (this.mode() === 'date') this.closePanel();
   }
@@ -224,6 +336,7 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
 
   clear(): void {
     this.value.set('');
+    this.text.set('');
     this.onChange('');
     this.closePanel();
   }
@@ -250,6 +363,7 @@ export class DateInputComponent implements ControlValueAccessor, OnDestroy {
     const next = this.mode() === 'datetime' ? `${dateIso}T${this.timePart()}` : dateIso;
     this.value.set(next);
     this.onChange(next);
+    if (!this.editing) this.text.set(this.formatIso(next));
     const parsed = parseIsoDate(dateIso);
     if (parsed) {
       this.viewYear.set(parsed.y);
