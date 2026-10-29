@@ -63,6 +63,11 @@
                       <ui-icon name="pencil" [size]="14" />
                     </button>
                   }
+                  @if (auth.can('models.purge')) {
+                    <button class="mcard-edit mcard-del" type="button" [class.solo]="!auth.can('models.update')" (click)="deleting.set(m)" [attr.data-tip]="'delete' | t">
+                      <ui-icon name="trash" [size]="14" />
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -87,6 +92,9 @@
                         }
                         @if (auth.can('models.delete')) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="archiving.set(m)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
+                        }
+                        @if (auth.can('models.purge')) {
+                          <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="deleting.set(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
                         }
                       </td>
                     </tr>
@@ -248,4 +256,10 @@
       <ui-confirm [title]="'archive' | t" [message]="i18n.t('model_archive_confirm', { name: m.code })"
                   [note]="'model_archive_note' | t" [confirmLabel]="'archive' | t"
                   (confirmed)="archive(m)" (cancelled)="archiving.set(null)" />
+    }
+
+    @if (deleting(); as m) {
+      <ui-confirm [title]="'delete' | t" [message]="i18n.t('model_delete_confirm', { name: m.code })"
+                  [note]="'model_delete_note' | t" [confirmLabel]="'delete' | t"
+                  (confirmed)="hardDelete(m)" (cancelled)="deleting.set(null)" />
     }

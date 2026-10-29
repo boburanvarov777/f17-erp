@@ -133,7 +133,7 @@ export class OrdersListComponent {
     });
   }
 
-  /** Permanent delete — Super Pro Admin only (button hidden for others, API re-checks). */
+  /** Permanent delete — needs orders.purge (set per role in Rollar; API re-checks). */
   hardDelete(o: Order): void {
     this.api.delete(`/archive/order/${o.id}`).subscribe({
       next: () => {

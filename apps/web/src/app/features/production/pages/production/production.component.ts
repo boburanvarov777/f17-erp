@@ -77,6 +77,7 @@ export class ProductionComponent {
   readonly detail = signal<OrderStage | null>(null);
   readonly cancelling = signal<StageEntry | null>(null);
   readonly completing = signal<OrderStage | null>(null);
+  readonly deletingOrder = signal<OrderStage | null>(null);
   readonly shipmentModal = signal<Partial<Shipment> | null>(null);
   readonly entryError = signal('');
 
@@ -96,6 +97,8 @@ export class ProductionComponent {
   readonly isPacking = computed(() => this.stageType() === 'PACKING');
   readonly canWrite = computed(() => this.auth.can(`${this.stage().toLowerCase()}.create`, `${this.stage().toLowerCase()}.update`));
   readonly canAssignUsers = computed(() => this.auth.can('users.read'));
+  /** Permanent order delete from this stage page — <stage>.purge or orders.purge, set per role. */
+  readonly canPurge = computed(() => this.auth.can(`${this.stage().toLowerCase()}.purge`, 'orders.purge'));
   readonly openStages = computed(() => (this.data()?.items ?? []).filter((s) => s.status !== 'COMPLETED'));
 
   readonly sum = computed(() => {
@@ -379,5 +382,14 @@ export class ProductionComponent {
     const auto = this.i18n.t('ma_source_miniapp');
     if (note === auto) return '—';
     return note;
+  }
+
+  deleteOrder(s: OrderStage): void {
+    const orderId = s.order?.id ?? s.orderId;
+    const number = s.order?.number ?? '';
+    this.api.delete(`/archive/order/${orderId}?stage=${this.stage().toLowerCase()}`).subscribe({
+      next: () => { this.deletingOrder.set(null); this.toast.success(this.i18n.t('deleted'), number); this.reload(false); },
+      error: () => this.deletingOrder.set(null),
+    });
   }
 }

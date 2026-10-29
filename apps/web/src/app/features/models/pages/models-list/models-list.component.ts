@@ -56,6 +56,7 @@ export class ModelsListComponent {
   readonly busy = signal(false);
   readonly editing = signal<Partial<ProductModel> | null>(null);
   readonly archiving = signal<ProductModel | null>(null);
+  readonly deleting = signal<ProductModel | null>(null);
   readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
   readonly colors = signal<{ name: string; hex: string }[]>([]);
   readonly accessories = signal<{ name: string; color: string; size: string; code: string; qty: number | null }[]>([]);
@@ -535,6 +536,14 @@ export class ModelsListComponent {
     this.api.delete(`/models/${m.id}`).subscribe({
       next: () => { this.archiving.set(null); this.toast.success(this.i18n.t('archived')); this.reload(false); },
       error: () => this.archiving.set(null),
+    });
+  }
+
+  /** Permanent delete with photos/files — needs models.purge (API re-checks). */
+  hardDelete(m: ProductModel): void {
+    this.api.delete(`/archive/model/${m.id}`).subscribe({
+      next: () => { this.deleting.set(null); this.toast.success(this.i18n.t('deleted'), m.code); this.reload(false); },
+      error: () => this.deleting.set(null),
     });
   }
 }

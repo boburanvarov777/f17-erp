@@ -100,6 +100,11 @@
                             <ui-icon name="check-circle" [size]="15" />
                           </button>
                         }
+                        @if (canPurge()) {
+                          <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="$event.stopPropagation(); deletingOrder.set(s)" [attr.data-tip]="'delete' | t">
+                            <ui-icon name="trash" [size]="15" />
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -333,6 +338,15 @@
         [note]="'cancel_entry_note' | t"
         [confirmLabel]="'confirm' | t"
         (confirmed)="cancelEntry(e)" (cancelled)="cancelling.set(null)" />
+    }
+
+    @if (deletingOrder(); as s) {
+      <ui-confirm
+        [title]="'delete' | t"
+        [message]="'order_delete_confirm' | t: { name: s.order?.number ?? '' }"
+        [note]="'order_delete_note' | t"
+        [confirmLabel]="'delete' | t"
+        (confirmed)="deleteOrder(s)" (cancelled)="deletingOrder.set(null)" />
     }
 
     @if (completing(); as s) {

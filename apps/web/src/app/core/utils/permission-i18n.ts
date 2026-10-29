@@ -27,6 +27,7 @@ export const PERMISSION_ACTION_I18N: Record<string, string> = {
   create: 'perm_create',
   update: 'perm_update',
   delete: 'perm_delete',
+  purge: 'perm_purge',
 };
 
 export function permModuleKey(module: string): string {

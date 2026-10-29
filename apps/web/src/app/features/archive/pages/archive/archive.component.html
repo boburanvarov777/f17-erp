@@ -72,7 +72,7 @@
                           <button class="btn btn-ghost btn-sm" type="button" (click)="restore('order', o.id)">
                             <ui-icon name="rotate-ccw" [size]="14" /> {{ 'restore' | t }}
                           </button>
-                          @if (auth.isSuperProAdmin()) {
+                          @if (auth.can('orders.purge')) {
                             <button class="btn btn-ghost btn-sm btn-danger-ghost" type="button" (click)="deleting.set({ type: 'order', id: o.id, name: o.number })">
                               <ui-icon name="trash" [size]="14" /> {{ 'delete' | t }}
                             </button>
@@ -105,7 +105,7 @@
                           <button class="btn btn-ghost btn-sm" type="button" (click)="restore('model', m.id)">
                             <ui-icon name="rotate-ccw" [size]="14" /> {{ 'restore' | t }}
                           </button>
-                          @if (auth.isSuperProAdmin()) {
+                          @if (auth.can('models.purge')) {
                             <button class="btn btn-ghost btn-sm btn-danger-ghost" type="button" (click)="deleting.set({ type: 'model', id: m.id, name: m.code })">
                               <ui-icon name="trash" [size]="14" /> {{ 'delete' | t }}
                             </button>
@@ -138,7 +138,7 @@
                           <button class="btn btn-ghost btn-sm" type="button" (click)="restore('material', m.id)">
                             <ui-icon name="rotate-ccw" [size]="14" /> {{ 'restore' | t }}
                           </button>
-                          @if (auth.isSuperProAdmin()) {
+                          @if (auth.can('warehouse.purge')) {
                             <button class="btn btn-ghost btn-sm btn-danger-ghost" type="button" (click)="deleting.set({ type: 'material', id: m.id, name: m.code + ' — ' + m.name })">
                               <ui-icon name="trash" [size]="14" /> {{ 'delete' | t }}
                             </button>
