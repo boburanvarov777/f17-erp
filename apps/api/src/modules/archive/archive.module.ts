@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagg
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { CurrentUser, JwtUser } from '../../common/decorators';
 import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
-import { assertTopAdmin, hasPermission, isSuperProAdmin, STAGE_PERMISSION_PREFIX, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { assertTopAdmin, hasPermission, isSuperProAdmin, isTopAdmin, PURGE_PERMISSIONS, STAGE_PERMISSION_PREFIX, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { StorageService } from '../../common/storage/storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -33,7 +33,10 @@ class RestoreArchiveDto {
 export class ArchiveService {
   constructor(private prisma: PrismaService, private audit: AuditService, private storage: StorageService) {}
 
+  /** Archive page: top admins, or anyone allowed to delete from the database. */
   private assertAccess(actor: JwtUser): void {
+    if (isTopAdmin(actor)) return;
+    if (PURGE_PERMISSIONS.some((p) => hasPermission(actor, p))) return;
     assertTopAdmin(actor);
   }
 
@@ -56,7 +59,7 @@ export class ArchiveService {
       this.prisma.material.count({ where: { archivedAt: { not: null } } }),
     ]);
     const counts: Record<ArchiveModuleKey, number> = { users, orders, models, materials };
-    return ARCHIVE_MODULE_KEYS.map((key) => ({
+    return ARCHIVE_MODULE_KEYS.filter((key) => key !== 'users' || isTopAdmin(actor)).map((key) => ({
       key,
       labelKey: MODULE_LABELS[key],
       count: counts[key],
@@ -91,6 +94,7 @@ export class ArchiveService {
 
     switch (module) {
       case 'users': {
+        assertTopAdmin(actor);
         const users = await this.prisma.user.findMany({
           where: this.userArchiveWhere(actor, departmentId) as any,
           orderBy: { archivedAt: 'desc' },
@@ -144,7 +148,7 @@ export class ArchiveService {
   }
 
   async restore(dto: RestoreArchiveDto, actor: JwtUser) {
-    this.assertAccess(actor);
+    assertTopAdmin(actor); // restoring stays with Super Admin / Super Pro Admin
     switch (dto.type) {
       case 'user': {
         const user = await this.prisma.user.findUnique({ where: { id: dto.id }, include: { role: true } });

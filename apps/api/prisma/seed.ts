@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Lang, PrismaClient, Prisma, StageType } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { SUPER_ADMIN_PERMISSIONS } from '../src/common/permissions';
+import { PURGE_PERMISSIONS, SUPER_ADMIN_PERMISSIONS } from '../src/common/permissions';
 
 const prisma = new PrismaClient();
 
@@ -98,7 +98,25 @@ async function main() {
     },
   ];
   for (const r of roles) {
-    await prisma.role.upsert({ where: { code: r.code }, create: r as any, update: { name: r.name, description: r.description, permissions: r.permissions } });
+    // Create missing roles only — never overwrite permissions edited in Rollar.
+    const perms = r.permissions.includes('*') ? r.permissions : [...new Set([...r.permissions, ...PURGE_PERMISSIONS])];
+    const exists = await prisma.role.findUnique({ where: { code: r.code }, select: { id: true } });
+    if (!exists) await prisma.role.create({ data: { ...r, permissions: perms } as any });
+  }
+
+  // One-shot: give every existing role (system and custom) the delete-from-database
+  // permissions. Runs once; removing them later in Rollar sticks.
+  const PURGE_GRANT_KEY = 'purge_permissions_granted_v1';
+  if (!(await prisma.setting.findUnique({ where: { key: PURGE_GRANT_KEY } }))) {
+    for (const r of await prisma.role.findMany()) {
+      if (r.permissions.includes('*')) continue;
+      const merged = [...new Set([...r.permissions, ...PURGE_PERMISSIONS])];
+      if (merged.length !== r.permissions.length) {
+        await prisma.role.update({ where: { id: r.id }, data: { permissions: merged } });
+      }
+    }
+    await prisma.setting.create({ data: { key: PURGE_GRANT_KEY, value: { at: new Date().toISOString() } } });
+    console.log('  roles: delete-from-database permissions granted to every role');
   }
   const role = Object.fromEntries((await prisma.role.findMany()).map((r) => [r.code, r]));
   console.log(`  roles: ${roles.length}`);

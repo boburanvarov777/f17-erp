@@ -27,6 +27,12 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number];
 
+/** Permanent-delete permissions — granted to every role (see seed), editable in Rollar. */
+export const PURGE_PERMISSIONS = [
+  'orders.purge', 'models.purge', 'warehouse.purge',
+  'cutting.purge', 'sewing.purge', 'washing.purge', 'laser.purge', 'packing.purge',
+] as const;
+
 export const STAGE_PERMISSION_PREFIX: Record<string, string> = {
   CUTTING: 'cutting',
   SEWING: 'sewing',

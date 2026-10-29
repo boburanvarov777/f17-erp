@@ -1,6 +1,6 @@
 import type { CurrentUser } from '../models';
 import { NAV_GROUPS, type NavGroupDef, type NavItemDef } from '../config/nav.config';
-import { isSuperProAdmin, isTopAdmin, seesFullManage, userStage } from './role.util';
+import { isSuperProAdmin, seesArchive, seesFullManage, userStage } from './role.util';
 
 function withoutSuperProOnly(groups: NavGroupDef[]): NavGroupDef[] {
   return groups
@@ -26,11 +26,14 @@ export function filterNavGroupsForUser(
 ): NavGroupDef[] {
   let groups = filterNavGroups(can);
   if (!isSuperProAdmin(user)) groups = withoutSuperProOnly(groups);
-  if (!isTopAdmin(user)) groups = withoutArchive(groups);
+  if (!seesArchive(user)) groups = withoutArchive(groups);
   if (seesFullManage(user)) return groups;
 
   if (user?.role?.code === 'ADMIN') {
-    groups = groups.filter((g) => g.label !== 'nav_management');
+    // Administrators keep only Arxiv from the management group.
+    groups = groups
+      .map((g) => (g.label === 'nav_management' ? { ...g, items: g.items.filter((i) => i.path === 'archive') } : g))
+      .filter((g) => g.items.length > 0);
   }
 
   const stage = userStage(user)?.toLowerCase();
