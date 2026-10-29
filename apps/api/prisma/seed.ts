@@ -126,7 +126,13 @@ async function main() {
     { login: 'ombor', password: defaultPassword, firstName: 'Dilnoza', lastName: 'Yusupova', phone: demoPhone(12), role: 'WAREHOUSE_MANAGER', dept: 'WAREHOUSE', position: 'Ombor mudiri', lang: 'UZ' },
   ];
 
+  // Fresh database → create every account. Otherwise only make sure the owner
+  // account exists, so a deleted demo user (e.g. "admin") is not resurrected with
+  // its default password on the next deploy.
+  const firstRun = (await prisma.user.count()) === 0;
+  const rootLogin = process.env.SEED_SUPERADMIN_LOGIN || 'bobur';
   for (const u of users) {
+    if (!firstRun && u.login !== rootLogin) continue;
     const data = {
       firstName: u.firstName, lastName: u.lastName, phone: u.phone, login: u.login,
       passwordHash: await hash(u.password),
@@ -134,24 +140,11 @@ async function main() {
       position: u.position, lang: u.lang as Lang,
       roleId: role[u.role].id, departmentId: dept[u.dept].id,
     };
-    await prisma.user.upsert({
-      where: { login: u.login },
-      create: data,
-      update: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        passwordHash: data.passwordHash,
-        passwordPlain: data.passwordPlain,
-        position: data.position,
-        roleId: data.roleId,
-        departmentId: data.departmentId,
-        status: 'ACTIVE',
-        archivedAt: null,
-        telegramId: null,
-        telegramUsername: null,
-        telegramLinkedAt: null,
-      },
-    });
+    // Create missing accounts only. Existing users are never touched here: the seed
+    // runs on every container start, and overwriting would reset passwords people
+    // changed, unblock blocked users and unlink Telegram on each deploy.
+    const exists = await prisma.user.findUnique({ where: { login: u.login }, select: { id: true } });
+    if (!exists) await prisma.user.create({ data });
   }
   // Bir martalik tuzatish: avvalgi seed hammaga ownerPhone yozgan bo‘lsa, demo raqamlarga almashtirish.
   for (const u of users) {
@@ -162,7 +155,7 @@ async function main() {
     });
   }
   const userByLogin = Object.fromEntries((await prisma.user.findMany()).map((u) => [u.login, u]));
-  console.log(`  users: ${users.length} (super admin: ${users[0].login} / ${superPassword})`);
+  console.log(`  users: ${users.length} checked (missing ones created; existing passwords untouched)`);
 
   if (process.env.NODE_ENV === 'production') {
     console.log('  production: demo clients/models/orders skipped');
