@@ -130,11 +130,14 @@
                             @if (canSingleRowUi(m)) {
                               <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openMaterial(m)" [attr.data-tip]="'edit' | t"><ui-icon name="pencil" [size]="15" /></button>
                             }
-                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openArchive(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
+                            <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openArchive(m)" [attr.data-tip]="'archive' | t"><ui-icon name="archive" [size]="15" /></button>
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openOp(m)" [attr.data-tip]="'stock_op' | t"><ui-icon name="arrow-up-right" [size]="15" /></button>
                           }
                           @if (canSingleRowUi(m)) {
                             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="showTx(m)" [attr.data-tip]="'history' | t"><ui-icon name="history" [size]="15" /></button>
+                          }
+                          @if (auth.can('warehouse.purge') && !historicalView()) {
+                            <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="deleting.set(m)" [attr.data-tip]="'delete' | t"><ui-icon name="trash" [size]="15" /></button>
                           }
                         </td>
                       </tr>
@@ -332,4 +335,14 @@
         [confirmLabel]="'delete' | t"
         (confirmed)="deleteTx(t)"
         (cancelled)="txDeleting.set(null)" />
+    }
+
+    @if (deleting(); as m) {
+      <ui-confirm
+        [title]="'delete' | t"
+        [message]="i18n.t('material_delete_confirm', { name: m.code + ' — ' + m.name })"
+        [note]="'material_delete_note' | t"
+        [confirmLabel]="'delete' | t"
+        (confirmed)="hardDelete(m)"
+        (cancelled)="deleting.set(null)" />
     }
