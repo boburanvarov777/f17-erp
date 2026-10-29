@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Injectable, Module, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Injectable, Module, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { CurrentUser, JwtUser } from '../../common/decorators';
 import { badRequest, notFound } from '../../common/i18n/api-errors';
-import { assertTopAdmin, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { assertSuperProAdmin, assertTopAdmin, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { StorageService } from '../../common/storage/storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -30,7 +31,7 @@ class RestoreArchiveDto {
 
 @Injectable()
 export class ArchiveService {
-  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  constructor(private prisma: PrismaService, private audit: AuditService, private storage: StorageService) {}
 
   private assertAccess(actor: JwtUser): void {
     assertTopAdmin(actor);
@@ -195,6 +196,47 @@ export class ArchiveService {
         throw badRequest('err_archive_unknown_type');
     }
   }
+
+  /**
+   * Permanent delete — Super Pro Admin only. Works on archived and active rows
+   * (orders list uses it too). Child rows go by FK cascade; stored files are removed.
+   */
+  async remove(type: string, id: string, actor: JwtUser) {
+    assertSuperProAdmin(actor);
+    switch (type) {
+      case 'order': {
+        const order = await this.prisma.order.findUnique({ where: { id }, select: { id: true, number: true, qty: true } });
+        if (!order) throw notFound('err_record_not_found');
+        await this.prisma.order.delete({ where: { id } });
+        this.audit.log({ userId: actor.sub, action: 'ORDER_DELETED', entity: 'Order', entityId: id, oldValue: order });
+        return { success: true };
+      }
+      case 'model': {
+        const model = await this.prisma.productModel.findUnique({
+          where: { id },
+          select: { id: true, code: true, name: true, photo: true, photos: { select: { url: true } }, files: { select: { url: true } } },
+        });
+        if (!model) throw notFound('err_record_not_found');
+        await this.prisma.productModel.delete({ where: { id } });
+        const urls = [model.photo, ...model.photos.map((p) => p.url), ...model.files.map((f) => f.url)];
+        for (const url of new Set(urls)) {
+          const key = url ? this.storage.keyFromPublicUrl(url) : null;
+          if (key) await this.storage.deleteObject(key);
+        }
+        this.audit.log({ userId: actor.sub, action: 'MODEL_DELETED', entity: 'ProductModel', entityId: id, oldValue: { code: model.code, name: model.name } });
+        return { success: true };
+      }
+      case 'material': {
+        const material = await this.prisma.material.findUnique({ where: { id }, select: { id: true, code: true, name: true, stock: true } });
+        if (!material) throw notFound('err_record_not_found');
+        await this.prisma.material.delete({ where: { id } });
+        this.audit.log({ userId: actor.sub, action: 'MATERIAL_DELETED', entity: 'Material', entityId: id, oldValue: material });
+        return { success: true };
+      }
+      default:
+        throw badRequest('err_archive_unknown_type');
+    }
+  }
 }
 
 @ApiTags('archive')
@@ -233,6 +275,12 @@ export class ArchiveController {
   @ApiOperation({ summary: 'Restore archived user, order, model, or material' })
   restore(@Body() dto: RestoreArchiveDto, @CurrentUser() actor: JwtUser) {
     return this.service.restore(dto, actor);
+  }
+
+  @Delete(':type/:id')
+  @ApiOperation({ summary: 'Permanently delete an order, model, or material — Super Pro Admin only' })
+  remove(@Param('type') type: string, @Param('id') id: string, @CurrentUser() actor: JwtUser) {
+    return this.service.remove(type, id, actor);
   }
 }
 

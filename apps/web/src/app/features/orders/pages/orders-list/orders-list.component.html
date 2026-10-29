@@ -118,6 +118,11 @@
                             <ui-icon name="archive" [size]="15" />
                           </button>
                         }
+                        @if (auth.isSuperProAdmin()) {
+                          <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="$event.stopPropagation(); deleting.set(o)" [attr.data-tip]="'delete' | t">
+                            <ui-icon name="trash" [size]="15" />
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -153,4 +158,14 @@
         [confirmLabel]="'archive' | t"
         (confirmed)="archive(o)"
         (cancelled)="archiving.set(null)" />
+    }
+
+    @if (deleting(); as o) {
+      <ui-confirm
+        [title]="'delete' | t"
+        [message]="'order_delete_confirm' | t: { name: o.number }"
+        [note]="'order_delete_note' | t"
+        [confirmLabel]="'delete' | t"
+        (confirmed)="hardDelete(o)"
+        (cancelled)="deleting.set(null)" />
     }
