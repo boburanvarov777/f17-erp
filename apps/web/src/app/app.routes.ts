@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, permissionGuard, superProAdminGuard, topAdminGuard } from './core/guards/auth.guard';
+import { authGuard, permissionGuard, superProAdminGuard, archiveGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -88,7 +88,7 @@ export const routes: Routes = [
       },
       {
         path: 'archive',
-        canActivate: [topAdminGuard],
+        canActivate: [archiveGuard],
         loadComponent: () => import('./features/archive/pages/archive/archive.component').then((m) => m.ArchiveComponent),
       },
       {

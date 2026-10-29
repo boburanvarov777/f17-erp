@@ -68,3 +68,17 @@ export function userStage(u: CurrentUser | null | undefined): string | null {
 export function userDepartmentId(u: CurrentUser | null | undefined): string | null {
   return u?.department?.id ?? null;
 }
+
+/** Delete-from-database permissions (Rollar → "Bazadan o'chirish"). */
+export const PURGE_PERMS = [
+  'orders.purge', 'models.purge', 'warehouse.purge',
+  'cutting.purge', 'sewing.purge', 'washing.purge', 'laser.purge', 'packing.purge',
+];
+
+/** Archive page — top admins, or anyone who may delete from the database. */
+export function seesArchive(u: CurrentUser | null | undefined): boolean {
+  if (!u) return false;
+  if (isTopAdmin(u)) return true;
+  const p = u.permissions ?? [];
+  return p.includes('*') || PURGE_PERMS.some((x) => p.includes(x));
+}

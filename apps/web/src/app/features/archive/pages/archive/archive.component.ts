@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { isTopAdmin } from '../../../../core/utils/role.util';
 import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
 import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -90,6 +91,8 @@ export class ArchiveComponent {
   private toast = inject(ToastService);
   readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+  /** Restoring stays with Super Admin / Super Pro Admin; others only delete. */
+  readonly canRestore = computed(() => isTopAdmin(this.auth.user()));
 
   readonly modules = signal<ArchiveModuleTab[]>([]);
   readonly module = signal<ArchiveModuleKey>('users');
