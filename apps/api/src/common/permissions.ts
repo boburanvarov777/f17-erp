@@ -2,14 +2,16 @@ import { forbidden } from './i18n/api-errors';
 
 export const PERMISSIONS = [
   'dashboard.read',
-  'orders.read', 'orders.create', 'orders.update', 'orders.delete',
-  'models.read', 'models.create', 'models.update', 'models.delete',
-  'warehouse.read', 'warehouse.create', 'warehouse.update', 'warehouse.delete',
-  'cutting.read', 'cutting.create', 'cutting.update',
-  'sewing.read', 'sewing.create', 'sewing.update',
-  'washing.read', 'washing.create', 'washing.update',
-  'laser.read', 'laser.create', 'laser.update',
-  'packing.read', 'packing.create', 'packing.update',
+  // *.delete = archive (soft). *.purge = permanent delete from the database.
+  'orders.read', 'orders.create', 'orders.update', 'orders.delete', 'orders.purge',
+  'models.read', 'models.create', 'models.update', 'models.delete', 'models.purge',
+  'warehouse.read', 'warehouse.create', 'warehouse.update', 'warehouse.delete', 'warehouse.purge',
+  // <stage>.purge = permanently delete an order from that stage's page.
+  'cutting.read', 'cutting.create', 'cutting.update', 'cutting.purge',
+  'sewing.read', 'sewing.create', 'sewing.update', 'sewing.purge',
+  'washing.read', 'washing.create', 'washing.update', 'washing.purge',
+  'laser.read', 'laser.create', 'laser.update', 'laser.purge',
+  'packing.read', 'packing.create', 'packing.update', 'packing.purge',
   'loading.read', 'loading.create', 'loading.update',
   'schedule.read', 'schedule.update',
   'users.read', 'users.create', 'users.update', 'users.delete',
@@ -68,3 +70,9 @@ export function assertSuperProAdmin(user: { roleCode?: string } | null | undefin
 export const SUPER_ADMIN_PERMISSIONS = PERMISSIONS.filter(
   (p) => !p.startsWith('roles.') && p !== 'audit.read' && p !== 'users.delete',
 );
+
+/** True when the user's role grants `permission` (Super Pro Admin's "*" grants all). */
+export function hasPermission(user: { permissions?: string[] } | null | undefined, permission: string): boolean {
+  const perms = user?.permissions ?? [];
+  return perms.includes(ALL_PERMISSIONS) || perms.includes(permission);
+}

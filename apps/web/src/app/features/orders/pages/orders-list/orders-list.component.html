@@ -118,7 +118,7 @@
                             <ui-icon name="archive" [size]="15" />
                           </button>
                         }
-                        @if (auth.isSuperProAdmin()) {
+                        @if (auth.can('orders.purge')) {
                           <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="$event.stopPropagation(); deleting.set(o)" [attr.data-tip]="'delete' | t">
                             <ui-icon name="trash" [size]="15" />
                           </button>

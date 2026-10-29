@@ -2,8 +2,8 @@ import { Body, Controller, Delete, Get, Injectable, Module, Param, Post, Query }
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { CurrentUser, JwtUser } from '../../common/decorators';
-import { badRequest, notFound } from '../../common/i18n/api-errors';
-import { assertSuperProAdmin, assertTopAdmin, isSuperProAdmin, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
+import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
+import { assertTopAdmin, hasPermission, isSuperProAdmin, STAGE_PERMISSION_PREFIX, SUPER_PRO_ADMIN_ROLE } from '../../common/permissions';
 import { StorageService } from '../../common/storage/storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -198,11 +198,20 @@ export class ArchiveService {
   }
 
   /**
-   * Permanent delete — Super Pro Admin only. Works on archived and active rows
-   * (orders list uses it too). Child rows go by FK cascade; stored files are removed.
+   * Permanent delete, granted per role in Rollar: orders.purge / models.purge /
+   * warehouse.purge, or <stage>.purge when deleting an order from a stage page.
+   * Works on archived and active rows. Children go by FK cascade; files are removed.
    */
-  async remove(type: string, id: string, actor: JwtUser) {
-    assertSuperProAdmin(actor);
+  async remove(type: string, id: string, actor: JwtUser, stage?: string) {
+    const stagePrefix = stage ? STAGE_PERMISSION_PREFIX[stage.toUpperCase()] ?? stage.toLowerCase() : null;
+    const needed =
+      type === 'order' ? ['orders.purge', ...(stagePrefix ? [`${stagePrefix}.purge`] : [])]
+      : type === 'model' ? ['models.purge']
+      : type === 'material' ? ['warehouse.purge']
+      : [];
+    if (!needed.some((p) => hasPermission(actor, p))) {
+      throw forbidden('err_missing_permission', { permissions: needed.join(' | ') });
+    }
     switch (type) {
       case 'order': {
         const order = await this.prisma.order.findUnique({ where: { id }, select: { id: true, number: true, qty: true } });
@@ -278,9 +287,14 @@ export class ArchiveController {
   }
 
   @Delete(':type/:id')
-  @ApiOperation({ summary: 'Permanently delete an order, model, or material — Super Pro Admin only' })
-  remove(@Param('type') type: string, @Param('id') id: string, @CurrentUser() actor: JwtUser) {
-    return this.service.remove(type, id, actor);
+  @ApiOperation({ summary: 'Permanently delete an order, model, or material (orders/models/warehouse.purge or <stage>.purge)' })
+  remove(
+    @Param('type') type: string,
+    @Param('id') id: string,
+    @Query('stage') stage: string | undefined,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.service.remove(type, id, actor, stage);
   }
 }
 

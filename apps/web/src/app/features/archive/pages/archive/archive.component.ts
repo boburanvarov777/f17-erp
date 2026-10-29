@@ -96,7 +96,7 @@ export class ArchiveComponent {
   readonly data = signal<ArchivePayload | null>(null);
   readonly loading = signal(true);
   readonly viewOrder = signal<ArchiveOrder | null>(null);
-  /** Pending permanent delete — Super Pro Admin only. */
+  /** Pending permanent delete — orders/models/warehouse.purge, set per role. */
   readonly deleting = signal<{ type: 'order' | 'model' | 'material'; id: string; name: string } | null>(null);
 
   constructor() {
