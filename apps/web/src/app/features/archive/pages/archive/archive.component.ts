@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ApiService } from '../../../../core/services/api.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
 import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ShortDatePipe } from '../../../../shared/pipes/format.pipe';
@@ -80,19 +82,22 @@ const MODULE_ICONS: Record<ArchiveModuleKey, string> = {
   templateUrl: './archive.component.html',
   styleUrl: './archive.component.scss',
   standalone: true,
-  imports: [IconComponent, LoadingComponent, EmptyComponent, ModalComponent, OrderDetailComponent, TPipe, ShortDatePipe],
+  imports: [IconComponent, LoadingComponent, EmptyComponent, ModalComponent, ConfirmComponent, OrderDetailComponent, TPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ArchiveComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   readonly i18n = inject(I18nService);
+  readonly auth = inject(AuthService);
 
   readonly modules = signal<ArchiveModuleTab[]>([]);
   readonly module = signal<ArchiveModuleKey>('users');
   readonly data = signal<ArchivePayload | null>(null);
   readonly loading = signal(true);
   readonly viewOrder = signal<ArchiveOrder | null>(null);
+  /** Pending permanent delete — Super Pro Admin only. */
+  readonly deleting = signal<{ type: 'order' | 'model' | 'material'; id: string; name: string } | null>(null);
 
   constructor() {
     this.api.get<ArchiveModuleTab[]>('/archive/modules').subscribe({
@@ -141,6 +146,25 @@ export class ArchiveComponent {
 
   hasItems(d: ArchivePayload): boolean {
     return d.users.length + d.orders.length + d.models.length + d.materials.length > 0;
+  }
+
+  confirmKey(type: 'order' | 'model' | 'material', part: 'confirm' | 'note'): string {
+    return `${type}_delete_${part}`;
+  }
+
+  hardDelete(): void {
+    const d = this.deleting();
+    if (!d) return;
+    this.api.delete(`/archive/${d.type}/${d.id}`).subscribe({
+      next: () => {
+        this.deleting.set(null);
+        this.toast.success(this.i18n.t('deleted'), d.name);
+        this.api.get<ArchiveModuleTab[]>('/archive/modules').subscribe({
+          next: (mods) => { this.modules.set(mods); this.load(); },
+        });
+      },
+      error: () => this.deleting.set(null),
+    });
   }
 
   restore(type: RestoreType, id: string): void {

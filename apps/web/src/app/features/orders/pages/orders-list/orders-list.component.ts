@@ -63,6 +63,7 @@ export class OrdersListComponent {
   readonly loading = signal(false);
   readonly editing = signal<Partial<Order> | null>(null);
   readonly archiving = signal<Order | null>(null);
+  readonly deleting = signal<Order | null>(null);
 
   readonly hasFilters = computed(() => !!(this.search || this.status || this.priority || this.clientId || this.from || this.to));
 
@@ -129,6 +130,18 @@ export class OrdersListComponent {
         this.reload(false);
       },
       error: () => this.archiving.set(null),
+    });
+  }
+
+  /** Permanent delete — Super Pro Admin only (button hidden for others, API re-checks). */
+  hardDelete(o: Order): void {
+    this.api.delete(`/archive/order/${o.id}`).subscribe({
+      next: () => {
+        this.deleting.set(null);
+        this.toast.success(this.i18n.t('deleted'), o.number);
+        this.reload(false);
+      },
+      error: () => this.deleting.set(null),
     });
   }
 
