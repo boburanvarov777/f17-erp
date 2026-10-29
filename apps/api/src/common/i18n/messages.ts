@@ -173,6 +173,8 @@ const uz = {
 
   // generic
   err_duplicate: 'Bu qiymat allaqachon mavjud: {fields}',
+  err_order_number_taken: '«{number}» raqamli buyurtma allaqachon mavjud. Boshqa buyurtma raqamini kiriting.',
+  err_order_number_taken_archived: '«{number}» raqamli buyurtma arxivda mavjud. Boshqa raqam kiriting yoki arxivdagi buyurtmani tiklang.',
   err_record_not_found: 'Yozuv topilmadi',
   err_internal: 'Serverda xatolik yuz berdi',
 };
@@ -332,6 +334,8 @@ const ru: Record<MessageKey, string> = {
   v_invalid: 'Некорректное значение «{field}»',
 
   err_duplicate: 'Такое значение уже существует: {fields}',
+  err_order_number_taken: 'Заказ с номером «{number}» уже существует. Введите другой номер заказа.',
+  err_order_number_taken_archived: 'Заказ с номером «{number}» уже есть в архиве. Введите другой номер или восстановите заказ из архива.',
   err_record_not_found: 'Запись не найдена',
   err_internal: 'Произошла ошибка на сервере',
 };
@@ -489,6 +493,8 @@ const en: Record<MessageKey, string> = {
   v_invalid: '«{field}» has an invalid value',
 
   err_duplicate: 'This value already exists: {fields}',
+  err_order_number_taken: 'An order with number “{number}” already exists. Enter a different order number.',
+  err_order_number_taken_archived: 'An order with number “{number}” is in the archive. Enter a different number or restore the archived order.',
   err_record_not_found: 'Record not found',
   err_internal: 'A server error occurred',
 };

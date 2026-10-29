@@ -68,7 +68,7 @@
             <label class="label">{{ 'responsible' | t }}</label>
             <select class="select" [(ngModel)]="form.responsibleId">
               <option value="" disabled>{{ 'select_responsible' | t }}</option>
-              @for (u of users(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
+              @for (u of responsibleOptions(); track u.id) { <option [value]="u.id">{{ u.lastName }} {{ u.firstName }}</option> }
             </select>
           </div>
         }

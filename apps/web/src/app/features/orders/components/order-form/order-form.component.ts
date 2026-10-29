@@ -15,6 +15,9 @@ import { ModalComponent } from '../../../../shared/ui/modal.component';
 import { DateInputComponent } from '../../../../shared/ui/date-input.component';
 import { FieldErrorsState, isMissingQty, runValidation } from '../../../../shared/utils/form-validate';
 
+/** Owner / developer accounts — never offered as an order's responsible person. */
+const HIDDEN_RESPONSIBLE_LOGINS = new Set(['bobur', 'jamshid', 'jam']);
+
 interface SizeRow { size: string; qty: number | null; }
 
 @Component({
@@ -46,6 +49,15 @@ export class OrderFormComponent {
   readonly sampleStatuses = ['PENDING', 'SENT', 'APPROVED', 'REJECTED'];
 
   readonly users = signal<User[]>([]);
+  readonly responsibleOptions = computed(() => {
+    const current = this.version() >= 0 ? this.form.responsibleId : '';
+    return this.users().filter((u) =>
+      u.id === current || // keep an already-assigned person visible when editing
+      (!HIDDEN_RESPONSIBLE_LOGINS.has((u.login ?? '').trim().toLowerCase()) &&
+        u.role?.code !== 'SUPER_PRO_ADMIN' &&
+        (u.status ?? 'ACTIVE') === 'ACTIVE'),
+    );
+  });
   readonly extraClients = signal<Client[]>([]);
   readonly sizes = signal<SizeRow[]>([]);
   readonly busy = signal(false);
@@ -100,6 +112,18 @@ export class OrderFormComponent {
           sampleApprovedAt: (o.sampleApprovedAt ?? '').slice(0, 10),
         };
         this.sizes.set((o.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
+        // The list row has no size breakdown — load the full order so editing shows it.
+        if (!o.sizes) {
+          this.api.get<Order>(`/orders/${o.id}`).subscribe({
+            next: (full) => {
+              if (!this.sizes().length) {
+                this.sizes.set((full.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
+                this.touch();
+              }
+            },
+            error: () => void 0,
+          });
+        }
       }
       this.touch();
     });
@@ -200,7 +224,17 @@ export class OrderFormComponent {
       error: (e) => {
         this.busy.set(false);
         const m = e?.error?.message;
-        this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
+        const msg = Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error');
+        this.error.set(msg);
+        // Order number already used → mark the field itself so the user sees what to fix.
+        if (e?.status === 409 || e?.error?.code === 'P2002') {
+          this.fe.apply({ number: msg });
+          queueMicrotask(() => {
+            const el = document.querySelector('.modal .field-invalid input') as HTMLInputElement | null;
+            el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            el?.focus();
+          });
+        }
       },
     });
   }
