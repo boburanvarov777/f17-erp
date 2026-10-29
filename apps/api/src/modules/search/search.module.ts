@@ -33,7 +33,7 @@ export class SearchController {
           })
         : [],
       has('clients.read') || has('orders.read')
-        ? this.prisma.client.findMany({ where: { OR: [{ name: like }, { code: like }] }, select: { id: true, code: true, name: true }, take: 4 })
+        ? this.prisma.client.findMany({ where: { deletedAt: null, OR: [{ name: like }, { code: like }] }, select: { id: true, code: true, name: true }, take: 4 })
         : [],
       has('warehouse.read')
         ? this.prisma.material.findMany({

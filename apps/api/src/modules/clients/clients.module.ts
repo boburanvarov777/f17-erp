@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query } from
 import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
+import { notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -30,7 +31,10 @@ export class ClientsController {
   @RequirePermissions('clients.read', 'orders.read')
   findAll(@Query('search') search?: string) {
     return this.prisma.client.findMany({
-      where: search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }] } : undefined,
+      where: {
+        deletedAt: null,
+        ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { code: { contains: search, mode: 'insensitive' as const } }] } : {}),
+      },
       orderBy: { name: 'asc' },
       include: { _count: { select: { orders: true, models: true } } },
     });
@@ -39,7 +43,13 @@ export class ClientsController {
   @Post()
   @RequirePermissions('clients.create', 'orders.create')
   async create(@Body() dto: CreateClientDto, @CurrentUser() actor: JwtUser) {
-    const c = await this.prisma.client.create({ data: { ...dto, code: dto.code.trim().toUpperCase() } });
+    const code = dto.code.trim().toUpperCase();
+    // A deleted client (kept only for old orders) must not block reusing its code.
+    const old = await this.prisma.client.findUnique({ where: { code }, select: { id: true, deletedAt: true } });
+    if (old?.deletedAt) {
+      await this.prisma.client.update({ where: { id: old.id }, data: { code: `${code}~DEL-${old.id.slice(-6)}` } });
+    }
+    const c = await this.prisma.client.create({ data: { ...dto, code } });
     this.audit.log({ userId: actor.sub, action: 'CLIENT_CREATED', entity: 'Client', entityId: c.id, newValue: c });
     await this.notifications.broadcast({
       type: 'CLIENT_CREATED',
@@ -58,12 +68,40 @@ export class ClientsController {
     return c;
   }
 
+  /** What a delete would affect — shown in the confirm dialog. */
+  @Get(':id/usage')
+  @RequirePermissions('clients.read', 'orders.read')
+  async usage(@Param('id') id: string) {
+    const [orders, models] = await Promise.all([
+      this.prisma.order.count({ where: { clientId: id } }),
+      this.prisma.productModel.count({ where: { clientId: id } }),
+    ]);
+    return { orders, models };
+  }
+
+  /**
+   * Unused client → removed from the database. Client with orders/models → hidden
+   * from every list and picker (deletedAt) but kept, so those orders and models
+   * still show who the client was.
+   */
   @Delete(':id')
-  @RequirePermissions('clients.delete')
+  @RequirePermissions('clients.delete', 'orders.purge')
   async remove(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
-    await this.prisma.client.delete({ where: { id } });
-    this.audit.log({ userId: actor.sub, action: 'CLIENT_DELETED', entity: 'Client', entityId: id });
-    return { success: true };
+    const client = await this.prisma.client.findUnique({ where: { id } });
+    if (!client || client.deletedAt) throw notFound('err_record_not_found');
+    const [orders, models] = await Promise.all([
+      this.prisma.order.count({ where: { clientId: id } }),
+      this.prisma.productModel.count({ where: { clientId: id } }),
+    ]);
+    const snapshot = { code: client.code, name: client.name, phone: client.phone, orders, models };
+    if (orders + models === 0) {
+      await this.prisma.client.delete({ where: { id } });
+      this.audit.log({ userId: actor.sub, action: 'CLIENT_DELETED', entity: 'Client', entityId: id, oldValue: snapshot });
+      return { success: true, mode: 'deleted', orders, models };
+    }
+    await this.prisma.client.update({ where: { id }, data: { deletedAt: new Date() } });
+    this.audit.log({ userId: actor.sub, action: 'CLIENT_DELETED', entity: 'Client', entityId: id, oldValue: snapshot, newValue: { keptForHistory: true } });
+    return { success: true, mode: 'hidden', orders, models };
   }
 }
 

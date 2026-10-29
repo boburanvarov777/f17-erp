@@ -120,8 +120,16 @@ export class ModelsListComponent {
     return m.photo || m.photos?.[0]?.url || null;
   }
 
+  /** Client of the model being edited — still shown if that client was deleted. */
+  formClient: { id: string; name: string } | null = null;
+
+  isListedClient(id: string): boolean {
+    return this.clients().some((c) => c.id === id);
+  }
+
   open(m: Partial<ProductModel>): void {
     this.fe.reset();
+    this.formClient = m.client?.id ? { id: m.client.id, name: m.client.name } : null;
     this.form = {
       code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', season: m.season ?? '',
       color: m.color ?? '', clientId: m.client?.id ?? '', fabric: m.fabric ?? '', lining: m.lining ?? '',

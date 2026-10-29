@@ -127,7 +127,7 @@
           <div class="field"><label class="label">{{ 'color' | t }}</label><input class="input" [(ngModel)]="form.color" /></div>
           <div class="field">
             <label class="label">{{ 'client' | t }}</label>
-            <select class="select" [(ngModel)]="form.clientId"><option value="" disabled>{{ 'select_client' | t }}</option>@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
+            <select class="select" [(ngModel)]="form.clientId"><option value="" disabled>{{ 'select_client' | t }}</option>@if (formClient && !isListedClient(formClient.id)) { <option [value]="formClient.id">{{ formClient.name }}</option> }@for (c of clients(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
           </div>
           <div class="field full"><label class="label">{{ 'fabric' | t }}</label><input class="input" [(ngModel)]="form.fabric" /></div>
           <div class="field"><label class="label">{{ 'lining' | t }}</label><input class="input" [(ngModel)]="form.lining" /></div>

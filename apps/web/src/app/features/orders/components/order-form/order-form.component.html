@@ -18,6 +18,11 @@
                 <ui-icon name="plus" [size]="14" />
               </button>
             }
+            @if (canDeleteClient() && form.clientId) {
+              <button class="btn btn-sm btn-danger-ghost" type="button" (click)="askDeleteClient()" [attr.data-tip]="'delete_client' | t">
+                <ui-icon name="trash" [size]="14" />
+              </button>
+            }
           </div>
         </div>
 
@@ -166,4 +171,14 @@
           <button class="btn btn-primary" type="button" (click)="saveClient()" [disabled]="clientBusy()">{{ 'save' | t }}</button>
         </div>
       </ui-modal>
+    }
+
+    @if (deletingClient(); as d) {
+      <ui-confirm
+        [title]="'delete_client' | t"
+        [message]="i18n.t('client_delete_confirm', { name: d.client.name })"
+        [note]="clientDeleteNote(d)"
+        [confirmLabel]="'delete' | t"
+        (confirmed)="deleteClient()"
+        (cancelled)="deletingClient.set(null)" />
     }
