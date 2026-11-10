@@ -1,4 +1,5 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import type { AuthResponse, CurrentUser, Department } from '../../../core/models';
 import { seesFullManage, seesManageTab, isWarehouseUser } from '../../../core/utils/role.util';
 import { ApiService } from '../../../core/services/api.service';
@@ -10,6 +11,7 @@ import { tg } from '../utils/telegram';
 export class MiniAppService {
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private router = inject(Router);
   private i18n = inject(I18nService);
 
   readonly user = signal<CurrentUser | null>(null);
@@ -106,6 +108,8 @@ export class MiniAppService {
     this.auth.store(res);
     this.user.set(res.user);
     this.state.set('ready');
+    // Bot "Admin" account: open the full admin sections (view only) right in Telegram.
+    if (res.user.role?.code === 'BOT_ADMIN') void this.router.navigateByUrl('/dashboard');
   }
 
   notifyProduction(): void {

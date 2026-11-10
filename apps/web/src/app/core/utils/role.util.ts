@@ -1,7 +1,12 @@
 import type { CurrentUser } from '../models';
 
 const TOP_ADMIN_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN']);
-const FULL_MANAGE_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN', 'PRODUCTION_MANAGER', 'PLANNING']);
+const FULL_MANAGE_ROLES = new Set(['SUPER_PRO_ADMIN', 'SUPER_ADMIN', 'PRODUCTION_MANAGER', 'PLANNING', 'BOT_ADMIN']);
+
+/** Bot "Admin" account — sees every admin section, view only (no create/edit/delete). */
+export function isReadOnlyViewer(u: CurrentUser | null | undefined): boolean {
+  return u?.role?.code === 'BOT_ADMIN';
+}
 
 /** Super Pro Admin — full system access including user delete. */
 export function isSuperProAdmin(u: CurrentUser | null | undefined): boolean {
@@ -78,7 +83,7 @@ export const PURGE_PERMS = [
 /** Archive page — top admins, or anyone who may delete from the database. */
 export function seesArchive(u: CurrentUser | null | undefined): boolean {
   if (!u) return false;
-  if (isTopAdmin(u)) return true;
+  if (isTopAdmin(u) || isReadOnlyViewer(u)) return true;
   const p = u.permissions ?? [];
   return p.includes('*') || PURGE_PERMS.some((x) => p.includes(x));
 }
