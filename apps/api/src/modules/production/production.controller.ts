@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
-import { CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
+import { CorrectStageDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
 import { ProductionService } from './production.service';
 
 @ApiTags('production')
@@ -41,10 +41,22 @@ export class ProductionController {
     return this.production.updateStage(stageId, dto, actor);
   }
 
+  @Patch('stages/:stageId/correct')
+  @ApiOperation({ summary: 'Tahrirlash — set done/defect totals; the difference is stored as a correction row' })
+  correctStage(@Param('stageId') stageId: string, @Body() dto: CorrectStageDto, @CurrentUser() actor: JwtUser) {
+    return this.production.correctStage(stageId, dto, actor);
+  }
+
   @Post('entries/:entryId/cancel')
   @ApiOperation({ summary: 'Reversal — the original entry is kept for history' })
   cancelEntry(@Param('entryId') entryId: string, @CurrentUser() actor: JwtUser) {
     return this.production.cancelEntry(entryId, actor);
+  }
+
+  @Delete('entries/:entryId')
+  @ApiOperation({ summary: 'Delete an operation row permanently — Super Admin / Super Pro Admin only' })
+  deleteEntry(@Param('entryId') entryId: string, @CurrentUser() actor: JwtUser) {
+    return this.production.deleteEntry(entryId, actor);
   }
 
   @Get(':stage')

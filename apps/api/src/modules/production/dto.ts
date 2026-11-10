@@ -40,6 +40,12 @@ export class UpdateStageDto {
   @ApiPropertyOptional() @IsOptional() @IsObject() meta?: Record<string, unknown>;
 }
 
+/** "Tahrirlash": set the stage's totals; the difference is stored as a correction row. */
+export class CorrectStageDto {
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) doneQty?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) defectQty?: number;
+}
+
 export class CreateDefectDto {
   @ApiProperty() @IsString() orderId!: string;
   @ApiProperty({ enum: StageType }) @IsEnum(StageType) stage!: StageType;

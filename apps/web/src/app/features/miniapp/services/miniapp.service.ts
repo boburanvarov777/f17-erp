@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import type { AuthResponse, CurrentUser, Department } from '../../../core/models';
 import { seesFullManage, seesManageTab, isWarehouseUser } from '../../../core/utils/role.util';
 import { ApiService } from '../../../core/services/api.service';
@@ -18,6 +18,16 @@ export class MiniAppService {
   readonly departments = signal<Department[]>([]);
   /** Bumped after production entry — home + report reload. */
   readonly productionTick = signal(0);
+
+  constructor() {
+    // Session ended (refresh failed, user blocked…) → back to the Mini App login form.
+    effect(() => {
+      if (!this.auth.user() && this.state() === 'ready') {
+        this.user.set(null);
+        this.state.set('login');
+      }
+    });
+  }
 
   can(...perms: string[]): boolean {
     const mine = this.user()?.permissions ?? [];

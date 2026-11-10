@@ -6,11 +6,11 @@ import { badRequest, forbidden, notFound } from '../../common/i18n/api-errors';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { resolveStageStatus, stageEndDate, stageProgress, downstreamPlanQty, effectiveStagePlan } from '../../common/utils/stage-status';
-import { STAGE_PERMISSION_PREFIX } from '../../common/permissions';
+import { assertTopAdmin, STAGE_PERMISSION_PREFIX } from '../../common/permissions';
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS, formatAuditTelegramUsername } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
+import { CorrectStageDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
 
 export const STAGE_SEQUENCE: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
 
@@ -411,6 +411,95 @@ export class ProductionService {
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.STAGE_ENTRY_CANCELLED, entity: 'StageEntry', entityId: entryId, oldValue: entry });
     this.events.emitAll('production:updated', { orderId: updated.orderId, stage: updated.stage, doneQty: updated.doneQty });
     return this.decorate(updated, feed);
+  }
+
+  /**
+   * "Tahrirlash" — sets the stage's done / defect totals to the given values.
+   * The difference is written as one correction row (source WEB, note "Correction"),
+   * so the operations history still adds up to the totals.
+   */
+  async correctStage(stageId: string, dto: CorrectStageDto, actor: JwtUser) {
+    const current = await this.prisma.orderStage.findUnique({ where: { id: stageId } });
+    if (!current) throw notFound('err_stage_not_found');
+    this.assertStageAccess(current.stage, actor, 'update');
+
+    const doneQty = dto.doneQty ?? current.doneQty;
+    const defectQty = dto.defectQty ?? current.defectQty;
+    const diff = doneQty - current.doneQty;
+    const diffDefect = defectQty - current.defectQty;
+    if (diff === 0 && diffDefect === 0) return { success: true, changed: false };
+
+    const idx = STAGE_SEQUENCE.indexOf(current.stage);
+    if (idx > 0 && diff > 0) {
+      const prev = await this.prisma.orderStage.findFirst({ where: { orderId: current.orderId, stage: STAGE_SEQUENCE[idx - 1] } });
+      const available = prev?.doneQty ?? 0;
+      if (doneQty > available) {
+        throw badRequest('err_stage_flow', { stage: `stage_${STAGE_SEQUENCE[idx - 1]}`, available, done: current.doneQty, qty: diff });
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.stageEntry.create({
+        data: { orderStageId: stageId, qty: diff, defectQty: diffDefect, userId: actor.sub, note: 'Correction', source: 'WEB' },
+      });
+      const order = await tx.order.findUnique({ where: { id: current.orderId }, select: { qty: true } });
+      const cuttingDone = current.stage === 'CUTTING'
+        ? doneQty
+        : (await tx.orderStage.findFirst({ where: { orderId: current.orderId, stage: 'CUTTING' } }))?.doneQty ?? 0;
+      const effectivePlan = effectiveStagePlan(current.stage, current.planQty, cuttingDone, order?.qty ?? current.planQty);
+      const status = resolveStageStatus(doneQty, effectivePlan, current.status, current.stage);
+      await tx.orderStage.update({
+        where: { id: stageId },
+        data: { doneQty, defectQty, status, endDate: stageEndDate(status, current.endDate) },
+      });
+      if (current.stage === 'CUTTING' && order) {
+        await this.syncDownstreamPlans(tx, current.orderId, doneQty, order.qty);
+      }
+    });
+
+    this.audit.log({
+      userId: actor.sub, action: AUDIT_ACTIONS.STAGE_UPDATED, entity: 'OrderStage', entityId: stageId,
+      oldValue: { doneQty: current.doneQty, defectQty: current.defectQty },
+      newValue: { doneQty, defectQty, correction: true },
+    });
+    this.events.emitAll('production:updated', { orderId: current.orderId, stage: current.stage, doneQty });
+    return { success: true, changed: true };
+  }
+
+  /**
+   * Removes an operation row for good — Super Admin / Super Pro Admin only.
+   * An active entry is first reversed (so done/defect counters drop by its amount),
+   * then the entry and its reversal row are both deleted. Deleting a reversal row
+   * removes its pair too, so the counters stay consistent either way.
+   */
+  async deleteEntry(entryId: string, actor: JwtUser) {
+    assertTopAdmin(actor);
+    const entry = await this.prisma.stageEntry.findUnique({ where: { id: entryId }, include: { orderStage: true } });
+    if (!entry) throw notFound('err_record_not_found');
+
+    const REV = 'Reversal of ';
+    const originalId = entry.note?.startsWith(REV) ? entry.note.slice(REV.length).trim() : entry.id;
+    const original = originalId === entry.id
+      ? entry
+      : await this.prisma.stageEntry.findUnique({ where: { id: originalId }, include: { orderStage: true } });
+
+    // Still counted in the totals → reverse it first (recomputes stage + downstream plans).
+    if (original && !original.cancelled) {
+      await this.cancelEntry(original.id, actor);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.stageEntry.deleteMany({ where: { orderStageId: entry.orderStageId, note: `${REV}${originalId}` } });
+      await tx.stageEntry.deleteMany({ where: { id: { in: [originalId, entry.id] } } });
+      await tx.defect.deleteMany({ where: { comment: `entry:${originalId}` } });
+    });
+
+    this.audit.log({
+      userId: actor.sub, action: AUDIT_ACTIONS.STAGE_ENTRY_DELETED, entity: 'StageEntry', entityId: originalId,
+      oldValue: { stage: entry.orderStage.stage, orderId: entry.orderStage.orderId, qty: original?.qty ?? entry.qty, defectQty: original?.defectQty ?? entry.defectQty, date: original?.date ?? entry.date },
+    });
+    this.events.emitAll('production:updated', { orderId: entry.orderStage.orderId, stage: entry.orderStage.stage });
+    return { success: true };
   }
 
   async updateStage(stageId: string, dto: UpdateStageDto, actor: JwtUser) {

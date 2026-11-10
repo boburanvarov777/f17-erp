@@ -40,8 +40,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const attach = (token: string | null) =>
     token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
 
+  // Login endpoints answer 401 for a wrong password — that is not an expired session.
   const isAuthCall =
-    req.url.includes('/auth/login') || req.url.includes('/auth/refresh') || req.url.includes('/auth/logout');
+    req.url.includes('/auth/login') ||
+    req.url.includes('/auth/refresh') ||
+    req.url.includes('/auth/logout') ||
+    req.url.includes('/telegram/mini-app/login');
 
   const sessionEnded = (err: unknown) => {
     auth.logout();

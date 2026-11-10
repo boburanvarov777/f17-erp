@@ -83,17 +83,17 @@ export class MiniAppService {
       where: { telegramId: tgId },
       select: { phone: true },
     });
+    // Check the Telegram binding before a session is issued (not after).
+    const target = await this.auth.validateUser(login, password);
+    if (target.telegramId && target.telegramId !== tgId) {
+      throw unauthorized('err_account_other_tg');
+    }
     const result = await this.auth.login({ login, password, departmentCode }, {
       ...ctx,
       telegramId: tgId,
       telegramUsername: tgUser.username,
       phone: session?.phone ?? null,
     });
-    const linked = await this.prisma.user.findUnique({ where: { id: result.user.id } });
-
-    if (linked?.telegramId && linked.telegramId !== tgId) {
-      throw unauthorized('err_account_other_tg');
-    }
 
     // Same Telegram device may switch test accounts (login + password each time).
     await this.prisma.$transaction(async (tx) => {
