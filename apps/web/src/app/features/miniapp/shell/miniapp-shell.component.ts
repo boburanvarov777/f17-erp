@@ -63,9 +63,11 @@ export class MiniAppShellComponent {
     this.ma.login(this.login.trim(), this.password, this.departmentCode || undefined).subscribe({
       next: (res) => {
         this.busy.set(false);
-        this.ma.apply(res);
         haptic('success');
-        void this.router.navigateByUrl(getMiniAppHomeRoute(res.user));
+        // apply() opens the admin sections for the bot "Admin" account itself —
+        // don't send it back to the Mini App home afterwards.
+        this.ma.apply(res);
+        if (res.user.role?.code !== 'BOT_ADMIN') void this.router.navigateByUrl(getMiniAppHomeRoute(res.user));
       },
       error: (e) => {
         this.busy.set(false);
