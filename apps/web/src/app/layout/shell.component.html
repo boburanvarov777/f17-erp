@@ -59,7 +59,8 @@
             </span>
 
             <!-- language -->
-            <ui-lang-picker variant="compact" [current]="i18n.lang()" (changed)="setLang($event)" />
+            <ui-lang-picker class="lang-wide" variant="compact" [current]="i18n.lang()" (changed)="setLang($event)" />
+            <ui-lang-select class="lang-narrow" [current]="i18n.lang()" (changed)="setLang($event)" />
 
             <!-- theme -->
             <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="theme.toggle()" [attr.data-tip]="'theme' | t">
