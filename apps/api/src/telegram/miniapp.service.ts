@@ -106,9 +106,9 @@ export class MiniAppService {
     // The owner's Telegram works as a second ID on every account: from it any user
     // can be opened with that user's login + password, and nobody's own binding moves.
     const ownerDevice = await this.isOwnerTelegram(tgId);
-    // The shared bot-admin account ("Admin" department) may also be opened from the
-    // Telegram of any Super Admin / Super Pro Admin (e.g. Toxirov Komiljon).
-    const sharedOk = target.role?.code === 'BOT_ADMIN' && (await this.isTopAdminTelegram(tgId));
+    // The bot-admin account ("Admin" department) is shared: it is never bound to a
+    // Telegram and opens from any Telegram with its login + password.
+    const sharedOk = target.role?.code === 'BOT_ADMIN';
     const trusted = ownerDevice || sharedOk;
     if (target.telegramId && target.telegramId !== tgId && !trusted) {
       throw unauthorized('err_account_other_tg');
@@ -120,6 +120,16 @@ export class MiniAppService {
       phone: session?.phone ?? null,
     });
 
+    if (sharedOk) {
+      if (target.telegramId) {
+        await this.prisma.user.update({
+          where: { id: target.id },
+          data: { telegramId: null, telegramUsername: null, telegramLinkedAt: null },
+        });
+      }
+      this.log.log(`Shared account "${target.login}" opened from Telegram @${tgUser.username ?? tgId}`);
+      return result;
+    }
     if (trusted && target.login !== OWNER_LOGIN && target.telegramId && target.telegramId !== tgId) {
       this.log.log(`Trusted Telegram opened account "${target.login}" (binding unchanged)`);
       return result;
@@ -165,10 +175,4 @@ export class MiniAppService {
     return !!owner?.telegramId && owner.telegramId === tgId;
   }
 
-  /** Telegram bound to a Super Admin / Super Pro Admin account (or the owner's). */
-  private async isTopAdminTelegram(tgId: bigint): Promise<boolean> {
-    if (await this.isOwnerTelegram(tgId)) return true;
-    const u = await this.prisma.user.findUnique({ where: { telegramId: tgId }, select: { role: { select: { code: true } } } });
-    return ['SUPER_ADMIN', 'SUPER_PRO_ADMIN'].includes(u?.role?.code ?? '');
-  }
 }
