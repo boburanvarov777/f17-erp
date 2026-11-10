@@ -43,7 +43,15 @@ export class MaReportComponent {
   defectQty: number | null = null;
   note = '';
 
-  readonly stageType = computed(() => this.ma.user()?.department?.stage ?? null);
+  /** All stages this user may report in — one for stage staff, several for the bot admin. */
+  readonly stageChoices = computed(() => (this.ma.user() ? this.ma.availableStages() : []));
+  readonly stageType = computed(() => {
+    const own = this.ma.user()?.department?.stage;
+    if (own) return own;
+    const picked = this.ma.chosenStage();
+    const choices = this.stageChoices();
+    return picked && choices.includes(picked) ? picked : (choices[0] ?? null);
+  });
   readonly stageSlug = computed(() => this.stageType()?.toLowerCase() ?? '');
   readonly isPacking = computed(() => this.stageType() === 'PACKING');
   readonly isCutting = computed(() => this.stageType() === 'CUTTING');
@@ -54,6 +62,13 @@ export class MaReportComponent {
     effect(() => {
       if (this.ma.productionTick() > 0) this.load();
     });
+  }
+
+  pickStage(st: string): void {
+    if (st === this.stageType()) return;
+    this.ma.chosenStage.set(st);
+    this.selected.set(null);
+    this.load();
   }
 
   load(): void {
