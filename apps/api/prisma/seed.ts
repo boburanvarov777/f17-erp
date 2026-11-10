@@ -176,6 +176,18 @@ async function main() {
     }
   }
 
+  // Bot admin is view-only: every admin section, read permissions only (once).
+  if (!(await prisma.setting.findUnique({ where: { key: 'bot_admin_readonly_v1' } }))) {
+    const readPerms = [
+      'dashboard.read', 'orders.read', 'schedule.read', 'plans.read', 'models.read', 'clients.read',
+      'warehouse.read', 'cutting.read', 'sewing.read', 'washing.read', 'laser.read', 'packing.read',
+      'loading.read', 'reports.read', 'tasks.read', 'users.read', 'departments.read',
+    ];
+    await prisma.role.updateMany({ where: { code: 'BOT_ADMIN' }, data: { permissions: readPerms, description: 'Telegram botda barcha bo‘limlarni faqat ko‘radi' } });
+    await prisma.setting.create({ data: { key: 'bot_admin_readonly_v1', value: { at: new Date().toISOString() } } });
+    console.log('  bot admin role set to view-only');
+  }
+
   // Logins are stored and matched in lower case — fix the bot admin created as "adminPro".
   await prisma.user.updateMany({ where: { login: 'adminPro' }, data: { login: 'adminpro' } });
 

@@ -717,3 +717,32 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
   .page { padding: 0; }
   .card { box-shadow: none; border: 1px solid #ddd; }
 }
+
+/* ── View-only session (bot "Admin" account) ─────────────────────────────
+   Permissions already hide most actions and the API refuses writes; this is
+   the safety net for buttons rendered without a permission check. Viewing
+   (eye icon), paging, filters and export stay. */
+.ro-mode .page-head .btn-primary,
+.ro-mode .page-head .btn-danger,
+.ro-mode td.actions .btn:not(:has(ui-icon[name="eye"])),
+.ro-mode .actions .btn:not(:has(ui-icon[name="eye"])),
+.ro-mode .modal .btn-primary,
+.ro-mode .modal .btn-danger,
+.ro-mode .modal .btn-danger-ghost,
+.ro-mode .btn-danger-ghost,
+.ro-mode .bulk-bar,
+.ro-mode input[type="checkbox"].row-check { display: none !important; }
+
+.ro-banner {
+  display: flex; align-items: center; gap: 6px;
+  margin: 10px 16px 0; padding: 7px 12px; border-radius: var(--r-md);
+  background: var(--primary-50, var(--surface-2)); color: var(--primary);
+  font-size: 12.5px; font-weight: 550;
+}
+
+/* Phones (also the Telegram webview): tighter pages, scrollable wide tables. */
+@media (max-width: 640px) {
+  .ro-mode .page-head { flex-wrap: wrap; gap: 8px; }
+  .ro-mode .table-wrap, .ro-mode .card > table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ro-mode .stats-grid, .ro-mode .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

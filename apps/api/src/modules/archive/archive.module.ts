@@ -36,6 +36,7 @@ export class ArchiveService {
   /** Archive page: top admins, or anyone allowed to delete from the database. */
   private assertAccess(actor: JwtUser): void {
     if (isTopAdmin(actor)) return;
+    if (actor.roleCode === 'BOT_ADMIN') return; // view-only bot admin (restore/delete still refused)
     if (PURGE_PERMISSIONS.some((p) => hasPermission(actor, p))) return;
     assertTopAdmin(actor);
   }

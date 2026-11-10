@@ -24,7 +24,11 @@ export class AuthService {
   get refreshToken(): string | null { return localStorage.getItem(REFRESH); }
 
   /** Backend re-checks every permission; this only shapes the UI. */
+  /** View-only session (bot "Admin" account): every action button is hidden. */
+  readonly readOnly = computed(() => this.user()?.role?.code === 'BOT_ADMIN');
+
   can(...perms: string[]): boolean {
+    if (this.readOnly() && !perms.some((p) => p.endsWith('.read'))) return false;
     const mine = this.permissions();
     if (mine.includes('*')) return true;
     return perms.some((p) => mine.includes(p));
@@ -71,7 +75,9 @@ export class AuthService {
     this.user.set(null);
     if (navigate) {
       // Inside the Telegram Mini App stay there — its shell shows its own login form.
-      const inMiniApp = typeof location !== 'undefined' && location.pathname.startsWith('/miniapp');
+      // Inside Telegram (also the admin views opened from the bot) → back to the bot login.
+      const w = typeof window !== 'undefined' ? (window as unknown as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp : undefined;
+      const inMiniApp = typeof location !== 'undefined' && (location.pathname.startsWith('/miniapp') || !!w?.initData);
       void this.router.navigate([inMiniApp ? '/miniapp' : '/login']);
     }
   }

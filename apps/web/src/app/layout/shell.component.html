@@ -1,4 +1,4 @@
-    <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
+    <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()" [class.ro-mode]="auth.readOnly()">
       <!-- ───────── sidebar ───────── -->
       <aside class="sidebar no-print">
         <div class="brand">
@@ -127,7 +127,12 @@
           </div>
         </header>
 
-        <main class="content"><router-outlet /></main>
+        <main class="content">
+          @if (auth.readOnly()) {
+            <div class="ro-banner"><ui-icon name="eye" [size]="14" /> {{ 'readonly_mode' | t }}</div>
+          }
+          <router-outlet />
+        </main>
       </div>
 
       @if (mobileOpen()) { <div class="scrim" (click)="mobileOpen.set(false)"></div> }
