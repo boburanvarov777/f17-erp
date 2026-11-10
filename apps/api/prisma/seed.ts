@@ -159,6 +159,23 @@ async function main() {
     console.log('  bot admin: department "Admin" + user adminpro created');
   }
 
+  // Owner's Telegram ID: remember it once from any account the owner (@anvarov_bobur)
+  // has signed into from the bot, so it works as the second ID even while the owner
+  // account itself is not bound.
+  if (!(await prisma.setting.findUnique({ where: { key: 'owner_telegram_ids' } }))) {
+    const ownerLogin = (process.env.SEED_SUPERADMIN_LOGIN || 'bobur').trim().toLowerCase();
+    const ownerRow = await prisma.user.findUnique({ where: { login: ownerLogin }, select: { telegramId: true } });
+    const viaUsername = await prisma.user.findFirst({
+      where: { telegramUsername: { equals: 'anvarov_bobur', mode: 'insensitive' }, telegramId: { not: null } },
+      select: { telegramId: true },
+    });
+    const ids = [ownerRow?.telegramId, viaUsername?.telegramId].filter((x): x is bigint => !!x).map(String);
+    if (ids.length) {
+      await prisma.setting.create({ data: { key: 'owner_telegram_ids', value: [...new Set(ids)] } });
+      console.log(`  owner telegram ids remembered: ${ids.length}`);
+    }
+  }
+
   // Logins are stored and matched in lower case — fix the bot admin created as "adminPro".
   await prisma.user.updateMany({ where: { login: 'adminPro' }, data: { login: 'adminpro' } });
 
