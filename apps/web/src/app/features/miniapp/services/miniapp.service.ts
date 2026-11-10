@@ -87,7 +87,11 @@ export class MiniAppService {
 
     if (this.auth.isAuthenticated()) {
       this.auth.me().subscribe({
-        next: (u) => { this.user.set(u); this.state.set('ready'); },
+        next: (u) => {
+          this.user.set(u);
+          this.state.set('ready');
+          if (u.role?.code === 'BOT_ADMIN') void this.router.navigateByUrl('/dashboard');
+        },
         error: () => this.state.set('login'),
       });
     } else {
@@ -108,8 +112,6 @@ export class MiniAppService {
     this.auth.store(res);
     this.user.set(res.user);
     this.state.set('ready');
-    // Bot "Admin" account: open the full admin sections (view only) right in Telegram.
-    if (res.user.role?.code === 'BOT_ADMIN') void this.router.navigateByUrl('/dashboard');
   }
 
   notifyProduction(): void {

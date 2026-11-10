@@ -27,6 +27,8 @@ export function getMiniAppTabs(user: CurrentUser | null | undefined): MiniAppTab
 }
 
 export function getMiniAppHomeRoute(user: CurrentUser | null | undefined): string {
+  // Bot "Admin" account → the full admin sections (view only), not the Mini App pages.
+  if (user?.role?.code === 'BOT_ADMIN') return '/dashboard';
   if (isWarehouseUser(user)) return '/miniapp/warehouse';
   return '/miniapp/report';
 }

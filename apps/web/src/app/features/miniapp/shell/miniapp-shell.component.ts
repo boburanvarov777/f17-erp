@@ -67,7 +67,7 @@ export class MiniAppShellComponent {
         // apply() opens the admin sections for the bot "Admin" account itself —
         // don't send it back to the Mini App home afterwards.
         this.ma.apply(res);
-        if (res.user.role?.code !== 'BOT_ADMIN') void this.router.navigateByUrl(getMiniAppHomeRoute(res.user));
+        void this.router.navigateByUrl(getMiniAppHomeRoute(res.user));
       },
       error: (e) => {
         this.busy.set(false);
