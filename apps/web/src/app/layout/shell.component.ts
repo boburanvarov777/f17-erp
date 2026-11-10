@@ -11,6 +11,7 @@ import { ThemeService } from '../core/services/theme.service';
 import { AgoPipe, InitialsPipe } from '../shared/pipes/format.pipe';
 import { TPipe } from '../shared/pipes/t.pipe';
 import { IconComponent } from '../shared/ui/icon.component';
+import { LangSelectComponent } from '../shared/ui/lang-select.component';
 import { LangPickerComponent } from '../shared/ui/lang-picker.component';
 import { GlobalSearchComponent } from './global-search.component';
 import type { Lang } from '../core/models';
@@ -23,7 +24,7 @@ interface NavGroup { label?: string; items: NavItem[]; }
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, LangPickerComponent, TPipe, AgoPipe, InitialsPipe, GlobalSearchComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, LangPickerComponent, TPipe, AgoPipe, InitialsPipe, GlobalSearchComponent, LangSelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent {
