@@ -90,7 +90,7 @@
                             <ui-icon name="pencil" [size]="15" />
                           </button>
                         }
-                        @if (canWrite() && (isCutting() || s.status !== 'COMPLETED')) {
+                        @if (canWrite()) {
                           <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="$event.stopPropagation(); openEntry(s)" [attr.data-tip]="'update_operation' | t">
                             <ui-icon name="plus" [size]="15" />
                           </button>
