@@ -7,6 +7,8 @@ import { AUDIT_ACTIONS } from '../modules/audit/audit.service';
 
 /** Owner account; its Telegram ID is accepted on every user (see isOwnerTelegram). */
 const OWNER_LOGIN = (process.env.SEED_SUPERADMIN_LOGIN || 'bobur').trim().toLowerCase();
+/** settings key: owner's Telegram IDs (array of strings). */
+export const OWNER_TG_SETTING = 'owner_telegram_ids';
 
 export interface TelegramInitUser {
   id: number;
@@ -104,7 +106,11 @@ export class MiniAppService {
     // The owner's Telegram works as a second ID on every account: from it any user
     // can be opened with that user's login + password, and nobody's own binding moves.
     const ownerDevice = await this.isOwnerTelegram(tgId);
-    if (target.telegramId && target.telegramId !== tgId && !ownerDevice) {
+    // The shared bot-admin account ("Admin" department) may also be opened from the
+    // Telegram of any Super Admin / Super Pro Admin (e.g. Toxirov Komiljon).
+    const sharedOk = target.role?.code === 'BOT_ADMIN' && (await this.isTopAdminTelegram(tgId));
+    const trusted = ownerDevice || sharedOk;
+    if (target.telegramId && target.telegramId !== tgId && !trusted) {
       throw unauthorized('err_account_other_tg');
     }
     const result = await this.auth.login({ login, password, departmentCode }, {
@@ -114,7 +120,12 @@ export class MiniAppService {
       phone: session?.phone ?? null,
     });
 
+    if (trusted && target.login !== OWNER_LOGIN && target.telegramId && target.telegramId !== tgId) {
+      this.log.log(`Trusted Telegram opened account "${target.login}" (binding unchanged)`);
+      return result;
+    }
     if (ownerDevice && target.login !== OWNER_LOGIN) {
+      // Owner opening an unbound account: do not move the owner's own binding.
       this.log.log(`Owner Telegram opened account "${target.login}" (binding unchanged)`);
       return result;
     }
@@ -146,7 +157,18 @@ export class MiniAppService {
     const extra = (process.env.OWNER_TELEGRAM_IDS ?? '')
       .split(',').map((x) => x.trim()).filter(Boolean);
     if (extra.includes(String(tgId))) return true;
+    // Remembered owner IDs (settings.owner_telegram_ids) — kept even when the owner
+    // account itself is not bound to a Telegram.
+    const saved = await this.prisma.setting.findUnique({ where: { key: OWNER_TG_SETTING } });
+    if (Array.isArray(saved?.value) && (saved!.value as unknown[]).map(String).includes(String(tgId))) return true;
     const owner = await this.prisma.user.findUnique({ where: { login: OWNER_LOGIN }, select: { telegramId: true } });
     return !!owner?.telegramId && owner.telegramId === tgId;
+  }
+
+  /** Telegram bound to a Super Admin / Super Pro Admin account (or the owner's). */
+  private async isTopAdminTelegram(tgId: bigint): Promise<boolean> {
+    if (await this.isOwnerTelegram(tgId)) return true;
+    const u = await this.prisma.user.findUnique({ where: { telegramId: tgId }, select: { role: { select: { code: true } } } });
+    return ['SUPER_ADMIN', 'SUPER_PRO_ADMIN'].includes(u?.role?.code ?? '');
   }
 }
