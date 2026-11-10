@@ -1,4 +1,4 @@
-.grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grid.three { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
     .tlist { display: flex; flex-direction: column; }
     .titem { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
     .titem:last-child { border-bottom: none; }

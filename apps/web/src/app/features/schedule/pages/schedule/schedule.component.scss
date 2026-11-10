@@ -257,7 +257,7 @@ button.lg:focus-visible {
   flex: 0 0 720px;
   width: 720px;
   display: grid;
-  grid-template-columns: minmax(148px, 1fr) 118px 100px 166px 112px;
+  grid-template-columns: minmax(min(148px, 100%), 1fr) 118px 100px 166px 112px;
   align-items: center;
   column-gap: 8px;
   padding: 0 10px;

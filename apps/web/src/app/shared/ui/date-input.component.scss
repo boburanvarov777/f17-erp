@@ -101,9 +101,9 @@
     .date-panel {
       position: fixed;
       z-index: 450;
-      width: 336px;
-      min-width: 336px;
-      max-width: min(336px, calc(100vw - 16px));
+      width: min(336px, calc(100vw - 16px));
+      min-width: 0;
+      max-width: calc(100vw - 16px);
       padding: 14px 16px;
       border: 1px solid var(--border-strong);
       border-radius: var(--r-lg);

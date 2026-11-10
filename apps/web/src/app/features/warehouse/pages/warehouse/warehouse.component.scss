@@ -8,7 +8,7 @@
     .op.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
 
 .stock-preview {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 8px;
   padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2);
 }
 .stock-preview > div { display: flex; flex-direction: column; gap: 2px; }
@@ -18,3 +18,6 @@
 .stock-preview .warn { grid-column: 1 / -1; color: var(--danger); font-size: 12px; }
 .stock-preview.bad { border-color: var(--danger); }
 .stock-preview.bad .after b { color: var(--danger); }
+
+.stock-note { white-space: nowrap; }
+@media (max-width: 720px) { .stock-note { white-space: normal; } }

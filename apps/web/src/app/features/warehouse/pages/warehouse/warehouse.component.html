@@ -84,7 +84,7 @@
               <button class="btn btn-sm" type="button" (click)="clearAsOf()">{{ 'warehouse_as_of_clear' | t }}</button>
             }
             <div class="grow"></div>
-            <span class="tiny text-3 nowrap"><ui-icon name="info" [size]="13" /> {{ 'stock_note' | t }}</span>
+            <span class="tiny text-3 stock-note"><ui-icon name="info" [size]="13" /> {{ 'stock_note' | t }}</span>
           </div>
 
           @if (loading()) { <ui-loading /> }
