@@ -1,4 +1,4 @@
-.grid.two { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); }
     dl.kv { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
     dl.kv dt { color: var(--text-3); }
     dl.kv dd { margin: 0; font-weight: 450; }
@@ -20,7 +20,7 @@
 
     .pipeline-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
       gap: 12px;
     }
 

@@ -1,7 +1,7 @@
-.bc { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; gap: 0 10px; }
+.bc { display: grid; min-width: 0; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 0 10px; }
     .bc-axis { display: flex; flex-direction: column-reverse; justify-content: space-between; align-items: flex-end; }
     .bc-tick { font-size: 10px; color: var(--text-3); line-height: 1; transform: translateY(-4px); font-variant-numeric: tabular-nums; }
-    .bc-plot { position: relative; display: flex; flex-direction: column-reverse; justify-content: space-between; }
+    .bc-plot { min-width: 0; position: relative; display: flex; flex-direction: column-reverse; justify-content: space-between; }
     .bc-line { border-top: 1px dashed var(--border); height: 0; }
     .bc-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 4px; }
     .bc-col {

@@ -14,5 +14,5 @@
 }
 .pack-step b { color: var(--text); font-variant-numeric: tabular-nums; }
 .pack-step.done { border-color: var(--success); background: var(--success-bg); }
-.pack-steps.lg { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 0; }
+.pack-steps.lg { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: 8px; margin-top: 0; }
 .pack-steps.lg .pack-step { flex-direction: column; align-items: flex-start; border-radius: var(--r-md); padding: 8px 10px; white-space: normal; }

@@ -1,4 +1,4 @@
-.grid.two { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); }
 
     .presets { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; }
     .presets button {

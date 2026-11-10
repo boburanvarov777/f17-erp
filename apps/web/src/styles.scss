@@ -741,9 +741,13 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 12.5px; font-weight: 550;
 }
 
-/* Phones (also the Telegram webview): tighter pages, scrollable wide tables. */
-@media (max-width: 640px) {
-  .ro-mode .page-head { flex-wrap: wrap; gap: 8px; }
-  .ro-mode .table-wrap, .ro-mode .card > table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ro-mode .stats-grid, .ro-mode .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ── Phones and the Telegram webview ─────────────────────────────────────
+   A wide table or chart must scroll inside its card instead of widening the
+   whole page (which made iOS / Telegram zoom the page out). */
+.card, .page > *, [class*="grid"] > *, .row > * { min-width: 0; }
+.card { max-width: 100%; }
+.table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 720px) {
+  .page-head { flex-wrap: wrap; gap: 8px; }
+  .page-head h1 { font-size: 20px; }
 }

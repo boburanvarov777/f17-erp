@@ -1,6 +1,6 @@
-.grid.two { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); }
 
-    .dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
+    .dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 16px; }
     .dept .card-head { gap: 10px; flex-wrap: wrap; }
     .dept-sum { font-size: 12px; color: var(--text-3); }
     .dept-sum b { color: var(--text); font-size: 13px; }
