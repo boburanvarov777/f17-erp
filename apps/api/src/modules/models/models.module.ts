@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Logger, Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, Injectable, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
 import { ModelStatus, Prisma } from '@prisma/client';
@@ -75,6 +75,7 @@ const SORTABLE = ['code', 'name', 'category', 'season', 'status', 'createdAt'];
 
 @Injectable()
 export class ModelsService {
+  private readonly log = new Logger('Models');
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
@@ -184,6 +185,7 @@ export class ModelsService {
     });
 
     this.audit.log({ userId: actor.sub, action: AUDIT_ACTIONS.MODEL_UPDATED, entity: 'ProductModel', entityId: id, oldValue: { name: existing.name }, newValue: dto });
+    this.log.log(`Model ${model.code} saved: colours sent=${dto.colors?.length ?? '-'} stored=${model.colors.length}, sizes=${model.sizes.length}`);
     return model;
   }
 

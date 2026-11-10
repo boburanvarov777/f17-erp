@@ -544,6 +544,11 @@ export class ModelsListComponent {
     ).subscribe({
       next: (model) => {
         this.busy.set(false);
+        // The server answers with the saved model — say so if colours did not stick.
+        const sent = (body['colors'] as unknown[] | undefined)?.length ?? 0;
+        if (sent && model && (model.colors?.length ?? 0) < sent) {
+          this.toast.error(this.i18n.t('model_colors_not_saved'));
+        }
         this.revokePendingPreviews();
         this.clearAllProgressTimers();
         this.pendingFiles.set([]);

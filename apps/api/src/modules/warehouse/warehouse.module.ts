@@ -221,7 +221,13 @@ export class WarehouseService {
     return map;
   }
 
+  /** "10000" typed into the unit field (meant as the quantity) is refused. */
+  private assertUnit(unit?: string) {
+    if (unit != null && /^[\d\s.,]+$/.test(unit.trim())) throw badRequest('err_unit_is_number');
+  }
+
   async create(dto: CreateMaterialDto, actor: JwtUser) {
+    this.assertUnit(dto.unit);
     const material = await this.prisma.$transaction(async (tx) => {
       const m = await tx.material.create({
         data: {
@@ -246,6 +252,7 @@ export class WarehouseService {
   }
 
   async update(id: string, dto: UpdateMaterialDto, actor: JwtUser) {
+    this.assertUnit(dto.unit);
     if ((dto as any).quantity != null) {
       throw badRequest('err_stock_direct_edit');
     }

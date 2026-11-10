@@ -2,11 +2,12 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({ name: 'num', standalone: true })
 export class NumPipe implements PipeTransform {
-  transform(v: number | string | null | undefined, digits = 0): string {
+  /** `trim` drops trailing zeros: 2000 → "2 000", 12.5 → "12,5" (not "2 000,000"). */
+  transform(v: number | string | null | undefined, digits = 0, trim = false): string {
     if (v === null || v === undefined || v === '') return '—';
     const n = typeof v === 'string' ? parseFloat(v) : v;
     if (!Number.isFinite(n)) return '—';
-    return n.toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    return n.toLocaleString('ru-RU', { minimumFractionDigits: trim ? 0 : digits, maximumFractionDigits: digits });
   }
 }
 
