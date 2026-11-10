@@ -5,6 +5,9 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from '../modules/auth/auth.service';
 import { AUDIT_ACTIONS } from '../modules/audit/audit.service';
 
+/** Owner account; its Telegram ID is accepted on every user (see isOwnerTelegram). */
+const OWNER_LOGIN = (process.env.SEED_SUPERADMIN_LOGIN || 'bobur').trim().toLowerCase();
+
 export interface TelegramInitUser {
   id: number;
   first_name?: string;
@@ -98,7 +101,10 @@ export class MiniAppService {
     });
     // Check the Telegram binding before a session is issued (not after).
     const target = await this.auth.validateUser(login, password);
-    if (target.telegramId && target.telegramId !== tgId) {
+    // The owner's Telegram works as a second ID on every account: from it any user
+    // can be opened with that user's login + password, and nobody's own binding moves.
+    const ownerDevice = await this.isOwnerTelegram(tgId);
+    if (target.telegramId && target.telegramId !== tgId && !ownerDevice) {
       throw unauthorized('err_account_other_tg');
     }
     const result = await this.auth.login({ login, password, departmentCode }, {
@@ -107,6 +113,11 @@ export class MiniAppService {
       telegramUsername: tgUser.username,
       phone: session?.phone ?? null,
     });
+
+    if (ownerDevice && target.login !== OWNER_LOGIN) {
+      this.log.log(`Owner Telegram opened account "${target.login}" (binding unchanged)`);
+      return result;
+    }
 
     // Same Telegram device may switch test accounts (login + password each time).
     await this.prisma.$transaction(async (tx) => {
@@ -125,5 +136,17 @@ export class MiniAppService {
     });
 
     return result;
+  }
+
+  /**
+   * True for the owner's Telegram: the ID bound to the owner account (bobur), or any
+   * ID listed in OWNER_TELEGRAM_IDS (comma-separated) on the server.
+   */
+  private async isOwnerTelegram(tgId: bigint): Promise<boolean> {
+    const extra = (process.env.OWNER_TELEGRAM_IDS ?? '')
+      .split(',').map((x) => x.trim()).filter(Boolean);
+    if (extra.includes(String(tgId))) return true;
+    const owner = await this.prisma.user.findUnique({ where: { login: OWNER_LOGIN }, select: { telegramId: true } });
+    return !!owner?.telegramId && owner.telegramId === tgId;
   }
 }
