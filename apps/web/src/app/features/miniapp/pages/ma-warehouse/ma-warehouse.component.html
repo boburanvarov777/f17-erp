@@ -51,8 +51,8 @@
               <div class="small bold">{{ t.material?.name }}</div>
               <div class="tiny text-3 mono mb-2">{{ t.material?.code }}</div>
               <div class="row-between">
-                <span class="mono bold">{{ t.qty | num: 2 }} {{ t.material?.unit }}</span>
-                <span class="tiny text-3">{{ 'balance' | t }}: {{ t.balance | num: 2 }}</span>
+                <span class="mono bold">{{ t.qty | num: 2 : true }} {{ t.material?.unit }}</span>
+                <span class="tiny text-3">{{ 'balance' | t }}: {{ t.balance | num: 2 : true }}</span>
               </div>
               @if (t.note) { <div class="tiny text-3 mt-1">{{ t.note }}</div> }
             </div>
@@ -73,11 +73,11 @@
               <div class="small">{{ m.name }}</div>
               <div class="row-between mt-2">
                 <span class="tiny text-3">{{ 'current_stock' | t }}</span>
-                <span class="mono bold" [class.text-danger]="m.status === 'OUT'">{{ m.stock | num: 2 }} {{ m.unit }}</span>
+                <span class="mono bold" [class.text-danger]="m.status === 'OUT'">{{ m.stock | num: 2 : true }} {{ m.unit }}</span>
               </div>
               <div class="row-between">
                 <span class="tiny text-3">{{ 'min_stock' | t }}</span>
-                <span class="tiny">{{ m.minStock | num: 2 }} {{ m.unit }}</span>
+                <span class="tiny">{{ m.minStock | num: 2 : true }} {{ m.unit }}</span>
               </div>
             </button>
           }
@@ -97,11 +97,11 @@
             <div class="row-between mb-2">
               <div>
                 <div class="tiny text-3">{{ 'current_stock' | t }}</div>
-                <div class="mono bold">{{ m.stock | num: 2 }} <span class="tiny text-3">{{ m.unit }}</span></div>
+                <div class="mono bold">{{ m.stock | num: 2 : true }} <span class="tiny text-3">{{ m.unit }}</span></div>
               </div>
               <div class="text-right">
                 <div class="tiny text-3">{{ 'available' | t }}</div>
-                <div class="mono">{{ m.available | num: 2 }}</div>
+                <div class="mono">{{ m.available | num: 2 : true }}</div>
               </div>
             </div>
             @if (ma.can('warehouse.update')) {
@@ -130,9 +130,9 @@
         </div>
         @if (stockPreview(m, op.op, op.qty); as p) {
           <div class="stock-preview mt-3" [class.bad]="p.insufficient || p.after < 0">
-            <div><span>{{ 'current_stock' | t }}</span><b>{{ p.stock | num: 3 }} {{ m.unit }}</b></div>
-            <div><span>{{ 'available' | t }}</span><b>{{ p.available | num: 3 }} {{ m.unit }}</b></div>
-            <div class="after"><span>{{ 'stock_after_op' | t }}</span><b>{{ p.after | num: 3 }} {{ m.unit }}</b></div>
+            <div><span>{{ 'current_stock' | t }}</span><b>{{ p.stock | num: 3 : true }} {{ m.unit }}</b></div>
+            <div><span>{{ 'available' | t }}</span><b>{{ p.available | num: 3 : true }} {{ m.unit }}</b></div>
+            <div class="after"><span>{{ 'stock_after_op' | t }}</span><b>{{ p.after | num: 3 : true }} {{ m.unit }}</b></div>
             @if (p.insufficient) { <div class="warn">{{ 'stock_not_enough' | t: { n: p.available, unit: m.unit } }}</div> }
           </div>
         }
@@ -162,7 +162,10 @@
           @if (materialFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
         </div>
         <div class="field mt-3"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
-        <div class="field mt-3"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" /></div>
+        <div class="field mt-3"><label class="label">{{ 'unit' | t }}</label><select class="select" [(ngModel)]="form.unit">
+              <option value="" disabled>{{ 'unit_choose' | t }}</option>
+              @for (u of unitOptions($any(form.unit)); track u) { <option [value]="u">{{ isKnownUnit(u) ? (('unit_' + u) | t) : u }}</option> }
+            </select></div>
         <div class="field mt-3"><label class="label">{{ 'min_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.minStock" /></div>
         <div class="field mt-3"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>
         @if (!m.id) {

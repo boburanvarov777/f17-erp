@@ -7,6 +7,7 @@ import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { stockPreview } from '../../../../shared/utils/stock-preview';
+import { MATERIAL_UNITS, unitOptions } from '../../../../shared/utils/units';
 import { NumPipe, ShortDatePipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
 import { EmptyComponent } from '../../../../shared/ui/empty/empty.component';
@@ -101,6 +102,8 @@ export class WarehouseComponent {
 
   private rt = inject(RealtimeService);
   readonly stockPreview = stockPreview;
+  readonly unitOptions = unitOptions;
+  isKnownUnit(u: string): boolean { return MATERIAL_UNITS.includes(u); }
 
   constructor() {
     const qp = new URLSearchParams(location.search);
@@ -344,7 +347,7 @@ export class WarehouseComponent {
   openMaterial(m: Partial<Material>): void {
     this.materialFe.reset();
     this.form = {
-      code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', unit: m.unit ?? '',
+      code: m.code ?? '', name: m.name ?? '', category: m.category ?? '', unit: m.unit ?? 'm',
       minStock: m.minStock ?? null, price: m.price ?? null, supplier: m.supplier ?? '', quantity: null as number | null,
     };
     this.materialModal.set(m);
@@ -354,6 +357,8 @@ export class WarehouseComponent {
     const t = (k: string, p?: Record<string, unknown>) => this.i18n.t(k, p as any);
     if (!this.materialFe.apply(runValidation([
       { key: 'code', label: t('code'), value: this.form['code'], required: true },
+      { key: 'unit', label: t('unit'), value: this.form['unit'], required: true,
+        custom: (v) => (/^\s*[\d.,\s]+\s*$/.test(String(v ?? '')) ? t('err_unit_is_number') : null) },
       { key: 'name', label: t('material'), value: this.form['name'], required: true },
     ], t))) return;
 

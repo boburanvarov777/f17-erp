@@ -55,11 +55,11 @@ export class ModelDetailComponent {
       const key = c.name.trim().toLowerCase();
       if (!key || seen.has(key)) return;
       seen.add(key);
-      out.push({ name: c.name.trim(), hex: c.hex });
+      out.push({ name: c.name.trim(), hex: c.hex, sizes: c.sizes ?? null });
     };
     if (m.color?.trim()) {
       const match = m.colors?.find((c) => c.name.trim().toLowerCase() === m.color!.trim().toLowerCase());
-      add({ name: m.color.trim(), hex: match?.hex });
+      add({ name: m.color.trim(), hex: match?.hex, sizes: match?.sizes ?? null });
     }
     for (const c of m.colors ?? []) add(c);
     return out;

@@ -8,6 +8,7 @@ import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { stockPreview } from '../../../../shared/utils/stock-preview';
+import { MATERIAL_UNITS, unitOptions } from '../../../../shared/utils/units';
 import { GroupedNumberDirective } from '../../../../shared/directives/grouped-number.directive';
 import { NumPipe, ShortDatePipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
@@ -78,6 +79,8 @@ export class MaWarehouseComponent {
 
   private rt = inject(RealtimeService);
   readonly stockPreview = stockPreview;
+  readonly unitOptions = unitOptions;
+  isKnownUnit(u: string): boolean { return MATERIAL_UNITS.includes(u); }
   private silent = false;
 
   constructor() {

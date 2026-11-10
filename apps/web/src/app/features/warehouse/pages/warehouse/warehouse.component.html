@@ -118,10 +118,10 @@
                         <td>{{ m.name }}</td>
                         <td class="small">{{ m.category || '—' }}</td>
                         <td class="small">{{ m.unit }}</td>
-                        <td class="num bold">{{ m.stock | num: 2 }}</td>
-                        <td class="num">{{ m.reserved | num: 2 }}</td>
-                        <td class="num">{{ m.available | num: 2 }}</td>
-                        <td class="num text-3">{{ m.minStock | num: 2 }}</td>
+                        <td class="num bold">{{ m.stock | num: 2 : true }}</td>
+                        <td class="num">{{ m.reserved | num: 2 : true }}</td>
+                        <td class="num">{{ m.available | num: 2 : true }}</td>
+                        <td class="num text-3">{{ m.minStock | num: 2 : true }}</td>
                         <td class="small">{{ m.supplier || '—' }}</td>
                         <td class="small nowrap">{{ m.lastTxAt ? (m.lastTxAt | shortDate: true) : '—' }}</td>
                         <td><ui-status [value]="m.status" /></td>
@@ -169,8 +169,8 @@
                     <td class="small nowrap">{{ t.createdAt | shortDate: true }}</td>
                     <td><div class="small">{{ t.material?.name }}</div><div class="tiny text-3 mono">{{ t.material?.code }}</div></td>
                     <td><span class="badge" [class]="opTone(t.op)">{{ 'op_' + t.op | t }}</span></td>
-                    <td class="num bold">{{ t.qty | num: 2 }} {{ t.material?.unit }}</td>
-                    <td class="num">{{ t.balance | num: 2 }}</td>
+                    <td class="num bold">{{ t.qty | num: 2 : true }} {{ t.material?.unit }}</td>
+                    <td class="num">{{ t.balance | num: 2 : true }}</td>
                     <td class="small mono">{{ t.order?.number || '—' }}</td>
                     <td class="small">{{ t.user ? t.user.lastName + ' ' + t.user.firstName : '—' }}</td>
                     <td class="small text-3">{{ t.note || '—' }}</td>
@@ -235,16 +235,16 @@
           </div>
           <div class="field">
             <label class="label">{{ 'current_stock' | t }}</label>
-            <input class="input" [value]="(m.stock | num: 3) + ' ' + m.unit" disabled />
+            <input class="input" [value]="(m.stock | num: 3 : true) + ' ' + m.unit" disabled />
           </div>
           <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="op.note" /></div>
         </div>
         @if (stockPreview(m, op.op, op.qty); as p) {
           <div class="stock-preview mt-3" [class.bad]="p.insufficient || p.after < 0">
-            <div><span>{{ 'current_stock' | t }}</span><b>{{ p.stock | num: 3 }} {{ m.unit }}</b></div>
-            @if (p.reserved) { <div><span>{{ 'reserved' | t }}</span><b>{{ p.reserved | num: 3 }} {{ m.unit }}</b></div> }
-            <div><span>{{ 'available' | t }}</span><b>{{ p.available | num: 3 }} {{ m.unit }}</b></div>
-            <div class="after"><span>{{ 'stock_after_op' | t }}</span><b>{{ p.after | num: 3 }} {{ m.unit }}</b></div>
+            <div><span>{{ 'current_stock' | t }}</span><b>{{ p.stock | num: 3 : true }} {{ m.unit }}</b></div>
+            @if (p.reserved) { <div><span>{{ 'reserved' | t }}</span><b>{{ p.reserved | num: 3 : true }} {{ m.unit }}</b></div> }
+            <div><span>{{ 'available' | t }}</span><b>{{ p.available | num: 3 : true }} {{ m.unit }}</b></div>
+            <div class="after"><span>{{ 'stock_after_op' | t }}</span><b>{{ p.after | num: 3 : true }} {{ m.unit }}</b></div>
             @if (p.insufficient) { <div class="warn">{{ 'stock_not_enough' | t: { n: p.available, unit: m.unit } }}</div> }
           </div>
         }
@@ -269,12 +269,15 @@
             @if (materialFe.get('name'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
           <div class="field"><label class="label">{{ 'category' | t }}</label><input class="input" [(ngModel)]="form.category" /></div>
-          <div class="field"><label class="label">{{ 'unit' | t }}</label><input class="input" [(ngModel)]="form.unit" [placeholder]="'unit_placeholder' | t" /></div>
+          <div class="field" [class.field-invalid]="materialFe.has('unit')"><label class="label">{{ 'unit' | t }} <span class="req">*</span></label><select class="select" [(ngModel)]="form.unit">
+              <option value="" disabled>{{ 'unit_choose' | t }}</option>
+              @for (u of unitOptions($any(form.unit)); track u) { <option [value]="u">{{ isKnownUnit(u) ? (('unit_' + u) | t) : u }}</option> }
+            </select>@if (materialFe.get('unit'); as msg) { <div class="field-error">{{ msg }}</div> }</div>
           <div class="field"><label class="label">{{ 'min_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.minStock" /></div>
           <div class="field"><label class="label">{{ 'price' | t }}</label><input class="input" type="number" [(ngModel)]="form.price" /></div>
           <div class="field full"><label class="label">{{ 'supplier' | t }}</label><input class="input" [(ngModel)]="form.supplier" /></div>
           @if (!m.id) {
-            <div class="field full"><label class="label">{{ 'initial_stock' | t }}</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.quantity" /></div>
+            <div class="field full"><label class="label">{{ 'initial_stock' | t }} @if (form.unit && isKnownUnit($any(form.unit))) { ({{ ('unit_' + form.unit) | t }}) }</label><input class="input" groupedNumber [decimals]="3" [(ngModel)]="form.quantity" /></div>
           }
         </div>
         <div footer>
