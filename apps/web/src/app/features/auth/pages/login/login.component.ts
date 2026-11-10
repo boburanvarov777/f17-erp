@@ -9,7 +9,7 @@ import { IconComponent } from '../../../../shared/ui/icon.component';
 import { LangPickerComponent } from '../../../../shared/ui/lang-picker.component';
 import type { Lang } from '../../../../core/models';
 import { FieldErrorsState, runValidation } from '../../../../shared/utils/form-validate';
-import { loginErrorKey } from '../../../../shared/utils/login-error';
+import { loginErrorKey, loginServerReason } from '../../../../shared/utils/login-error';
 
 @Component({
   selector: 'app-login',
@@ -31,7 +31,8 @@ export class LoginComponent {
   readonly show = signal(false);
   readonly busy = signal(false);
   readonly errorKey = signal<string | null>(null);
-  readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
+  readonly serverReason = signal<string | null>(null);
+  readonly error = computed(() => this.serverReason() || (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
   readonly year = new Date().getFullYear();
 
@@ -46,6 +47,7 @@ export class LoginComponent {
 
     this.busy.set(true);
     this.errorKey.set(null);
+    this.serverReason.set(null);
 
     this.auth.login(this.login.trim(), this.password).subscribe({
       next: () => {
@@ -55,6 +57,7 @@ export class LoginComponent {
       },
       error: (e) => {
         this.busy.set(false);
+        this.serverReason.set(loginServerReason(e));
         this.errorKey.set(loginErrorKey(e));
       },
     });

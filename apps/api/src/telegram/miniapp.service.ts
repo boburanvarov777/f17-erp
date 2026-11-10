@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { parse, validate, SignatureInvalidError, ExpiredError } from '@telegram-apps/init-data-node';
 import { unauthorized } from '../common/i18n/api-errors';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -15,6 +15,7 @@ export interface TelegramInitUser {
 
 @Injectable()
 export class MiniAppService {
+  private readonly log = new Logger('MiniApp');
   constructor(private prisma: PrismaService, private auth: AuthService) {}
 
   /** Verifies Telegram WebApp initData (hash + auth_date). */
@@ -77,7 +78,19 @@ export class MiniAppService {
     departmentCode?: string,
     ctx: { ip?: string; device?: string } = {},
   ) {
-    const tgUser = this.verifyInitData(initData);
+    // Login + password are the real check here; initData only binds the Telegram
+    // account. If Telegram's signature cannot be verified (most often
+    // TELEGRAM_BOT_TOKEN on the server is not this bot's current token), still let
+    // valid credentials in — without the binding — and log why.
+    let tgUser: TelegramInitUser;
+    try {
+      tgUser = this.verifyInitData(initData);
+    } catch (e) {
+      const body = (e as { getResponse?: () => unknown })?.getResponse?.() as { i18n?: { key?: string } } | undefined;
+      const reason = body?.i18n?.key ?? String(e);
+      this.log.warn(`Mini App login without Telegram binding (login=${login}): ${reason}. Check TELEGRAM_BOT_TOKEN.`);
+      return this.auth.login({ login, password, departmentCode }, ctx);
+    }
     const tgId = BigInt(tgUser.id);
     const session = await this.prisma.telegramSession.findUnique({
       where: { telegramId: tgId },
