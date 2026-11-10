@@ -9,6 +9,7 @@ import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { seesFinancials } from '../../../../core/utils/role.util';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
+import { NumPipe } from '../../../../shared/pipes/format.pipe';
 import { ConfirmComponent } from '../../../../shared/ui/confirm.component';
 import { EmptyComponent } from '../../../../shared/ui/empty/empty.component';
 import { LoadingComponent } from '../../../../shared/ui/loading/loading.component';
@@ -36,7 +37,7 @@ interface PendingFile {
   templateUrl: './models-list.component.html',
   styleUrl: './models-list.component.scss',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, GroupedNumberDirective, SizeRowFieldsComponent, FilePickerComponent],
+  imports: [FormsModule, RouterLink, IconComponent, StatusBadgeComponent, PaginationComponent, EmptyComponent, LoadingComponent, ModalComponent, ConfirmComponent, TPipe, NumPipe, GroupedNumberDirective, SizeRowFieldsComponent, FilePickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsListComponent {
@@ -58,7 +59,12 @@ export class ModelsListComponent {
   readonly archiving = signal<ProductModel | null>(null);
   readonly deleting = signal<ProductModel | null>(null);
   readonly sizes = signal<{ size: string; qty: number | null }[]>([]);
-  readonly colors = signal<{ name: string; hex: string }[]>([]);
+  /** Up to 3 colours, each with a quantity per size (keys = size names). */
+  readonly colors = signal<{ name: string; hex: string; qty: Record<string, number | null> }[]>([]);
+  readonly maxColors = 3;
+  /** Size names currently listed in the form — the columns of each colour's grid. */
+  readonly sizeNames = computed(() => this.sizes().map((s) => s.size.trim()).filter(Boolean));
+  readonly hasColorBreakdown = computed(() => this.colors().some((c) => Object.values(c.qty).some((v) => (v ?? 0) > 0)));
   readonly accessories = signal<{ name: string; color: string; size: string; code: string; qty: number | null }[]>([]);
   readonly existingPhotos = signal<ModelPhoto[]>([]);
   readonly existingFiles = signal<ModelFile[]>([]);
@@ -154,7 +160,11 @@ export class ModelsListComponent {
           this.existingPhotos.set(full.photos ?? []);
           this.existingFiles.set(full.files ?? []);
           this.sizes.set((full.sizes ?? []).map((s) => ({ size: s.size, qty: s.qty })));
-          this.colors.set((full.colors ?? []).map((c) => ({ name: c.name, hex: c.hex || '#cccccc' })));
+          this.colors.set((full.colors ?? []).map((c) => ({
+            name: c.name,
+            hex: c.hex || '#cccccc',
+            qty: Object.fromEntries((c.sizes ?? []).map((x) => [x.size, x.qty])),
+          })));
           this.accessories.set((full.accessories ?? []).map((a) => ({
             name: a.name, color: a.color ?? '', size: a.size ?? '', code: a.code ?? '', qty: a.qty ?? null,
           })));
@@ -461,7 +471,18 @@ export class ModelsListComponent {
   addSize(): void { this.sizes.update((s) => [...s, { size: '', qty: null }]); }
   removeSize(i: number): void { this.sizes.update((s) => s.filter((_, idx) => idx !== i)); }
   touchSizes(): void { this.sizes.update((s) => [...s]); }
-  addColor(): void { this.colors.update((c) => [...c, { name: '', hex: '#cccccc' }]); }
+  addColor(): void {
+    if (this.colors().length >= this.maxColors) return;
+    this.colors.update((c) => [...c, { name: '', hex: '#cccccc', qty: {} }]);
+  }
+  touchColors(): void { this.colors.update((c) => [...c]); }
+  colorTotal(c: { qty: Record<string, number | null> }): number {
+    return this.sizeNames().reduce((sum, sz) => sum + (+(c.qty[sz] ?? 0) || 0), 0);
+  }
+  /** Per-size sum over colours — shown under the grid and saved as the model's sizes. */
+  sizeSum(size: string): number {
+    return this.colors().reduce((sum, c) => sum + (+(c.qty[size] ?? 0) || 0), 0);
+  }
   removeColor(i: number): void { this.colors.update((c) => c.filter((_, idx) => idx !== i)); }
   addAccessory(): void { this.accessories.update((a) => [...a, { name: '', color: '', size: '', code: '', qty: null }]); }
   removeAccessory(i: number): void { this.accessories.update((a) => a.filter((_, idx) => idx !== i)); }
@@ -482,9 +503,16 @@ export class ModelsListComponent {
     if (!body['clientId']) delete body['clientId'];
     if (body['cost'] == null) delete body['cost'];
     const sizes = this.sizes().filter((s) => s.size.trim());
-    if (sizes.length) body['sizes'] = sizes.map((s) => ({ size: s.size.trim(), qty: +(s.qty ?? 0) }));
+    const fromColors = this.hasColorBreakdown();
+    if (sizes.length) {
+      body['sizes'] = sizes.map((s) => ({ size: s.size.trim(), qty: fromColors ? this.sizeSum(s.size.trim()) : +(s.qty ?? 0) }));
+    }
 
-    const colorRows = this.colors().filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), hex: c.hex && c.hex !== '#cccccc' ? c.hex : undefined }));
+    const colorRows = this.colors().filter((c) => c.name.trim()).slice(0, this.maxColors).map((c) => ({
+      name: c.name.trim(),
+      hex: c.hex && c.hex !== '#cccccc' ? c.hex : undefined,
+      sizes: this.sizeNames().map((sz) => ({ size: sz, qty: +(c.qty[sz] ?? 0) || 0 })).filter((x) => x.qty > 0),
+    }));
     if (colorRows.length) body['colors'] = colorRows;
     else if (body['color']) body['colors'] = [{ name: String(body['color']).trim() }];
 

@@ -5,3 +5,14 @@
       background: var(--info-bg); border: 1px solid var(--info-br);
       color: var(--text-2); font-size: 13.5px; font-weight: 500;
     }
+
+.pack-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.pack-step {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-2); font-size: 11px; color: var(--text-2); white-space: nowrap;
+}
+.pack-step b { color: var(--text); font-variant-numeric: tabular-nums; }
+.pack-step.done { border-color: var(--success); background: var(--success-bg); }
+.pack-steps.lg { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 0; }
+.pack-steps.lg .pack-step { flex-direction: column; align-items: flex-start; border-radius: var(--r-md); padding: 8px 10px; white-space: normal; }

@@ -14,6 +14,25 @@ import { CorrectStageDto, CreateDefectDto, CreateEntryDto, QueryStageDto, Update
 
 export const STAGE_SEQUENCE: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
 
+/**
+ * Upakovka inner steps, in order (entry.meta.subStage). Each is tallied on its own;
+ * only BOXING ("korobkaga solish") moves the packing stage's done total. New
+ * non-boxing entries carry meta.countsTotal = false; older rows (before the
+ * steps were tallied) have no flag and keep counting, so history stays consistent.
+ */
+export const PACK_STEPS = ['CLEANING', 'IRONING', 'ACCESSORIES', 'SCANNING', 'BOXING'] as const;
+export type PackStep = (typeof PACK_STEPS)[number];
+
+export function emptyPackSteps(): Record<PackStep, number> {
+  return { CLEANING: 0, IRONING: 0, ACCESSORIES: 0, SCANNING: 0, BOXING: 0 };
+}
+
+/** Whether an entry changes the stage totals (non-boxing packing steps do not). */
+export function entryCounts(stage: StageType, meta: unknown): boolean {
+  if (stage !== 'PACKING') return true;
+  return (meta as { countsTotal?: boolean } | null)?.countsTotal !== false;
+}
+
 export const STAGE_SLUGS: Record<string, StageType> = {
   cutting: 'CUTTING', kesim: 'CUTTING',
   sewing: 'SEWING', tikuv: 'SEWING',
@@ -106,7 +125,33 @@ export class ProductionService {
       const feed = this.feedCtx(s.orderId, s.order.qty, cuttingMap);
       return this.syncStageStatus(s, feed);
     }));
-    return paginate(items.map((s) => this.decorate(s, this.feedCtx(s.orderId, s.order.qty, cuttingMap))), total, dto);
+    const steps = stage === 'PACKING' ? await this.packStepTotals(items.map((s) => s.id)) : null;
+    return paginate(
+      items.map((s) => ({
+        ...this.decorate(s, this.feedCtx(s.orderId, s.order.qty, cuttingMap)),
+        ...(steps ? { packSteps: steps.get(s.id) ?? emptyPackSteps() } : {}),
+      })),
+      total,
+      dto,
+    );
+  }
+
+  /** Per packing stage: pieces done in each inner step (reversals net out). */
+  private async packStepTotals(stageIds: string[]): Promise<Map<string, Record<PackStep, number>>> {
+    const map = new Map<string, Record<PackStep, number>>();
+    if (!stageIds.length) return map;
+    const rows = await this.prisma.stageEntry.findMany({
+      where: { orderStageId: { in: stageIds } },
+      select: { orderStageId: true, qty: true, meta: true },
+    });
+    for (const r of rows) {
+      const step = ((r.meta as { subStage?: string } | null)?.subStage || 'BOXING') as PackStep;
+      if (!PACK_STEPS.includes(step)) continue;
+      const t = map.get(r.orderStageId) ?? emptyPackSteps();
+      t[step] += r.qty;
+      map.set(r.orderStageId, t);
+    }
+    return map;
   }
 
   private async cuttingMap(orderIds: string[]): Promise<Map<string, { doneQty: number; planQty: number }>> {
@@ -206,7 +251,8 @@ export class ProductionService {
       orderQty: s.order.qty,
     };
     const synced = await this.syncStageStatus(s, feed);
-    return { ...this.decorate(synced, feed), defects };
+    const packSteps = stage === 'PACKING' ? (await this.packStepTotals([s.id])).get(s.id) ?? emptyPackSteps() : undefined;
+    return { ...this.decorate(synced, feed), defects, ...(packSteps ? { packSteps } : {}) };
   }
 
   /**
@@ -225,21 +271,17 @@ export class ProductionService {
       });
       if (!current) throw notFound('err_stage_not_found');
 
-      // Material-flow rule: a stage can never overtake the stage feeding it.
+      // Departments are independent: any stage head may record output at any time,
+      // whatever the previous stage has reported so far.
       const idx = STAGE_SEQUENCE.indexOf(stage);
-      if (idx > 0) {
-        const prev = await tx.orderStage.findFirst({ where: { orderId: dto.orderId, stage: STAGE_SEQUENCE[idx - 1] } });
-        const available = prev?.doneQty ?? 0;
-        if (current.doneQty + dto.qty > available) {
-          throw badRequest('err_stage_flow', {
-            stage: `stage_${STAGE_SEQUENCE[idx - 1]}`,
-            available,
-            done: current.doneQty,
-            qty: dto.qty,
-          });
-        }
+      if (stage === 'PACKING') {
+        const step = (dto.meta as { subStage?: string } | undefined)?.subStage;
+        if (step && !PACK_STEPS.includes(step as PackStep)) throw badRequest('err_pack_step');
+        // Only "korobkaga solish" adds to the packed total; other steps are tallied apart.
+        if (step && step !== 'BOXING') dto.meta = { ...(dto.meta ?? {}), countsTotal: false };
       }
-      // Cutting may exceed order qty; later stages are capped by the previous stage output (flow check above).
+      const counts = entryCounts(stage, dto.meta);
+      const when = dto.finishedAt ? new Date(dto.finishedAt) : entryDate(dto.date);
 
       const workerName = await this.resolveWorkerName(actor, source, dto.workerName);
 
@@ -248,7 +290,7 @@ export class ProductionService {
           orderStageId: current.id,
           qty: dto.qty,
           defectQty: dto.defectQty ?? 0,
-          date: entryDate(dto.date),
+          date: when,
           userId: actor.sub,
           note: dto.note,
           workerName,
@@ -267,12 +309,12 @@ export class ProductionService {
             reason: dto.note,
             comment: `entry:${entry.id}`,
             userId: actor.sub,
-            date: entryDate(dto.date),
+            date: when,
           },
         });
       }
 
-      const doneQty = current.doneQty + dto.qty;
+      const doneQty = current.doneQty + (counts ? dto.qty : 0);
       const defectQty = current.defectQty + (dto.defectQty ?? 0);
       const cuttingStage = stage === 'CUTTING'
         ? { doneQty, planQty: current.planQty }
@@ -371,9 +413,11 @@ export class ProductionService {
           orderStageId: entry.orderStageId,
           qty: -entry.qty, defectQty: -entry.defectQty,
           userId: actor.sub, note: `Reversal of ${entryId}`, source: 'WEB', cancelled: true,
+          meta: (entry.meta as any) ?? undefined,
         },
       });
-      const doneQty = Math.max(0, entry.orderStage.doneQty - entry.qty);
+      const counted = entryCounts(entry.orderStage.stage, entry.meta);
+      const doneQty = Math.max(0, entry.orderStage.doneQty - (counted ? entry.qty : 0));
       const defectQty = Math.max(0, entry.orderStage.defectQty - entry.defectQty);
       const order = await tx.order.findUnique({ where: { id: entry.orderStage.orderId }, select: { qty: true } });
       const cuttingStage = entry.orderStage.stage === 'CUTTING'
@@ -428,15 +472,6 @@ export class ProductionService {
     const diff = doneQty - current.doneQty;
     const diffDefect = defectQty - current.defectQty;
     if (diff === 0 && diffDefect === 0) return { success: true, changed: false };
-
-    const idx = STAGE_SEQUENCE.indexOf(current.stage);
-    if (idx > 0 && diff > 0) {
-      const prev = await this.prisma.orderStage.findFirst({ where: { orderId: current.orderId, stage: STAGE_SEQUENCE[idx - 1] } });
-      const available = prev?.doneQty ?? 0;
-      if (doneQty > available) {
-        throw badRequest('err_stage_flow', { stage: `stage_${STAGE_SEQUENCE[idx - 1]}`, available, done: current.doneQty, qty: diff });
-      }
-    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.stageEntry.create({

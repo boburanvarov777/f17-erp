@@ -77,7 +77,18 @@
                       <td class="num bold">{{ s.doneQty | num }}</td>
                       <td class="num">{{ s.remainingQty | num }}</td>
                       <td class="num" [style.color]="s.defectQty ? 'var(--danger)' : ''">{{ s.defectQty | num }}</td>
-                      <td><ui-progress [value]="s.doneQty" [max]="s.planQty" [allowOver100]="isCutting()" /></td>
+                      <td>
+                        <ui-progress [value]="s.doneQty" [max]="s.planQty" [allowOver100]="isCutting()" />
+                        @if (isPacking() && s.packSteps) {
+                          <div class="pack-steps">
+                            @for (st of packStepKeys; track st) {
+                              <span class="pack-step" [class.done]="(s.packSteps[st] || 0) >= s.planQty && s.planQty > 0" [attr.data-tip]="'pack_sub_' + st | t">
+                                {{ ('pack_sub_short_' + st) | t }} <b>{{ s.packSteps[st] || 0 | num }}</b>
+                              </span>
+                            }
+                          </div>
+                        }
+                      </td>
                       <td><ui-status [value]="s.status" /></td>
                       <td class="small">{{ s.responsible ? s.responsible.lastName : '—' }}</td>
                       <td class="small nowrap">{{ s.order?.deadline | shortDate }}</td>
@@ -182,8 +193,8 @@
             <input class="input" groupedNumber [(ngModel)]="entry.defectQty" [placeholder]="'defect_qty_placeholder' | t" />
           </div>
           <div class="field" [class.field-invalid]="entryFe.has('date')">
-            <label class="label">{{ 'date' | t }} <span class="req">*</span></label>
-            <ui-date-input [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
+            <label class="label">{{ 'work_finished_at' | t }} <span class="req">*</span></label>
+            <ui-date-input mode="datetime" [(ngModel)]="entry.date" (ngModelChange)="entryFe.clear('date')" required />
             @if (entryFe.get('date'); as msg) { <div class="field-error">{{ msg }}</div> }
           </div>
 
@@ -201,9 +212,9 @@
             }
             @case ('PACKING') {
               <div class="field"><label class="label">{{ 'box_count' | t }}</label><input class="input" groupedNumber [(ngModel)]="entry.meta['boxCount']" /></div>
-              <div class="field">
-                <label class="label">{{ 'sub_stage' | t }}</label>
-                <select class="select" [(ngModel)]="entry.meta['subStage']">
+              <div class="field" [class.field-invalid]="entryFe.has('subStage')">
+                <label class="label">{{ 'sub_stage' | t }} <span class="req">*</span></label>
+                <select class="select" [(ngModel)]="entry.meta['subStage']" (ngModelChange)="entryFe.clear('subStage')">
                   <option value="" disabled>{{ 'select_sub_stage' | t }}</option>
                   <option value="CLEANING">{{ 'pack_sub_CLEANING' | t }}</option>
                   <option value="IRONING">{{ 'pack_sub_IRONING' | t }}</option>
@@ -211,6 +222,8 @@
                   <option value="SCANNING">{{ 'pack_sub_SCANNING' | t }}</option>
                   <option value="BOXING">{{ 'pack_sub_BOXING' | t }}</option>
                 </select>
+                @if (entryFe.get('subStage'); as msg) { <div class="field-error">{{ msg }}</div> }
+                <div class="tiny text-3 mt-1">{{ 'pack_sub_hint' | t }}</div>
               </div>
             }
             @case ('LOADING') {
@@ -284,6 +297,17 @@
           <div class="stat"><div class="k">{{ 'defect_label' | t }}</div><div class="v" style="font-size:21px;color:var(--danger)">{{ s.defectQty | num }}</div></div>
         </div>
 
+        @if (isPacking() && s.packSteps) {
+          <div class="pack-steps lg mb-4">
+            @for (st of packStepKeys; track st) {
+              <div class="pack-step" [class.done]="(s.packSteps[st] || 0) >= s.planQty && s.planQty > 0">
+                <span class="tiny text-3">{{ 'pack_sub_' + st | t }}</span>
+                <b>{{ s.packSteps[st] || 0 | num }} / {{ s.planQty | num }}</b>
+              </div>
+            }
+          </div>
+        }
+
         @if (canWrite() && canAssignUsers()) {
           <div class="row gap-2 mb-4 wrap">
             <select class="select" style="width:auto;min-width:170px" [(ngModel)]="assignId" (ngModelChange)="assignFe.clear('assignId')" [class.field-invalid]="assignFe.has('assignId')">
@@ -298,15 +322,19 @@
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th>{{ 'date' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th>@if (isPacking()) { <th>{{ 'note' | t }}</th> }<th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
+            <thead><tr><th>{{ 'work_finished_at' | t }}</th><th>{{ 'entered_at' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th>@if (isPacking()) { <th>{{ 'note' | t }}</th> }<th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
                   <td class="small nowrap">{{ e.date | shortDate: true }}</td>
+                  <td class="small nowrap text-2">{{ (e.createdAt || e.date) | shortDate: true }}</td>
                   <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}@if (e.note === 'Correction') { <span class="badge badge-warning tiny" style="margin-left:6px">{{ 'entry_correction' | t }}</span> }</td>
                   <td class="num">{{ e.defectQty ? (e.defectQty | num) : '—' }}</td>
                   @if (isPacking()) {
-                    <td class="small text-2">{{ entryNote(e.note) }}</td>
+                    <td class="small text-2">
+                      @if (e.meta?.['subStage']; as st) { <span class="badge badge-neutral tiny">{{ 'pack_sub_' + st | t }}</span> }
+                      {{ entryNote(e.note) }}
+                    </td>
                   }
                   <td>
                     @if (workerNick(e.workerName); as nick) {
@@ -332,7 +360,7 @@
                     }
                   </td>
                 </tr>
-              } @empty { <tr><td [attr.colspan]="isPacking() ? 7 : 6"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
+              } @empty { <tr><td [attr.colspan]="isPacking() ? 8 : 7"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
             </tbody>
           </table>
         </div>

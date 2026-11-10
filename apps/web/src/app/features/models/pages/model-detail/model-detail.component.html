@@ -69,9 +69,17 @@
                 @if (displayColors().length) {
                   <div class="row gap-3 wrap">
                     @for (c of displayColors(); track c.name) {
-                      <div class="row gap-2">
-                        <i class="swatch" [style.background]="c.hex || '#ccc'"></i>
-                        <span class="small">{{ c.name }}</span>
+                      <div class="col gap-1">
+                        <div class="row gap-2">
+                          <i class="swatch" [style.background]="c.hex || '#ccc'"></i>
+                          <span class="small">{{ c.name }}</span>
+                          @if (c.sizes?.length) { <span class="tiny text-3">· {{ colorSum(c) | num }} {{ 'pieces' | t }}</span> }
+                        </div>
+                        @if (c.sizes?.length) {
+                          <div class="row gap-1 wrap">
+                            @for (x of c.sizes; track x.size) { <span class="badge badge-neutral tiny">{{ x.size }}: {{ x.qty | num }}</span> }
+                          </div>
+                        }
                       </div>
                     }
                   </div>

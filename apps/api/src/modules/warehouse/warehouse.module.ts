@@ -10,6 +10,7 @@ import { buildOrderBy, dateRange } from '../../common/utils/order-by';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventsGateway } from '../../realtime/events.gateway';
 
 export class CreateMaterialDto {
   @ApiProperty() @IsString() @MinLength(1) code!: string;
@@ -52,7 +53,25 @@ const SORTABLE = ['code', 'name', 'category', 'stock', 'reserved', 'minStock', '
 
 @Injectable()
 export class WarehouseService {
-  constructor(private prisma: PrismaService, private audit: AuditService, private notifications: NotificationsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    private notifications: NotificationsService,
+    private events: EventsGateway,
+  ) {}
+
+  /** Every stock change is pushed live, so open screens show the new balance at once. */
+  private async pushChange(materialId: string, extra: Record<string, unknown> = {}) {
+    const m = await this.prisma.material.findUnique({
+      where: { id: materialId },
+      select: { id: true, code: true, name: true, unit: true, stock: true, reserved: true, status: true },
+    });
+    if (!m) return;
+    this.events.emitAll('warehouse:updated', {
+      materialId: m.id, code: m.code, name: m.name, unit: m.unit,
+      stock: Number(m.stock), reserved: Number(m.reserved), status: m.status, ...extra,
+    });
+  }
 
   async list(dto: PaginationDto, category?: string, status?: string, asOf?: string) {
     const end = asOf?.trim() ? this.endOfDay(asOf.trim()) : null;
@@ -222,6 +241,7 @@ export class WarehouseService {
       return m;
     });
     this.audit.log({ userId: actor.sub, action: 'MATERIAL_CREATED', entity: 'Material', entityId: material.id, newValue: dto });
+    void this.pushChange(material.id, { op: 'CREATED' });
     return this.decorate(material);
   }
 
@@ -239,6 +259,7 @@ export class WarehouseService {
       },
     });
     this.audit.log({ userId: actor.sub, action: 'MATERIAL_UPDATED', entity: 'Material', entityId: id, newValue: dto });
+    void this.pushChange(id);
     return this.decorate(m);
   }
 
@@ -317,6 +338,8 @@ export class WarehouseService {
       newValue: { op: dto.op, qty: dto.qty, balance: Number(result.material.stock) },
     });
 
+    void this.pushChange(dto.materialId, { op: dto.op, qty: dto.qty });
+
     if (result.status !== 'OK') {
       await this.notifications.broadcast({
         type: 'STOCK_LOW',
@@ -390,6 +413,7 @@ export class WarehouseService {
     this.audit.log({
       userId: actor.sub, action: 'WAREHOUSE_TX_UPDATED', entity: 'StockTransaction', entityId: txId, newValue: dto,
     });
+    void this.pushChange(updated.materialId);
     return { ...updated, qty: Number(updated.qty), balance: Number(updated.balance) };
   }
 
@@ -405,6 +429,7 @@ export class WarehouseService {
       userId: actor.sub, action: 'WAREHOUSE_TX_DELETED', entity: 'StockTransaction', entityId: txId,
       newValue: { materialId },
     });
+    void this.pushChange(materialId);
     return { success: true };
   }
 }

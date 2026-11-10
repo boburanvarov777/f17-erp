@@ -16,6 +16,8 @@ export class CreateEntryDto {
   @ApiProperty({ example: 120 }) @IsInt() @Min(0) qty!: number;
   @ApiPropertyOptional({ example: 3 }) @IsOptional() @IsInt() @Min(0) defectQty?: number;
   @ApiProperty({ description: 'Operation date (ISO date string)' }) @IsDateString() date!: string;
+  @ApiPropertyOptional({ description: 'When the work was actually finished (ISO date-time). Defaults to `date`.' })
+  @IsOptional() @IsDateString() finishedAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
   @ApiPropertyOptional({ description: 'Actual worker name/nickname when a shared account is used' })
   @IsOptional() @IsString() workerName?: string;

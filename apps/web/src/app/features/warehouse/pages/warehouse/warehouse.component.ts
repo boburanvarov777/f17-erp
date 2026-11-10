@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { Material, Paginated, StockOp, StockTransaction } from '../../../../core/models';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
+import { stockPreview } from '../../../../shared/utils/stock-preview';
 import { NumPipe, ShortDatePipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
 import { EmptyComponent } from '../../../../shared/ui/empty/empty.component';
@@ -97,17 +99,29 @@ export class WarehouseComponent {
     return ids.filter((id) => !onPage.has(id)).length;
   });
 
+  private rt = inject(RealtimeService);
+  readonly stockPreview = stockPreview;
+
   constructor() {
     const qp = new URLSearchParams(location.search);
     this.search = qp.get('search') ?? '';
     this.reload();
+    // Any stock change (another user, the bot) → refresh balances in place.
+    effect(() => {
+      if (this.rt.warehouseTick() === 0) return;
+      untracked(() => {
+        if (this.snapshotAsOf()) return; // a past date is being viewed — keep it
+        this.reload(false, true);
+        if (this.txViewKey()) this.loadTx();
+      });
+    });
   }
 
   onSearch(): void { clearTimeout(this.timer); this.timer = setTimeout(() => this.reload(), 320); }
 
-  reload(resetPage = true): void {
+  reload(resetPage = true, silent = false): void {
     if (resetPage) this.page.set(1);
-    this.loading.set(true);
+    if (!silent) this.loading.set(true);
     const params: Record<string, string | number> = {
       page: this.page(), limit: this.limit(), search: this.search, category: this.category, status: this.status,
     };
@@ -121,6 +135,12 @@ export class WarehouseComponent {
         this.limit.set(d.limit);
         this.snapshotAsOf.set(d.asOf ?? (asOf && asOf !== isoDate(new Date()) ? asOf : null));
         this.loading.set(false);
+        // Keep an open operation dialog on the fresh balance.
+        const open = this.opModal();
+        if (open) {
+          const fresh = d.items.find((m) => m.id === open.id);
+          if (fresh && (fresh.stock !== open.stock || fresh.reserved !== open.reserved)) this.opModal.set(fresh);
+        }
         this.selected.update((s) => {
           const ids = new Set(d.items.map((m) => m.id));
           return new Set([...s].filter((id) => ids.has(id)));

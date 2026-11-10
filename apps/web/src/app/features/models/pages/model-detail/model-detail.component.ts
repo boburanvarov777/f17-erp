@@ -78,4 +78,8 @@ export class ModelDetailComponent {
       });
     });
   }
+
+  colorSum(c: { sizes?: { qty: number }[] | null }): number {
+    return (c.sizes ?? []).reduce((sum, x) => sum + (x.qty || 0), 0);
+  }
 }

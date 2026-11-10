@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -6,6 +6,8 @@ import type { Material, Paginated, StockOp, StockTransaction } from '../../../..
 import { ApiService } from '../../../../core/services/api.service';
 import { I18nService } from '../../../../core/services/i18n.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
+import { stockPreview } from '../../../../shared/utils/stock-preview';
 import { GroupedNumberDirective } from '../../../../shared/directives/grouped-number.directive';
 import { NumPipe, ShortDatePipe } from '../../../../shared/pipes/format.pipe';
 import { TPipe } from '../../../../shared/pipes/t.pipe';
@@ -74,7 +76,17 @@ export class MaWarehouseComponent {
     }),
   );
 
+  private rt = inject(RealtimeService);
+  readonly stockPreview = stockPreview;
+  private silent = false;
+
   constructor() {
+    // Live balances: the bot listens to the same stock events as the web.
+    this.rt.connect();
+    effect(() => {
+      if (this.rt.warehouseTick() === 0) return;
+      untracked(() => { this.silent = true; this.reload(); });
+    });
     this.syncView(this.router.url);
     this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       this.syncView(e.urlAfterRedirects);
@@ -101,7 +113,8 @@ export class MaWarehouseComponent {
 
   reload(): void {
     const v = this.view();
-    this.loading.set(true);
+    if (!this.silent) this.loading.set(true);
+    this.silent = false;
     if (v === 'tx') {
       this.api.get<Paginated<StockTransaction>>('/warehouse/transactions', { limit: 80 }).subscribe({
         next: (d) => { this.transactions.set(d.items); this.loading.set(false); },

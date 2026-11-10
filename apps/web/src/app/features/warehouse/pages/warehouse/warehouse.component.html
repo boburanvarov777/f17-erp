@@ -235,10 +235,19 @@
           </div>
           <div class="field">
             <label class="label">{{ 'current_stock' | t }}</label>
-            <input class="input" [value]="m.stock + ' ' + m.unit" disabled />
+            <input class="input" [value]="(m.stock | num: 3) + ' ' + m.unit" disabled />
           </div>
           <div class="field full"><label class="label">{{ 'note' | t }}</label><input class="input" [(ngModel)]="op.note" /></div>
         </div>
+        @if (stockPreview(m, op.op, op.qty); as p) {
+          <div class="stock-preview mt-3" [class.bad]="p.insufficient || p.after < 0">
+            <div><span>{{ 'current_stock' | t }}</span><b>{{ p.stock | num: 3 }} {{ m.unit }}</b></div>
+            @if (p.reserved) { <div><span>{{ 'reserved' | t }}</span><b>{{ p.reserved | num: 3 }} {{ m.unit }}</b></div> }
+            <div><span>{{ 'available' | t }}</span><b>{{ p.available | num: 3 }} {{ m.unit }}</b></div>
+            <div class="after"><span>{{ 'stock_after_op' | t }}</span><b>{{ p.after | num: 3 }} {{ m.unit }}</b></div>
+            @if (p.insufficient) { <div class="warn">{{ 'stock_not_enough' | t: { n: p.available, unit: m.unit } }}</div> }
+          </div>
+        }
         <div footer>
           <button class="btn" type="button" (click)="opModal.set(null)">{{ 'cancel' | t }}</button>
           <button class="btn btn-primary" type="button" (click)="saveOp(m)" [disabled]="busy()">{{ 'save' | t }}</button>

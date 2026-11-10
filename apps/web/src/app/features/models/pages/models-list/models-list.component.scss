@@ -30,6 +30,11 @@
     .mbody { padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
     .size-list { display: flex; flex-direction: column; gap: 10px; }
     .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .color-list { display: flex; flex-direction: column; gap: 10px; }
+    .color-card { border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px; background: var(--surface-2); }
+    .color-sizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin-top: 8px; }
+    .color-size { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--text-3); }
+    .color-size input { height: 30px; text-align: center; }
     .acc-grid { display: flex; flex-direction: column; gap: 8px; }
     .acc-row { display: grid; grid-template-columns: 1.2fr 1fr 64px 1fr 72px 32px; gap: 6px; align-items: center; }
     @media (max-width: 720px) { .acc-row { grid-template-columns: 1fr 1fr; } }

@@ -20,7 +20,13 @@ import {
 import { buildOrderBy } from '../../common/utils/order-by';
 import { AuditService, AUDIT_ACTIONS } from '../audit/audit.service';
 
+const MAX_MODEL_COLORS = 3;
+
 export class SizeDto {
+  @ApiProperty() @IsString() size!: string;
+  @ApiProperty() @IsNumber() qty!: number;
+}
+export class ColorSizeDto {
   @ApiProperty() @IsString() size!: string;
   @ApiProperty() @IsNumber() qty!: number;
 }
@@ -28,6 +34,8 @@ export class ColorDto {
   @ApiProperty() @IsString() name!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() hex?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() photo?: string;
+  @ApiPropertyOptional({ type: [ColorSizeDto], description: 'Quantity per size for this colour' })
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ColorSizeDto) sizes?: ColorSizeDto[];
 }
 export class AccessoryDto {
   @ApiProperty() @IsString() name!: string;
@@ -96,8 +104,32 @@ export class ModelsService {
     return paginate(items, total, dto);
   }
 
+  /**
+   * At most 3 colours. When colours carry a per-size breakdown, the model's size
+   * totals are the sum over colours (sizes listed in the model keep their order).
+   */
+  private normalizeColors(colors: ColorDto[] | undefined, sizes: SizeDto[] | undefined) {
+    if (!colors) return { colors, sizes };
+    if (colors.length > MAX_MODEL_COLORS) throw badRequest('err_model_colors_max', { max: MAX_MODEL_COLORS });
+    const clean = colors.map((c) => ({
+      ...c,
+      sizes: (c.sizes ?? [])
+        .filter((x) => x.size?.trim())
+        .map((x) => ({ size: x.size.trim(), qty: Math.max(0, Math.round(+x.qty || 0)) })),
+    }));
+    const hasBreakdown = clean.some((c) => c.sizes.some((x) => x.qty > 0));
+    if (!hasBreakdown) return { colors: clean, sizes };
+    const order = [...(sizes ?? []).map((s) => s.size.trim()), ...clean.flatMap((c) => c.sizes.map((x) => x.size))];
+    const totals = new Map<string, number>();
+    for (const sz of order) if (!totals.has(sz)) totals.set(sz, 0);
+    for (const c of clean) for (const x of c.sizes) totals.set(x.size, (totals.get(x.size) ?? 0) + x.qty);
+    return { colors: clean, sizes: [...totals].map(([size, qty]) => ({ size, qty })) };
+  }
+
   async create(dto: CreateModelDto, actor: JwtUser) {
-    const { sizes, colors, accessories, clientId, cost, photo, ...rest } = dto;
+    const { accessories, clientId, cost, photo, ...rest0 } = dto;
+    const { sizes: _s, colors: _c, ...rest } = rest0;
+    const { colors, sizes } = this.normalizeColors(dto.colors, dto.sizes);
     if (photo?.startsWith('data:')) {
       throw badRequest('err_photo_after_create');
     }
@@ -108,7 +140,7 @@ export class ModelsService {
         cost: cost != null ? new Prisma.Decimal(cost) : undefined,
         client: clientId ? { connect: { id: clientId } } : undefined,
         sizes: sizes?.length ? { create: sizes.map((s) => ({ size: s.size, qty: s.qty })) } : undefined,
-        colors: colors?.length ? { create: colors } : undefined,
+        colors: colors?.length ? { create: colors as any } : undefined,
         accessories: accessories?.length ? { create: accessories } : undefined,
       },
       include: { sizes: true, colors: true, accessories: true, photos: { orderBy: { sortOrder: 'asc' } } },
@@ -119,7 +151,9 @@ export class ModelsService {
 
   async update(id: string, dto: UpdateModelDto, actor: JwtUser) {
     const existing = await this.prisma.productModel.findUniqueOrThrow({ where: { id }, include: { sizes: true } });
-    const { sizes, colors, accessories, clientId, cost, code, photo, ...rest } = dto;
+    const { accessories, clientId, cost, code, photo, ...rest0 } = dto;
+    const { sizes: _s, colors: _c, ...rest } = rest0;
+    const { colors, sizes } = this.normalizeColors(dto.colors, dto.sizes);
     if (photo?.startsWith('data:')) {
       throw badRequest('err_photo_separate');
     }
@@ -131,7 +165,7 @@ export class ModelsService {
       }
       if (colors) {
         await tx.modelColor.deleteMany({ where: { modelId: id } });
-        if (colors.length) await tx.modelColor.createMany({ data: colors.map((c) => ({ ...c, modelId: id })) });
+        if (colors.length) await tx.modelColor.createMany({ data: colors.map((c) => ({ ...c, modelId: id })) as any });
       }
       if (accessories) {
         await tx.accessory.deleteMany({ where: { modelId: id } });

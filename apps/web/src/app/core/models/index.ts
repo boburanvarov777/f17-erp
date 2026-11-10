@@ -47,7 +47,7 @@ export interface UserAccessLogItem {
 export interface Client { id: string; code: string; name: string; contact?: string; phone?: string; note?: string; _count?: { orders: number; models: number }; }
 
 export interface ModelSize { id?: string; size: string; qty: number; }
-export interface ModelColor { id?: string; name: string; hex?: string; photo?: string; }
+export interface ModelColor { id?: string; name: string; hex?: string; photo?: string; sizes?: { size: string; qty: number }[] | null; }
 export interface Accessory { id?: string; name: string; color?: string; size?: string; code?: string; qty?: number; photo?: string; }
 export interface ModelFile { id: string; name: string; url: string; mime?: string; size?: number; }
 export interface ModelPhoto { id: string; url: string; sortOrder?: number; }
@@ -69,11 +69,15 @@ export interface OrderStage {
   responsible?: { id: string; firstName: string; lastName: string } | null;
   startDate?: string; endDate?: string; deadline?: string; meta?: Record<string, unknown>;
   entries?: StageEntry[]; order?: Order;
+  /** Upakovka only: pieces done per inner step (only BOXING counts to doneQty). */
+  packSteps?: Record<string, number>;
 }
 
 export interface StageEntry {
   id: string; qty: number; defectQty: number; date: string; note?: string; workerName?: string | null;
   source: 'WEB' | 'TELEGRAM' | 'MINIAPP'; cancelled: boolean;
+  /** When it was typed into the system (date = when the work was finished). */
+  createdAt?: string;
   user?: { id: string; firstName: string; lastName: string } | null;
   meta?: Record<string, unknown>;
 }
