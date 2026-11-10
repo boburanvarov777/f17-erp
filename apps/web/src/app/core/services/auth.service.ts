@@ -69,7 +69,11 @@ export class AuthService {
     localStorage.removeItem(REFRESH);
     localStorage.removeItem(USER);
     this.user.set(null);
-    if (navigate) void this.router.navigate(['/login']);
+    if (navigate) {
+      // Inside the Telegram Mini App stay there — its shell shows its own login form.
+      const inMiniApp = typeof location !== 'undefined' && location.pathname.startsWith('/miniapp');
+      void this.router.navigate([inMiniApp ? '/miniapp' : '/login']);
+    }
   }
 }
 

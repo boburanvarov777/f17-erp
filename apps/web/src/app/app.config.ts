@@ -16,7 +16,7 @@ export const appConfig: ApplicationConfig = {
     // (e.g. delete buttons) show up without logging out. Never blocks startup.
     provideAppInitializer(() => {
       const auth = inject(AuthService);
-      if (!auth.accessToken) return;
+      if (!auth.accessToken || location.pathname.startsWith('/miniapp')) return; // Mini App re-authenticates itself
       return firstValueFrom(auth.me()).then(() => undefined, () => undefined);
     }),
     provideBrowserGlobalErrorListeners(),

@@ -1,3 +1,5 @@
+import { concat, toArray } from 'rxjs';
+import { isTopAdmin } from '../../../../core/utils/role.util';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -78,6 +80,12 @@ export class ProductionComponent {
   readonly cancelling = signal<StageEntry | null>(null);
   readonly completing = signal<OrderStage | null>(null);
   readonly deletingOrder = signal<OrderStage | null>(null);
+  /** "Tahrirlash" — correct this stage's totals / responsible. */
+  readonly editing = signal<OrderStage | null>(null);
+  editForm = { doneQty: 0 as number | null, defectQty: 0 as number | null, responsibleId: '' };
+  readonly deletingEntry = signal<StageEntry | null>(null);
+  /** Deleting single operation rows — Super Admin / Super Pro Admin. */
+  readonly canDeleteEntries = computed(() => isTopAdmin(this.auth.user()));
   readonly shipmentModal = signal<Partial<Shipment> | null>(null);
   readonly entryError = signal('');
 
@@ -254,6 +262,55 @@ export class ProductionComponent {
     const stage = this.i18n.t('stage_' + this.stageType());
     const model = s.order?.model?.code;
     return model ? `${stage} · ${model}` : stage;
+  }
+
+  openEdit(s: OrderStage): void {
+    this.editForm = { doneQty: s.doneQty, defectQty: s.defectQty, responsibleId: s.responsible?.id ?? '' };
+    this.editing.set(s);
+  }
+
+  saveEdit(): void {
+    const s = this.editing();
+    if (!s) return;
+    const done = Math.max(0, Math.floor(+(this.editForm.doneQty ?? 0)));
+    const defect = Math.max(0, Math.floor(+(this.editForm.defectQty ?? 0)));
+    const calls = [];
+    if ((this.editForm.responsibleId || '') !== (s.responsible?.id ?? '') && this.editForm.responsibleId) {
+      calls.push(this.api.patch(`/production/stages/${s.id}`, { responsibleId: this.editForm.responsibleId }));
+    }
+    if (done !== s.doneQty || defect !== s.defectQty) {
+      calls.push(this.api.patch(`/production/stages/${s.id}/correct`, { doneQty: done, defectQty: defect }));
+    }
+    if (!calls.length) { this.editing.set(null); return; }
+    this.busy.set(true);
+    concat(...calls).pipe(toArray()).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.editing.set(null);
+        this.toast.success(this.i18n.t('saved'));
+        this.reload(false);
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  entryDeleteMessage(e: StageEntry): string {
+    const d = new Date(e.date);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return this.i18n.t('entry_delete_confirm', { date: `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`, qty: e.qty });
+  }
+
+  deleteEntry(e: StageEntry): void {
+    this.api.delete(`/production/entries/${e.id}`).subscribe({
+      next: () => {
+        this.deletingEntry.set(null);
+        this.toast.success(this.i18n.t('deleted'));
+        const d = this.detail();
+        if (d) this.openDetail(d);
+        this.reload(false);
+      },
+      error: () => this.deletingEntry.set(null),
+    });
   }
 
   assign(s: OrderStage): void {

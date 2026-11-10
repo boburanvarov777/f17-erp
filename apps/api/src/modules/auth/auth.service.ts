@@ -63,7 +63,9 @@ export class AuthService {
   async login(dto: LoginDto, ctx: AuthAuditCtx = {}) {
     const user = await this.validateUser(dto.login, dto.password);
 
-    if (dto.departmentCode && user.department?.code !== dto.departmentCode && !user.role.permissions.includes('*')) {
+    // Super Admin / Super Pro Admin may enter through any department.
+    const topAdmin = user.role.permissions.includes('*') || ['SUPER_ADMIN', 'SUPER_PRO_ADMIN'].includes(user.role.code);
+    if (dto.departmentCode && user.department?.code !== dto.departmentCode && !topAdmin) {
       throw forbidden('err_dept_forbidden');
     }
 
