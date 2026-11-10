@@ -17,11 +17,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: unknown = translate(lang, 'err_internal');
     let code: string | undefined;
+    /** Message key of a localized error, so clients can react to a specific case. */
+    let key: string | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const r = exception.getResponse();
       if (isLocalizedBody(r)) {
+        if (!Array.isArray(r.i18n)) key = r.i18n.key;
         message = Array.isArray(r.i18n)
           ? r.i18n.map((ref) => translate(lang, ref.key, ref.vars))
           : translate(lang, r.i18n.key, r.i18n.vars);
@@ -49,6 +52,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     res.status(status).json({
       statusCode: status,
       code,
+      key,
       message,
       path: req.url,
       timestamp: new Date().toISOString(),

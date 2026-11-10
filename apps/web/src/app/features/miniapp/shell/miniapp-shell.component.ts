@@ -12,7 +12,7 @@ import { getMiniAppHomeRoute, getMiniAppTabs } from '../config/miniapp-nav.confi
 import { MiniAppService } from '../services/miniapp.service';
 import { haptic } from '../utils/telegram';
 import { FieldErrorsState, runValidation } from '../../../shared/utils/form-validate';
-import { loginErrorKey } from '../../../shared/utils/login-error';
+import { loginErrorKey, loginServerReason } from '../../../shared/utils/login-error';
 
 @Component({
   selector: 'app-miniapp-shell',
@@ -33,7 +33,8 @@ export class MiniAppShellComponent {
   readonly show = signal(false);
   readonly busy = signal(false);
   readonly errorKey = signal<string | null>(null);
-  readonly error = computed(() => (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
+  readonly serverReason = signal<string | null>(null);
+  readonly error = computed(() => this.serverReason() || (this.errorKey() ? this.i18n.t(this.errorKey()!) : ''));
   readonly fe = new FieldErrorsState();
 
   readonly tabs = computed(() => getMiniAppTabs(this.ma.user()));
@@ -58,6 +59,7 @@ export class MiniAppShellComponent {
 
     this.busy.set(true);
     this.errorKey.set(null);
+    this.serverReason.set(null);
     this.ma.login(this.login.trim(), this.password, this.departmentCode || undefined).subscribe({
       next: (res) => {
         this.busy.set(false);
@@ -68,6 +70,7 @@ export class MiniAppShellComponent {
       error: (e) => {
         this.busy.set(false);
         haptic('error');
+        this.serverReason.set(loginServerReason(e));
         this.errorKey.set(loginErrorKey(e));
       },
     });

@@ -13,3 +13,17 @@ export function loginErrorKey(err: { status?: number }, host = typeof window !==
   if (status >= 500) return 'login_error_server';
   return 'login_error';
 }
+
+/**
+ * Server's own reason for a refused login (wrong department, account bound to
+ * another Telegram…). Null for a plain wrong login/password, so the generic
+ * text is shown there.
+ */
+export function loginServerReason(err: { status?: number; error?: { key?: string; message?: unknown } }): string | null {
+  const status = err?.status ?? 0;
+  if (status !== 401 && status !== 403) return null;
+  const key = err?.error?.key;
+  const msg = err?.error?.message;
+  if (!key || key === 'err_bad_credentials' || typeof msg !== 'string' || !msg.trim()) return null;
+  return msg;
+}
