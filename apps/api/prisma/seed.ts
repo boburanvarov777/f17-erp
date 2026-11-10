@@ -145,19 +145,22 @@ async function main() {
       },
       update: {},
     });
-    const exists = await prisma.user.findUnique({ where: { login: 'adminPro' }, select: { id: true } });
+    const exists = await prisma.user.findUnique({ where: { login: 'adminpro' }, select: { id: true } });
     if (!exists) {
       await prisma.user.create({
         data: {
-          firstName: 'Admin', lastName: 'Bot', login: 'adminPro', phone: '',
+          firstName: 'Admin', lastName: 'Bot', login: 'adminpro', phone: '',
           passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$5dnVLeXZVyZBdjYJpwhr4g$Z1QAUJRFvMEu+2v95yntKzYkgCBFkxzL9vR+CdR5eaA',
           position: 'Bot admin', roleId: botRole.id, departmentId: botDept.id,
         },
       });
     }
     await prisma.setting.create({ data: { key: BOT_ADMIN_KEY, value: { at: new Date().toISOString() } } });
-    console.log('  bot admin: department "Admin" + user adminPro created');
+    console.log('  bot admin: department "Admin" + user adminpro created');
   }
+
+  // Logins are stored and matched in lower case — fix the bot admin created as "adminPro".
+  await prisma.user.updateMany({ where: { login: 'adminPro' }, data: { login: 'adminpro' } });
 
   // ─── Users ───
   const superPassword = process.env.SEED_SUPERADMIN_PASSWORD || 'Admin!2026';
