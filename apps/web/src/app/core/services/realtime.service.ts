@@ -18,6 +18,8 @@ export class RealtimeService {
   readonly connected = signal(false);
   readonly lastProduction = signal<ProductionEvent | null>(null);
   readonly tick = signal(0);
+  /** Bumped on every stock change (any user, web or bot) — warehouse screens reload. */
+  readonly warehouseTick = signal(0);
 
   connect(): void {
     if (this.socket?.connected) return;
@@ -38,6 +40,7 @@ export class RealtimeService {
         this.tick.update((n) => n + 1);
       }),
     );
+    this.socket.on('warehouse:updated', () => this.zone.run(() => this.warehouseTick.update((n) => n + 1)));
     for (const ev of ['order:created', 'order:updated', 'defect:added', 'shipment:updated', 'dashboard:refresh', 'notification']) {
       this.socket.on(ev, () => this.zone.run(() => this.tick.update((n) => n + 1)));
     }

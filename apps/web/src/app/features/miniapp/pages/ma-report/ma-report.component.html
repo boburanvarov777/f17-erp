@@ -55,11 +55,26 @@
         </div>
 
         @if (isPacking()) {
+          <div class="field mt-3" [class.field-invalid]="fe.has('subStage')">
+            <label class="label">{{ 'sub_stage' | t }}</label>
+            <div class="chips">
+              @for (st of packSteps; track st) {
+                <button type="button" class="chip" [class.on]="subStage === st" (click)="subStage = st; fe.clear('subStage')">{{ 'pack_sub_' + st | t }}</button>
+              }
+            </div>
+            @if (fe.get('subStage'); as msg) { <div class="field-error">{{ msg }}</div> }
+            <div class="tiny text-3 mt-1">{{ 'pack_sub_hint' | t }}</div>
+          </div>
           <div class="field mt-3">
             <label class="label">{{ 'note' | t }}</label>
             <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
           </div>
         }
+
+        <div class="field mt-3">
+          <label class="label">{{ 'work_finished_at' | t }}</label>
+          <input class="input" type="datetime-local" [(ngModel)]="finishedAt" [max]="nowLocal()" />
+        </div>
 
         @if (error()) { <div class="err-text mt-3">{{ error() }}</div> }
         @if (ok()) { <div class="badge badge-success mt-3" style="width:100%;justify-content:center;padding:10px;border-radius:var(--r)"><ui-icon name="check-circle" [size]="15" /> {{ 'saved' | t }}</div> }

@@ -14,3 +14,12 @@
     .op { padding: 7px 12px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); cursor: pointer; font-size: 12px; }
     .op.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
     .ma-modal-foot { display: flex; gap: 8px; justify-content: flex-end; width: 100%; }
+
+.stock-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2); }
+.stock-preview > div { display: flex; flex-direction: column; gap: 2px; }
+.stock-preview span { font-size: 11px; color: var(--text-3); }
+.stock-preview b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.stock-preview .after b { color: var(--primary); }
+.stock-preview .warn { grid-column: 1 / -1; color: var(--danger); font-size: 12px; }
+.stock-preview.bad { border-color: var(--danger); }
+.stock-preview.bad .after b { color: var(--danger); }

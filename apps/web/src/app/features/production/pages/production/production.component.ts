@@ -84,6 +84,8 @@ export class ProductionComponent {
   readonly editing = signal<OrderStage | null>(null);
   editForm = { doneQty: 0 as number | null, defectQty: 0 as number | null, responsibleId: '' };
   readonly deletingEntry = signal<StageEntry | null>(null);
+  /** Upakovka inner steps, in working order. */
+  readonly packStepKeys = ['CLEANING', 'IRONING', 'ACCESSORIES', 'SCANNING', 'BOXING'];
   /** Deleting single operation rows — Super Admin / Super Pro Admin. */
   readonly canDeleteEntries = computed(() => isTopAdmin(this.auth.user()));
   readonly shipmentModal = signal<Partial<Shipment> | null>(null);
@@ -175,10 +177,11 @@ export class ProductionComponent {
     this.entryModal.set(s ?? {});
   }
 
+  /** Now, as the date-time input expects it (local "YYYY-MM-DDTHH:mm"). */
   private todayLocal(): string {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   saveEntry(): void {
@@ -186,7 +189,10 @@ export class ProductionComponent {
     if (!this.entryFe.apply(runValidation([
       { key: 'orderId', label: t('order'), value: this.entry.orderId, required: true },
       { key: 'qty', label: t('operation_qty'), value: this.entry.qty, custom: (v) => isMissingQty(v) ? t('field_required', { field: t('operation_qty') }) : null },
-      { key: 'date', label: t('date'), value: this.entry.date, required: true },
+      { key: 'date', label: t('work_finished_at'), value: this.entry.date, required: true },
+      ...(this.isPacking()
+        ? [{ key: 'subStage', label: t('sub_stage'), value: this.entry.meta['subStage'] as string, required: true }]
+        : []),
     ], t))) return;
 
     this.busy.set(true);
@@ -198,6 +204,7 @@ export class ProductionComponent {
         qty: +this.entry.qty!,
         defectQty: +(this.entry.defectQty || 0),
         date: new Date(this.entry.date).toISOString(),
+        finishedAt: new Date(this.entry.date).toISOString(),
         note: this.isPacking() ? (this.entry.note || undefined) : undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })

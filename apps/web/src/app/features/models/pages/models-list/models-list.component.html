@@ -209,18 +209,38 @@
 
         <div class="divider"></div>
         <div class="row-between mb-3">
-          <b style="font-size:13.5px">{{ 'colors' | t }}</b>
-          <button class="btn btn-sm" type="button" (click)="addColor()"><ui-icon name="plus" [size]="14" /></button>
+          <b style="font-size:13.5px">{{ 'colors' | t }} <span class="tiny text-3">({{ colors().length }}/{{ maxColors }})</span></b>
+          <button class="btn btn-sm" type="button" (click)="addColor()" [disabled]="colors().length >= maxColors" [attr.data-tip]="colors().length >= maxColors ? ('model_colors_max' | t) : null"><ui-icon name="plus" [size]="14" /></button>
         </div>
-        <div class="color-grid">
+        <div class="color-list">
           @for (c of colors(); track $index) {
-            <div class="row gap-2">
-              <input class="input btn-sm" style="width:28px;height:32px;padding:2px" type="color" [(ngModel)]="c.hex" />
-              <input class="input btn-sm" style="flex:1;height:32px" [(ngModel)]="c.name" [placeholder]="'color' | t" />
-              <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeColor($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
+            <div class="color-card">
+              <div class="row gap-2">
+                <input class="input btn-sm" style="width:28px;height:32px;padding:2px" type="color" [(ngModel)]="c.hex" />
+                <input class="input btn-sm" style="flex:1;height:32px" [(ngModel)]="c.name" [placeholder]="'color' | t" />
+                <span class="tiny text-3 nowrap">{{ 'total' | t }}: <b>{{ colorTotal(c) | num }}</b></span>
+                <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="removeColor($index)" [attr.data-tip]="'delete' | t"><ui-icon name="x" [size]="14" /></button>
+              </div>
+              @if (sizeNames().length) {
+                <div class="color-sizes">
+                  @for (sz of sizeNames(); track sz) {
+                    <label class="color-size">
+                      <span>{{ sz }}</span>
+                      <input class="input btn-sm" type="number" min="0" [(ngModel)]="c.qty[sz]" (ngModelChange)="touchColors()" placeholder="0" />
+                    </label>
+                  }
+                </div>
+              } @else {
+                <div class="tiny text-3 mt-2">{{ 'model_color_sizes_hint' | t }}</div>
+              }
             </div>
           }
         </div>
+        @if (hasColorBreakdown()) {
+          <div class="tiny text-2 mt-2">{{ 'model_color_sum_hint' | t }}
+            @for (sz of sizeNames(); track sz) { <span class="badge badge-neutral tiny" style="margin-left:4px">{{ sz }}: {{ sizeSum(sz) | num }}</span> }
+          </div>
+        }
         @if (!colors().length) { <div class="tiny text-3 mt-2">{{ 'model_colors_hint' | t }}</div> }
 
         <div class="divider"></div>

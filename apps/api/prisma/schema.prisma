@@ -272,6 +272,8 @@ model ModelColor {
   name    String
   hex     String?
   photo   String?
+  /// Quantity per size for this colour: [{ "size": "32", "qty": 120 }, …]
+  sizes   Json?
 
   @@map("model_colors")
 }

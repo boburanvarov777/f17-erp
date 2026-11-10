@@ -42,6 +42,17 @@ export class MaReportComponent {
   qty: number | null = null;
   defectQty: number | null = null;
   note = '';
+  /** Upakovka inner step — required there; only BOXING adds to the packed total. */
+  subStage = '';
+  readonly packSteps = ['CLEANING', 'IRONING', 'ACCESSORIES', 'SCANNING', 'BOXING'];
+  /** When the work was actually finished (local "YYYY-MM-DDTHH:mm"); defaults to now. */
+  finishedAt = '';
+
+  nowLocal(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
 
   /** All stages this user may report in — one for stage staff, several for the bot admin. */
   readonly stageChoices = computed(() => (this.ma.user() ? this.ma.availableStages() : []));
@@ -87,6 +98,8 @@ export class MaReportComponent {
     this.qty = null;
     this.defectQty = null;
     this.note = '';
+    this.subStage = '';
+    this.finishedAt = this.nowLocal();
     this.error.set('');
     this.ok.set(false);
     this.confirmClose.set(false);
@@ -143,6 +156,7 @@ export class MaReportComponent {
     if (!s) return;
     if (!this.fe.apply(runValidation([
       { key: 'qty', label: t('ma_enter_qty'), value: this.qty, custom: (v) => isMissingQty(v) ? t('ma_enter_qty') : null },
+      ...(this.isPacking() ? [{ key: 'subStage', label: t('sub_stage'), value: this.subStage, required: true }] : []),
     ], t))) {
       haptic('error');
       return;
@@ -156,9 +170,11 @@ export class MaReportComponent {
         orderId: s.order?.id ?? s.orderId,
         qty: +this.qty!,
         defectQty: +(this.defectQty || 0),
-        date: new Date().toISOString(),
+        date: this.finishedIso(),
+        finishedAt: this.finishedIso(),
         note: this.isPacking() ? (this.note || this.i18n.t('ma_source_miniapp')) : this.i18n.t('ma_source_miniapp'),
         source: 'MINIAPP',
+        meta: this.isPacking() ? { subStage: this.subStage } : undefined,
       })
       .subscribe({
         next: () => {
@@ -175,5 +191,10 @@ export class MaReportComponent {
           this.error.set(Array.isArray(m) ? m.join(', ') : m || this.i18n.t('error'));
         },
       });
+  }
+
+  private finishedIso(): string {
+    const d = this.finishedAt ? new Date(this.finishedAt) : new Date();
+    return Number.isNaN(+d) ? new Date().toISOString() : d.toISOString();
   }
 }

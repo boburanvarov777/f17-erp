@@ -6,3 +6,15 @@
     .ops { display: flex; gap: 6px; flex-wrap: wrap; }
     .op { padding: 7px 13px; border: 1px solid var(--border-strong); border-radius: 100px; background: var(--surface); cursor: pointer; font-size: 13px; }
     .op.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+.stock-preview {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;
+  padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2);
+}
+.stock-preview > div { display: flex; flex-direction: column; gap: 2px; }
+.stock-preview span { font-size: 11px; color: var(--text-3); }
+.stock-preview b { font-variant-numeric: tabular-nums; }
+.stock-preview .after b { color: var(--primary); font-size: 15px; }
+.stock-preview .warn { grid-column: 1 / -1; color: var(--danger); font-size: 12px; }
+.stock-preview.bad { border-color: var(--danger); }
+.stock-preview.bad .after b { color: var(--danger); }
