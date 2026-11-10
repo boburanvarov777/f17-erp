@@ -18,6 +18,18 @@ export class MiniAppService {
   readonly departments = signal<Department[]>([]);
   /** Bumped after production entry — home + report reload. */
   readonly productionTick = signal(0);
+  /** Stage picked in the bot by users not tied to one stage (bot admin, managers). */
+  readonly chosenStage = signal<string | null>(null);
+
+  /** Production stages this user may work in, in line order. */
+  availableStages(): string[] {
+    const own = this.user()?.department?.stage;
+    if (own) return [own];
+    const slug: Record<string, string> = {
+      CUTTING: 'cutting', SEWING: 'sewing', WASHING: 'washing', LASER: 'laser', PACKING: 'packing', LOADING: 'loading',
+    };
+    return Object.keys(slug).filter((st) => this.can(`${slug[st]}.read`));
+  }
 
   constructor() {
     // Session ended (refresh failed, user blocked…) → back to the Mini App login form.

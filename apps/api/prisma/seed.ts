@@ -121,6 +121,44 @@ async function main() {
   const role = Object.fromEntries((await prisma.role.findMany()).map((r) => [r.code, r]));
   console.log(`  roles: ${roles.length}`);
 
+  // ─── Bot admin: "Admin" department in the Mini App login + adminPro account ───
+  // Created once (settings flag), so edits made later in the ERP are kept.
+  // Sees every production section (Kesim … Ortish) in the bot. Password is stored
+  // only as an argon2 hash; change it in Foydalanuvchilar after the first login.
+  const BOT_ADMIN_KEY = 'bot_admin_seeded_v1';
+  if (!(await prisma.setting.findUnique({ where: { key: BOT_ADMIN_KEY } }))) {
+    const botDept = await prisma.department.upsert({
+      where: { code: 'BOT_ADMIN' },
+      create: { code: 'BOT_ADMIN', nameUz: 'Admin', nameRu: 'Админ', nameEn: 'Admin', stage: null },
+      update: {},
+    });
+    const stagePerms = ['cutting', 'sewing', 'washing', 'laser', 'packing', 'loading']
+      .flatMap((p) => [`${p}.read`, `${p}.create`, `${p}.update`]);
+    const botRole = await prisma.role.upsert({
+      where: { code: 'BOT_ADMIN' },
+      create: {
+        code: 'BOT_ADMIN',
+        name: 'Bot admin',
+        description: 'Telegram botda barcha ishlab chiqarish bo‘limlarini ko‘radi',
+        isSystem: true,
+        permissions: [...stagePerms, 'orders.read', 'models.read', 'plans.read', 'tasks.read', 'dashboard.read', 'reports.read'],
+      },
+      update: {},
+    });
+    const exists = await prisma.user.findUnique({ where: { login: 'adminPro' }, select: { id: true } });
+    if (!exists) {
+      await prisma.user.create({
+        data: {
+          firstName: 'Admin', lastName: 'Bot', login: 'adminPro', phone: '',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$5dnVLeXZVyZBdjYJpwhr4g$Z1QAUJRFvMEu+2v95yntKzYkgCBFkxzL9vR+CdR5eaA',
+          position: 'Bot admin', roleId: botRole.id, departmentId: botDept.id,
+        },
+      });
+    }
+    await prisma.setting.create({ data: { key: BOT_ADMIN_KEY, value: { at: new Date().toISOString() } } });
+    console.log('  bot admin: department "Admin" + user adminPro created');
+  }
+
   // ─── Users ───
   const superPassword = process.env.SEED_SUPERADMIN_PASSWORD || 'Admin!2026';
   const defaultPassword = 'F17erp!2026';

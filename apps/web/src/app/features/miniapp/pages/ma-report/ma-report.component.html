@@ -1,5 +1,13 @@
     <h2 class="mb-3" style="font-size:17px">{{ 'ma_orders' | t }}</h2>
 
+    @if (stageChoices().length > 1) {
+      <div class="chips mb-3">
+        @for (st of stageChoices(); track st) {
+          <button type="button" class="chip" [class.on]="st === stageType()" (click)="pickStage(st)">{{ 'stage_' + st | t }}</button>
+        }
+      </div>
+    }
+
     @if (!stageSlug()) {
       <ui-empty icon="alert-circle" [title]="'ma_no_dept' | t" [message]="'ma_no_dept_msg' | t" />
     } @else if (loading()) {
