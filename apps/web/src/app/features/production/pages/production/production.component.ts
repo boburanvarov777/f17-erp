@@ -107,7 +107,11 @@ export class ProductionComponent {
   readonly canAssignUsers = computed(() => this.auth.can('users.read'));
   /** Permanent order delete from this stage page — <stage>.purge or orders.purge, set per role. */
   readonly canPurge = computed(() => this.auth.can(`${this.stage().toLowerCase()}.purge`, 'orders.purge'));
-  readonly openStages = computed(() => (this.data()?.items ?? []).filter((s) => s.status !== 'COMPLETED'));
+  /** Orders offered in "Operatsiyani yangilash": open ones, plus the row it was opened from. */
+  readonly openStages = computed(() => {
+    const from = this.entryModal() as OrderStage | null;
+    return (this.data()?.items ?? []).filter((s) => s.status !== 'COMPLETED' || (from && 'id' in from && from.id === s.id));
+  });
 
   readonly sum = computed(() => {
     const items = this.data()?.items ?? [];
