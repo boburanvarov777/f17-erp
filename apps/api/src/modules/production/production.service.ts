@@ -10,7 +10,7 @@ import { assertTopAdmin, STAGE_PERMISSION_PREFIX } from '../../common/permission
 import { EventsGateway } from '../../realtime/events.gateway';
 import { AuditService, AUDIT_ACTIONS, formatAuditTelegramUsername } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CorrectStageDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
+import { CorrectStageDto, UpdateEntryDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
 
 export const STAGE_SEQUENCE: StageType[] = ['CUTTING', 'SEWING', 'WASHING', 'LASER', 'PACKING', 'LOADING'];
 
@@ -507,6 +507,66 @@ export class ProductionService {
    * then the entry and its reversal row are both deleted. Deleting a reversal row
    * removes its pair too, so the counters stay consistent either way.
    */
+  /**
+   * Edit one operation row: quantity, defects, finish time, comment. The stage
+   * totals move by the difference (non-boxing packing steps leave done alone),
+   * and the defect row created with the entry follows its new defect count.
+   */
+  async updateEntry(entryId: string, dto: UpdateEntryDto, actor: JwtUser) {
+    const entry = await this.prisma.stageEntry.findUnique({ where: { id: entryId }, include: { orderStage: true } });
+    if (!entry) throw notFound('err_record_not_found');
+    if (entry.cancelled || entry.note?.startsWith('Reversal of ')) throw badRequest('err_entry_locked');
+    const st = entry.orderStage;
+    this.assertStageAccess(st.stage, actor, 'update');
+
+    const qty = dto.qty ?? entry.qty;
+    const defectQty = dto.defectQty ?? entry.defectQty;
+    if (qty <= 0 && defectQty <= 0) throw badRequest('err_qty_zero');
+    const diff = entryCounts(st.stage, entry.meta) ? qty - entry.qty : 0;
+    const diffDefect = defectQty - entry.defectQty;
+    const note = dto.note === undefined ? entry.note : (dto.note.trim() || null);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.stageEntry.update({
+        where: { id: entryId },
+        data: { qty, defectQty, note, ...(dto.finishedAt ? { date: new Date(dto.finishedAt) } : {}) },
+      });
+      // Defect row written together with the entry.
+      const tag = `entry:${entryId}`;
+      const defect = await tx.defect.findFirst({ where: { comment: tag } });
+      if (defectQty > 0) {
+        if (defect) await tx.defect.update({ where: { id: defect.id }, data: { qty: defectQty, reason: note ?? defect.reason } });
+        else await tx.defect.create({ data: { orderId: st.orderId, stage: st.stage, type: 'production_entry', qty: defectQty, reason: note, comment: tag, userId: actor.sub, date: entry.date } });
+      } else if (defect) {
+        await tx.defect.delete({ where: { id: defect.id } });
+      }
+      if (diff !== 0 || diffDefect !== 0) {
+        const cur = await tx.orderStage.findUniqueOrThrow({ where: { id: st.id } });
+        const doneQty = Math.max(0, cur.doneQty + diff);
+        const stageDefect = Math.max(0, cur.defectQty + diffDefect);
+        const order = await tx.order.findUnique({ where: { id: st.orderId }, select: { qty: true } });
+        const cuttingDone = st.stage === 'CUTTING'
+          ? doneQty
+          : (await tx.orderStage.findFirst({ where: { orderId: st.orderId, stage: 'CUTTING' } }))?.doneQty ?? 0;
+        const effectivePlan = effectiveStagePlan(st.stage, cur.planQty, cuttingDone, order?.qty ?? cur.planQty);
+        const status = resolveStageStatus(doneQty, effectivePlan, cur.status, st.stage);
+        await tx.orderStage.update({
+          where: { id: st.id },
+          data: { doneQty, defectQty: stageDefect, status, endDate: stageEndDate(status, cur.endDate) },
+        });
+        if (st.stage === 'CUTTING' && order) await this.syncDownstreamPlans(tx, st.orderId, doneQty, order.qty);
+      }
+    });
+
+    this.audit.log({
+      userId: actor.sub, action: AUDIT_ACTIONS.STAGE_ENTRY_UPDATED, entity: 'StageEntry', entityId: entryId,
+      oldValue: { qty: entry.qty, defectQty: entry.defectQty, date: entry.date, note: entry.note },
+      newValue: { qty, defectQty, date: dto.finishedAt ?? entry.date, note },
+    });
+    this.events.emitAll('production:updated', { orderId: st.orderId, stage: st.stage });
+    return { success: true };
+  }
+
   async deleteEntry(entryId: string, actor: JwtUser) {
     assertTopAdmin(actor);
     const entry = await this.prisma.stageEntry.findUnique({ where: { id: entryId }, include: { orderStage: true } });

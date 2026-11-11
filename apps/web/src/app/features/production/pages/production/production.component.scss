@@ -16,3 +16,7 @@
 .pack-step.done { border-color: var(--success); background: var(--success-bg); }
 .pack-steps.lg { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: 8px; margin-top: 0; }
 .pack-steps.lg .pack-step { flex-direction: column; align-items: flex-start; border-radius: var(--r-md); padding: 8px 10px; white-space: normal; }
+
+.ops-actions { width: 1%; white-space: nowrap; padding-right: 0 !important; }
+.ops-actions .btn { margin-right: 2px; }
+.ops-note { max-width: 220px; white-space: normal; }

@@ -172,7 +172,7 @@ export class MaReportComponent {
         defectQty: +(this.defectQty || 0),
         date: this.finishedIso(),
         finishedAt: this.finishedIso(),
-        note: this.isPacking() ? (this.note || this.i18n.t('ma_source_miniapp')) : this.i18n.t('ma_source_miniapp'),
+        note: this.note.trim() || this.i18n.t('ma_source_miniapp'),
         source: 'MINIAPP',
         meta: this.isPacking() ? { subStage: this.subStage } : undefined,
       })
