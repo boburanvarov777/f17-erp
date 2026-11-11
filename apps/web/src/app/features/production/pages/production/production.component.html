@@ -315,27 +315,10 @@
         <b class="small">{{ 'entries' | t }}</b>
         <div class="table-wrap mt-2">
           <table class="data">
-            <thead><tr><th class="ops-actions"></th><th>{{ 'work_finished_at' | t }}</th><th>{{ 'entered_at' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'comment' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th></tr></thead>
+            <thead><tr><th>{{ 'work_finished_at' | t }}</th><th>{{ 'entered_at' | t }}</th><th class="num">{{ 'quantity' | t }}</th><th class="num">{{ 'defect_label' | t }}</th><th>{{ 'comment' | t }}</th><th>{{ 'worker_name' | t }}</th><th>{{ 'source' | t }}</th><th class="ops-actions"></th></tr></thead>
             <tbody>
               @for (e of s.entries; track e.id) {
                 <tr [style.opacity]="e.cancelled ? .45 : 1">
-                  <td class="ops-actions">
-                    @if (canWrite() && isEditableEntry(e)) {
-                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openEntryEdit(e)" [attr.data-tip]="'edit' | t">
-                        <ui-icon name="pencil" [size]="14" />
-                      </button>
-                    }
-                    @if (canDeleteEntries()) {
-                      <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="deletingEntry.set(e)" [attr.data-tip]="'delete' | t">
-                        <ui-icon name="trash" [size]="14" />
-                      </button>
-                    }
-                    @if (canWrite() && !e.cancelled && e.qty > 0) {
-                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="cancelling.set(e)" [attr.data-tip]="'cancel_entry' | t">
-                        <ui-icon name="rotate-ccw" [size]="14" />
-                      </button>
-                    }
-                  </td>
                   <td class="small nowrap">{{ e.date | shortDate: true }}</td>
                   <td class="small nowrap text-2">{{ (e.createdAt || e.date) | shortDate: true }}</td>
                   <td class="num bold">{{ e.qty > 0 ? '+' : '' }}{{ e.qty | num }}@if (e.note === 'Correction') { <span class="badge badge-warning tiny" style="margin-left:6px">{{ 'entry_correction' | t }}</span> }</td>
@@ -354,6 +337,23 @@
                       @if (isTelegramSource(e.source)) { <ui-icon name="send" [size]="10" /> }
                       {{ sourceLabel(e.source) }}
                     </span>
+                  </td>
+                  <td class="ops-actions">
+                    @if (canWrite() && !e.cancelled && e.qty > 0) {
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="cancelling.set(e)" [attr.data-tip]="'cancel_entry' | t">
+                        <ui-icon name="rotate-ccw" [size]="14" />
+                      </button>
+                    } @else { <span class="ops-slot"></span> }
+                    @if (canWrite() && isEditableEntry(e)) {
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" (click)="openEntryEdit(e)" [attr.data-tip]="'edit' | t">
+                        <ui-icon name="pencil" [size]="14" />
+                      </button>
+                    } @else { <span class="ops-slot"></span> }
+                    @if (canDeleteEntries()) {
+                      <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" (click)="deletingEntry.set(e)" [attr.data-tip]="'delete' | t">
+                        <ui-icon name="trash" [size]="14" />
+                      </button>
+                    }
                   </td>
                 </tr>
               } @empty { <tr><td colspan="8"><ui-empty icon="history" [title]="'no_data' | t" /></td></tr> }
