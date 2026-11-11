@@ -84,6 +84,9 @@ export class ProductionComponent {
   readonly editing = signal<OrderStage | null>(null);
   editForm = { doneQty: 0 as number | null, defectQty: 0 as number | null, responsibleId: '' };
   readonly deletingEntry = signal<StageEntry | null>(null);
+  /** Operation row being edited (pencil in the operations list). */
+  readonly editingEntry = signal<StageEntry | null>(null);
+  entryEdit = { qty: 0 as number | null, defectQty: 0 as number | null, finishedAt: '', note: '' };
   /** Upakovka inner steps, in working order. */
   readonly packStepKeys = ['CLEANING', 'IRONING', 'ACCESSORIES', 'SCANNING', 'BOXING'];
   /** Deleting single operation rows — Super Admin / Super Pro Admin. */
@@ -205,7 +208,7 @@ export class ProductionComponent {
         defectQty: +(this.entry.defectQty || 0),
         date: new Date(this.entry.date).toISOString(),
         finishedAt: new Date(this.entry.date).toISOString(),
-        note: this.isPacking() ? (this.entry.note || undefined) : undefined,
+        note: this.entry.note?.trim() || undefined,
         meta: Object.keys(meta).length ? meta : undefined,
       })
       .subscribe({
@@ -299,6 +302,51 @@ export class ProductionComponent {
         this.busy.set(false);
         this.editing.set(null);
         this.toast.success(this.i18n.t('saved'));
+        this.reload(false);
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  /** Real operation rows only — not cancelled ones or their reversal rows. */
+  isEditableEntry(e: StageEntry): boolean {
+    return !e.cancelled && !(e.note ?? '').startsWith('Reversal of ');
+  }
+
+  openEntryEdit(e: StageEntry): void {
+    const d = new Date(e.date);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const note = (e.note ?? '').trim();
+    const system = note === 'Correction' || note === this.i18n.t('ma_source_miniapp');
+    this.entryEdit = {
+      qty: e.qty,
+      defectQty: e.defectQty,
+      finishedAt: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      note: system ? '' : note,
+    };
+    this.editingEntry.set(e);
+  }
+
+  saveEntryEdit(): void {
+    const e = this.editingEntry();
+    if (!e) return;
+    const qty = Math.max(0, Math.floor(+(this.entryEdit.qty ?? 0)));
+    const defectQty = Math.max(0, Math.floor(+(this.entryEdit.defectQty ?? 0)));
+    if (qty <= 0 && defectQty <= 0) { this.toast.error(this.i18n.t('ma_enter_qty')); return; }
+    const when = this.entryEdit.finishedAt ? new Date(this.entryEdit.finishedAt) : null;
+    this.busy.set(true);
+    this.api.patch(`/production/entries/${e.id}`, {
+      qty,
+      defectQty,
+      note: this.entryEdit.note ?? '',
+      ...(when && !Number.isNaN(+when) ? { finishedAt: when.toISOString() } : {}),
+    }).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.editingEntry.set(null);
+        this.toast.success(this.i18n.t('saved'));
+        const d = this.detail();
+        if (d) this.openDetail(d);
         this.reload(false);
       },
       error: () => this.busy.set(false),
@@ -448,7 +496,8 @@ export class ProductionComponent {
     const note = raw?.trim();
     if (!note) return '—';
     const auto = this.i18n.t('ma_source_miniapp');
-    if (note === auto) return '—';
+    // System notes (bot marker, corrections, reversals) are not comments.
+    if (note === auto || note === 'Correction' || note.startsWith('Reversal of ')) return '—';
     return note;
   }
 

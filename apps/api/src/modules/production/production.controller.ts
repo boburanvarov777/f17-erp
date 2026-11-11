@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtUser, RequirePermissions } from '../../common/decorators';
-import { CorrectStageDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
+import { CorrectStageDto, UpdateEntryDto, CreateDefectDto, CreateEntryDto, QueryStageDto, UpdateStageDto, UpsertShipmentDto } from './dto';
 import { ProductionService } from './production.service';
 
 @ApiTags('production')
@@ -45,6 +45,12 @@ export class ProductionController {
   @ApiOperation({ summary: 'Tahrirlash — set done/defect totals; the difference is stored as a correction row' })
   correctStage(@Param('stageId') stageId: string, @Body() dto: CorrectStageDto, @CurrentUser() actor: JwtUser) {
     return this.production.correctStage(stageId, dto, actor);
+  }
+
+  @Patch('entries/:entryId')
+  @ApiOperation({ summary: 'Edit one operation row — quantity, defects, finish time, comment' })
+  updateEntry(@Param('entryId') entryId: string, @Body() dto: UpdateEntryDto, @CurrentUser() actor: JwtUser) {
+    return this.production.updateEntry(entryId, dto, actor);
   }
 
   @Post('entries/:entryId/cancel')

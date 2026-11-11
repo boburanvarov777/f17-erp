@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ShipmentStatus, StageStatus, StageType } from '@prisma/client';
-import { IsDateString, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class QueryStageDto extends PaginationDto {
@@ -40,6 +40,14 @@ export class UpdateStageDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() endDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() deadline?: string;
   @ApiPropertyOptional() @IsOptional() @IsObject() meta?: Record<string, unknown>;
+}
+
+/** Edit one operation row (Tahrirlash in the operations list). */
+export class UpdateEntryDto {
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) qty?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) defectQty?: number;
+  @ApiPropertyOptional({ description: 'When the work was finished (ISO date-time)' }) @IsOptional() @IsDateString() finishedAt?: string;
+  @ApiPropertyOptional({ description: 'Comment; empty string clears it' }) @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
 /** "Tahrirlash": set the stage's totals; the difference is stored as a correction row. */

@@ -65,11 +65,12 @@
             @if (fe.get('subStage'); as msg) { <div class="field-error">{{ msg }}</div> }
             <div class="tiny text-3 mt-1">{{ 'pack_sub_hint' | t }}</div>
           </div>
-          <div class="field mt-3">
-            <label class="label">{{ 'note' | t }}</label>
-            <input class="input" [(ngModel)]="note" [placeholder]="'note_optional' | t" />
-          </div>
         }
+
+        <div class="field mt-3">
+          <label class="label">{{ 'comment' | t }}</label>
+          <input class="input" maxlength="500" [(ngModel)]="note" [placeholder]="'comment_placeholder' | t" />
+        </div>
 
         <div class="field mt-3">
           <label class="label">{{ 'work_finished_at' | t }}</label>
